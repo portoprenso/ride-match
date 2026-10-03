@@ -34,7 +34,7 @@ If actual files differ from a handoff, investigate and document the discrepancy.
 2. Inspect the working directory. If Git exists, inspect status/diff and record branch/revision where useful. Otherwise record that Git is not initialized; do not initialize it for this workflow alone.
 3. Check task dependencies and active ownership. Preserve pre-existing edits; distinguish them from your own work.
 4. Identify the requested task and exact acceptance criteria still unfinished. A continuation inherits the original scope, accepted decisions, and constraints.
-5. Before editing, add/update a concise active-work entry in `AI_CONTEXT.md`: task ID, owner (`Codex` or `Claude Code` plus a short session label), status, working copy, intended files, and continuation point. Use a local task ID such as `DOC-001` for meaningful work outside the implementation DAG; do not invent a new product milestone.
+5. Before editing, add/update a concise active-work entry in `AI_CONTEXT.md`: task ID, owner (`Codex` or `Claude Code`, optionally with the model, such as `Codex (Terra)`, plus a short session label), status, working copy, intended files, and continuation point. Use a local task ID such as `DOC-001` for meaningful work outside the implementation DAG; do not invent a new product milestone.
 6. Mark the relevant roadmap row `In progress` when implementation actually starts. Documentation-only tasks can live in the work log without changing the 25-task DAG.
 7. Perform the authorized work. Do not implement the next task merely because it is listed as next.
 
@@ -80,7 +80,7 @@ Append to `WORK_LOG.md`, preserving older entries. Use a session label to distin
 ```markdown
 ## YYYY-MM-DD — TASK-ID: Short outcome
 
-- Actor/session: Codex or Claude Code / short session label
+- Actor/session: Codex or Claude Code, optionally with model such as Codex (Terra) / short session label
 - Status: Planned | In progress | Paused | Blocked | Completed
 - Working copy: Branch/worktree and relevant revision, or "shared directory; Git not initialized"
 - Request/scope: What the user asked for; relevant constraints
@@ -111,7 +111,7 @@ Start a bounded task:
 
 > Read AGENTS.md, docs/AI_CONTEXT.md, docs/AI_WORKFLOW.md, the latest relevant WORK_LOG.md entry, the MONO-001 parent in docs/ROADMAP.md, and docs/FIRST_STEPS.md. Execute only MONO-001-A, respecting its file scope, checks, and exclusions. Update the shared documentation and child/parent statuses, then stop. Do not implement the other children or commit automatically.
 
-For Terra and other assistants, the first batch uses one child per assignment. [FIRST_STEPS.md](FIRST_STEPS.md) has full task cards, completion rules, and copyable implementation/review prompts. This changes assignment size, not the shared handoff or ownership requirements. Do not use a parent title as permission to implement all its children.
+For Terra (a model used through Codex) and other assistants, the first batch uses one child per assignment. [FIRST_STEPS.md](FIRST_STEPS.md) has full task cards, completion rules, and copyable implementation/review prompts. This changes assignment size, not the shared handoff or ownership requirements. Do not use a parent title as permission to implement all its children.
 
 Continue another assistant's work:
 

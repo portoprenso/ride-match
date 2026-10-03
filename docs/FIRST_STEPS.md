@@ -1,6 +1,6 @@
 # First steps: small assignments for Terra
 
-Last updated: 2026-10-03. **Plan only. None of these tasks has started.**
+Last updated: 2026-10-03. Current child statuses are in [Execution order and progress](#execution-order-and-progress); this plan does not authorize implementation by itself.
 
 ## Target and limits
 
@@ -9,6 +9,8 @@ First establish a reproducible workspace, then a minimal Expo development app th
 This document decomposes **MONO-001** and **MOBILE-001** from [ROADMAP.md](ROADMAP.md). It does not replace their acceptance criteria or authorize implementation. MOBILE-001 depends only on MONO-001, so building the shell before CONTRACT-001 is consistent with the existing DAG. No domain implementation is needed for this shell.
 
 Small scope, fixed decisions, observable checks, and review checkpoints reduce ambiguity. They cannot guarantee bug-free work by Terra or any other model.
+
+Terra is a model used through Codex. It follows the shared Codex workflow and records its actor as `Codex (Terra)` plus a session label in `AI_CONTEXT.md` and `WORK_LOG.md`. Claude Code records `Claude Code`.
 
 ## How to assign work
 
@@ -47,9 +49,9 @@ This is the recommended serial order. If one native platform is unavailable, rec
 ## Fixed decisions for this batch
 
 - Package names: private root `ride-match`, private `@ride-match/contracts`, private `@ride-match/mobile`.
-- One root `pnpm-lock.yaml`; workspace globs `apps/*` and `packages/*`. Empty `apps/api/` has no manifest and is not a package. Contracts is the only shared package.
+- One root `pnpm-lock.yaml`; workspace globs `apps/*` and `packages/*`. Empty `apps/api/` has no manifest and is not a package. Git does not track that empty directory; do not add a placeholder file to it. Contracts is the only shared package.
 - Contracts emits JavaScript and declarations into `dist/`. Initial `src/index.ts` contains only `export {};` and a short explanation that schemas come later. No fake DTOs, sample exports, or business functions.
-- Use ESM contracts with explicit runtime/type exports to `dist/index.js` and `dist/index.d.ts`. Resolve exact compiler/module options against the selected toolchain in MONO-001-A. No dual ESM/CommonJS build without an observed need.
+- Prefer ESM contracts with one explicit `exports` entry: `types` -> `dist/index.d.ts` and `default` -> `dist/index.js`. Do not use an `import`-only condition; Jest's CommonJS resolution would not match it. Node (MONO-001-C), Metro (MOBILE-001-B), and the selected Jest runtime (MOBILE-001-F) must all load the same emitted file without source aliases, test mocks, or a second build. MONO-001-A resolves compiler/module options and confirms the format; if a selected tool cannot load ESM, record the evidence and choose one format all three load. No dual ESM/CommonJS build.
 - Mobile uses Expo's TypeScript configuration with strict checking; do not impose the contracts package's Node-oriented resolution options on React Native.
 - Routes live in `apps/mobile/app/`; tests stay outside it. Use `app.config.ts` as the single app configuration source.
 - Use minimal manual Expo Router setup from official guidance, not a large starter application. Development builds include `expo-dev-client`.
@@ -61,7 +63,7 @@ This is the recommended serial order. If one native platform is unavailable, rec
 
 ## Task cards
 
-Every card inherits [AGENTS.md](../AGENTS.md), [AI_WORKFLOW.md](AI_WORKFLOW.md), the rules above, and its parent roadmap task. Read current AI context and the latest relevant work-log handoff each time. File scopes below additionally permit concise status updates here and in the roadmap, AI context, work log, and affected setup docs.
+Every card inherits [AGENTS.md](../AGENTS.md), [AI_WORKFLOW.md](AI_WORKFLOW.md), the rules above, and its parent roadmap task. Read current AI context and the latest relevant work-log handoff each time. From MONO-001-B onward, also read `docs/TOOLCHAIN.md` (created by MONO-001-A); use its versions, commands, and recorded decisions instead of choosing new ones. File scopes below additionally permit concise status updates here and in the roadmap, AI context, work log, and affected setup docs.
 
 ### MONO-001-A — Record the toolchain
 
@@ -71,15 +73,32 @@ Every card inherits [AGENTS.md](../AGENTS.md), [AI_WORKFLOW.md](AI_WORKFLOW.md),
 
 **Files:** Create `docs/TOOLCHAIN.md`; setup documentation/handoff only.
 
-**Work:** Inspect Git/files, Node/pnpm versions, and Android SDK/emulator/JDK plus Xcode/simulator availability without installing or reconfiguring the machine. Record useful versions/availability, not environment dumps. Select a supported Node LTS and one stable Expo SDK with its compatible React/React Native/Router/TypeScript versions. Select exact pnpm/Turbo and compatible lint/test tools from official guidance and published package metadata; never choose independent latest React and React Native.
+**Work:** Inspect Git/files, Node/pnpm/Corepack versions, Android SDK/emulator/JDK and SDK location, plus Xcode/simulator/CocoaPods availability and locale, without installing or reconfiguring the machine. Record useful versions/availability, not environment dumps. Select a supported Node LTS and one stable Expo SDK with its compatible React/React Native/Router/TypeScript versions. Select exact pnpm/Turbo and compatible lint/test tools from official guidance and published package metadata; never choose independent latest React and React Native.
 
 Record exact direct dependency versions, owner (root/contracts/mobile), purpose, source links, date, and engine/peer compatibility. Include Router's peers, development client, TypeScript types, lint tools, Jest/jest-expo/Testing Library, and pinned `expo-doctor`; exclude future domain dependencies. Record exact setup/install commands for B–F, ESM compiler options/exports, mobile lint/test config choices, and one Node version-file convention.
 
-**Pass when:** Workspace/mobile setup has no unresolved version or command placeholders; metadata supports the selected combination. Distinguish this from installation/native checks, which come later. Name missing native prerequisites and the platform tasks they block; these do not block workspace work.
+**Known local hazards** (read-only observation by Claude Code on 2026-10-03; re-verify, then record the current state):
+
+- The home directory above this checkout has a `package.json` declaring `packageManager: yarn@4.x`, plus `yarn.lock` and `node_modules/@types` (including `jest`, `mocha`, and `node`). The Corepack `pnpm` shim refuses to run inside this repository until a root manifest declares pnpm. TypeScript automatically includes `@types` from every ancestor `node_modules`; `jest` and `mocha` declare conflicting globals. Node, Jest, and Metro resolution can also fall back to that ancestor `node_modules` and hide undeclared dependencies.
+- The checkout lives inside a MEGAsync-synced folder. Dependency symlinks, caches, and native build output would be synced, and AI_WORKFLOW warns against overlapping writes through cloud-synced folders.
+- CocoaPods warns without a UTF-8 locale. `LANG`, `ANDROID_HOME`, and `JAVA_HOME` were unset in the assistant's non-interactive shell even though `adb`, `emulator`, and JDK 17 were on `PATH`. The user's interactive shell may differ.
+
+**Also resolve and record:**
+
+- How pnpm is provisioned at the exact version: Corepack or another method, whether Corepack ships with the selected Node line, and how B runs its first pnpm command despite the ancestor manifest. Enabling global shims or installing global tools is a user-approved step, not routine scaffolding.
+- An explicit `types` setting for every tsconfig, so ancestor `@types` never enter compilation, and a check that compiler file lists contain no ancestor `node_modules` paths. Note whether Metro/Jest can resolve packages from the ancestor directory and which guard or user action prevents it.
+- The MEGAsync handling: sync exclusions for generated paths, or a non-synced checkout. This is the user's decision; name it as open until recorded.
+- pnpm's dependency build-script policy for the selected version: which packages, if any, may run install scripts. Warnings are resolved, not suppressed.
+- The contracts module format and `exports` entry that satisfy the fixed decision above for Node, Metro, and the selected Jest runtime. Jest's CommonJS runtime may reject `.js` files from a `type: module` package; confirm from official documentation or metadata, or mark it for verification in MOBILE-001-B/F.
+- Expo-generated paths and their ignore convention: `.expo/`, export `dist/`, `android/`, `ios/`, `expo-env.d.ts`, and compiler build-info files.
+- How `pnpm dev` keeps Expo's interactive terminal keys usable under the selected Turbo version and how interrupt reaches both processes; otherwise record the documented alternative.
+- Native prerequisites per platform, including CocoaPods, UTF-8 locale, Android SDK location, and JDK, with the task each missing item blocks.
+
+**Pass when:** Workspace/mobile setup has no unresolved version or command placeholders; metadata supports the selected combination. Every known hazard has a recorded mitigation or a named open user decision with the task it blocks. Distinguish this from installation/native checks, which come later. Name missing native prerequisites and the platform tasks they block; these do not block workspace work.
 
 **Check:** Read-only local version and published metadata commands, source-link review, `git diff --check`. Record exact commands/results.
 
-**Stop/defer:** Unresolved compatibility leaves this task incomplete. No dependency installation, scaffolding, system upgrade, or architecture change.
+**Stop/defer:** Unresolved compatibility leaves this task incomplete. No dependency installation, scaffolding, system upgrade, or architecture change. Do not modify files outside the repository, shell profiles, sync settings, or global tools; record those as user decisions.
 
 ### MONO-001-B — Create the root workspace
 
@@ -87,7 +106,7 @@ Record exact direct dependency versions, owner (root/contracts/mobile), purpose,
 
 **Files:** Root `package.json`, `pnpm-workspace.yaml`, `pnpm-lock.yaml`, `.gitignore`, chosen Node version file, root `README.md`.
 
-**Work:** Create private root manifest with exact `packageManager` and supported Node engines, plus workspace globs. Install only A's root foundation tools, including Turbo and selected TypeScript/lint tooling. Generate the root lockfile with pnpm. Add narrow dependency/build/cache/local-env ignores; do not hide IDE files as cleanup. README covers actual setup and links to docs.
+**Work:** Before installing anything, confirm `docs/TOOLCHAIN.md` records the pnpm bootstrap method and the user's MEGAsync decision; if either is open, mark B `Blocked` on it. Create private root manifest with exact `packageManager` and supported Node engines, plus workspace globs. Install only A's root foundation tools, including Turbo and selected TypeScript/lint tooling. Generate the root lockfile with pnpm. Add narrow dependency/build/cache/local-env ignores; do not hide IDE files as cleanup. README covers actual setup and links to docs.
 
 **Pass when:** One lockfile; no app manifest, nested lockfile, backend scaffold, or pretend build/test command. Runtime and package manager requirements are documented.
 
@@ -101,11 +120,11 @@ Record exact direct dependency versions, owner (root/contracts/mobile), purpose,
 
 **Files:** `packages/contracts/{package.json,tsconfig.json,src/index.ts}`; root scripts/lockfile if required by A's dependency ownership.
 
-**Work:** Use fixed name/ESM exports. Strictly compile only `src/` into `dist/` with declarations. Declare TypeScript where package scripts resolve it. Add package `build`, `dev` (compiler watch), and `typecheck`; add a direct root `build:contracts` wrapper to be routed through Turbo in E. Keep runtime dependencies empty.
+**Work:** Use the fixed name and the exports entry recorded in A. Strictly compile only `src/` into `dist/` with declarations, with an explicit `types` setting so ancestor `@types` packages stay out. Declare TypeScript where package scripts resolve it. Add package `build`, `dev` (compiler watch), and `typecheck`; add a direct root `build:contracts` wrapper to be routed through Turbo in E. Keep runtime dependencies empty.
 
-**Pass when:** `dist/index.js` and `dist/index.d.ts` exist, match manifest exports, and emitted JavaScript imports in Node. Source has no domain definitions; outputs are ignored.
+**Pass when:** `dist/index.js` and `dist/index.d.ts` exist, match manifest exports, and emitted JavaScript imports in Node. Compilation includes no files from an ancestor `node_modules`. Source has no domain definitions; outputs are ignored.
 
-**Check:** `pnpm build:contracts`; `pnpm --filter @ride-match/contracts typecheck`; from root, `node --input-type=module -e "await import('./packages/contracts/dist/index.js')"`; artifact/export inspection; `git diff --check`.
+**Check:** `pnpm build:contracts`; `pnpm --filter @ride-match/contracts typecheck`; from root, `node --input-type=module -e "await import('./packages/contracts/dist/index.js')"`; A's recorded compiler file-list check for ancestor paths; artifact/export inspection; `git diff --check`.
 
 **Stop/defer:** No Zod, schema tests, sample data, bundler, publishing, mobile import, or meaningless empty-module test.
 
@@ -145,13 +164,13 @@ Record exact direct dependency versions, owner (root/contracts/mobile), purpose,
 
 **Read:** Recorded toolchain, product navigation, architecture route boundaries.
 
-**Files:** Mobile manifest, `app.config.ts`, `tsconfig.json`, required Expo declarations, `app/{_layout,index}.tsx`, `src/features/map/MapPlaceholderScreen.tsx`; root lockfile and necessary mobile lint config.
+**Files:** Mobile manifest, `app.config.ts`, `tsconfig.json`, Expo type declarations handled per A's convention (Expo generates `expo-env.d.ts`; do not hand-write it), `app/{_layout,index}.tsx`, `src/features/map/MapPlaceholderScreen.tsx`; `.gitignore` entries for A's recorded Expo-generated paths; root lockfile and necessary mobile lint config.
 
-**Work:** Install A's compatible Expo/React/React Native/Router peers, development client, and types. Use `expo-router/entry`, strict Expo TypeScript, a root stack, and a thin `/` route rendering the feature placeholder. Show “Ride Match” and “Map coming soon,” with no activity. Configure provisional identifiers. Add mobile start/typecheck/lint scripts and include mobile in root static checks.
+**Work:** Install A's compatible Expo/React/React Native/Router peers, development client, and types. Use `expo-router/entry`, strict Expo TypeScript with A's explicit `types` setting, a root stack, and a thin `/` route rendering the feature placeholder. Show “Ride Match” and “Map coming soon,” with no activity. Configure provisional identifiers. Add mobile start/typecheck/lint scripts and include mobile in root static checks.
 
-**Pass when:** Expo reads config, static checks cover mobile, and Android/iOS JavaScript exports resolve entry/routes. No permission prompt, auth gate, network request, or domain behavior.
+**Pass when:** Expo reads config, static checks cover mobile, and Android/iOS JavaScript exports resolve entry/routes. After the exports, `git status` shows no generated Expo output. No permission prompt, auth gate, network request, or domain behavior.
 
-**Check:** `pnpm typecheck`, `pnpm lint`; in `apps/mobile`, `pnpm exec expo install --check`, `pnpm exec expo export --platform android`, `pnpm exec expo export --platform ios`. Exports do not prove native startup.
+**Check:** `pnpm typecheck`, `pnpm lint`; in `apps/mobile`, `pnpm exec expo install --check`, `pnpm exec expo export --platform android`, `pnpm exec expo export --platform ios`; `git status --short`. Exports do not prove native startup.
 
 **Stop/defer:** No auth route yet, native map, tabs, branding project, Query/provider placeholders, starter demos, or parallel `src/app/` tree.
 
@@ -165,7 +184,7 @@ Record exact direct dependency versions, owner (root/contracts/mobile), purpose,
 
 Implement root `dev`, `dev:mobile`, `doctor`, `export:android`, `export:ios`, `mobile:android`, `mobile:ios`. Dev commands build contracts once then run compiler watch alongside Expo `--dev-client`. Native/export commands prepare contracts too. Use A's pinned doctor tool. Never make a task wait for a watcher to finish.
 
-**Pass when:** Exports resolve public package entry without source aliases. Startup prepares missing artifacts; watch emits a controlled source change; interrupt stops both processes. Restore the temporary probe. No unresolved doctor/dependency failure.
+**Pass when:** Exports resolve public package entry without source aliases. Startup prepares missing artifacts; watch emits a controlled source change; Expo's interactive keys work under Turbo (or A's documented alternative is used); interrupt stops both processes. Restore the temporary probe. No unresolved doctor/dependency failure.
 
 **Check:** Root static checks, `pnpm doctor`, both exports; start/stop `pnpm dev` and inspect emission from an assistant-created temporary source file. Inspect Turbo dry-run ordering. Record outcomes; native launch is G/H.
 
@@ -191,7 +210,7 @@ Implement root `dev`, `dev:mobile`, `doctor`, `export:android`, `export:ios`, `m
 
 **Files:** Root layout, `app/auth/{_layout,phone,otp}.tsx`, small auth placeholder components, map placeholder.
 
-**Work:** Home gets “Sign in.” Present auth navigator modally, starting at phone. A clearly labeled preview action advances to OTP; OTP Back returns to phone. Close from either returns to `/`. Direct entry without history has a safe home fallback. Keep route modules thin.
+**Work:** Home gets “Sign in.” This entry is a temporary placeholder: [PRODUCT.md](PRODUCT.md) shows authentication only for protected actions, so AUTH-001 replaces it with protected-action gating. Present auth navigator modally, starting at phone. A clearly labeled preview action advances to OTP; OTP Back returns to phone. Close from either returns to `/`. Direct entry without history has a safe home fallback. Keep route modules thin.
 
 **Pass when:** Browsing never requires auth; close preserves existing home when present. Copy says authentication is unimplemented. No phone/code collection, session mutation, validation, or simulated sign-in success.
 
@@ -203,9 +222,9 @@ Implement root `dev`, `dev:mobile`, `doctor`, `export:android`, `export:ios`, `m
 
 **Outcome:** Planned URLs have explicit placeholders without implying private features work.
 
-**Files:** `app/groups/[groupId]/{index,chat}.tsx`, `app/settings.tsx`, `app/dev/scenarios.tsx`, layout registration if needed; a shared placeholder component only if it removes actual repetition.
+**Files:** `app/groups/[groupId]/{index,chat}.tsx`, `app/settings.tsx`, `app/dev/scenarios.tsx`, `src/config/isDevelopmentMode.ts`, layout registration if needed; a shared placeholder component only if it removes actual repetition.
 
-**Work:** Group/chat display only “Not available yet” plus home/back, regardless of ID. Settings has no fake session/permission controls. Scenario route is available only under Expo's development flag; otherwise redirect home or render unavailable. Record replacement by real environment/data-source gating in DATA-001.
+**Work:** Group/chat display only “Not available yet” plus home/back, regardless of ID. Settings has no fake session/permission controls. Scenario route is available only in React Native development mode (`__DEV__`); otherwise it renders an unavailable state with a home action, not a redirect. Read the flag only through a small `isDevelopmentMode()` function so F can override that flag without mocking navigation. Record its replacement by real environment/data-source gating in DATA-001.
 
 **Pass when:** No synthetic private data, nonfunctional mutation controls, route-param membership trust, or active scenarios. Malformed/missing IDs cannot crash placeholders. Non-development scenario entry is unavailable.
 
@@ -221,9 +240,9 @@ Implement root `dev`, `dev:mobile`, `doctor`, `export:android`, `export:ios`, `m
 
 **Work:** Install A's compatible Jest/jest-expo/Testing Library setup. Use Expo Router testing utilities against actual route components/configuration, not a duplicate fake app. Tests stay outside `app/`. Add `test:mobile` with argument forwarding and a non-watch root `test` for available suites.
 
-**Required assertions:** Anonymous initial home; Sign in -> phone -> OTP -> Back to phone; Close from either auth screen -> home; direct auth entry Close -> home fallback; arbitrary group/chat ID -> unavailable; non-development scenario route -> unavailable; disabled Button ignores press and reports disabled state, enabled Button invokes once.
+**Required assertions:** Anonymous initial home; Sign in -> phone -> OTP -> Back to phone; Close from either auth screen -> home; direct auth entry Close -> home fallback; arbitrary group/chat ID -> unavailable; non-development scenario route -> unavailable state (override only `isDevelopmentMode()`; Jest runs with `__DEV__` true); disabled Button ignores press and reports disabled state, enabled Button invokes once.
 
-**Pass when:** Assertions pass without mocking away the navigation under test; no pending test timers/listeners. Record native/mock limits. No snapshot-only suite or `passWithNoTests`.
+**Pass when:** Assertions pass without mocking away the navigation under test or aliasing/mocking `@ride-match/contracts`; the bootstrap import loads the built package through its `exports` entry. No pending test timers/listeners. Record native/mock limits. No snapshot-only suite or `passWithNoTests`.
 
 **Check:** `pnpm test:mobile`, `pnpm test:mobile --runTestsByPath tests/navigation.test.tsx`, `pnpm test`, root static checks. For runtime fixes rerun affected exports/doctor.
 
@@ -269,6 +288,7 @@ Read docs/FIRST_STEPS.md and the latest relevant WORK_LOG.md handoff.
 Execute only MONO-001-A. Do not implement all of MONO-001.
 
 Verify dependencies/current files, then record ownership.
+Attribute handoffs to your tool and model (Terra: "Codex (Terra)").
 Follow the task card's file scope, fixed decisions, pass criteria, and exclusions.
 Run applicable specified checks and record exact outcomes.
 Do not weaken checks or silently change architecture to bypass failures.

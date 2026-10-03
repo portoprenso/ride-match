@@ -7,18 +7,18 @@ Last updated: 2026-10-03
 - Ride Match: map-first discovery of nearby compatible ride intentions, groups of up to four, temporary text chat, shared meeting point, external Yandex Go handoff.
 - **Implemented:** Documentation baseline and shared Codex/Claude Code instructions only. No application or backend code, packages, dependencies, runnable scripts, or tests.
 - Existing `apps/mobile/` and `apps/api/` are empty. Preserve unrelated files; do not populate `apps/api/` during the mobile milestone.
-- Next planned task: **MONO-001** in [ROADMAP.md](ROADMAP.md), only when implementation is requested.
+- Next planned assignment: **MONO-001-A** (toolchain record) from [FIRST_STEPS.md](FIRST_STEPS.md), part of MONO-001 in [ROADMAP.md](ROADMAP.md), only when requested.
 - Sequence: mock mobile MVP -> contract review -> future backend -> future HTTP/Socket.IO adapter.
 
 ## Shared handoff and active work
 
 - Entry points: [AGENTS.md](../AGENTS.md) contains shared rules; [CLAUDE.md](../CLAUDE.md) imports them for Claude Code.
 - Both assistants use [AI_WORKFLOW.md](AI_WORKFLOW.md), this file, the roadmap, relevant specs, and [WORK_LOG.md](WORK_LOG.md) as shared project memory. Private chat/memory is not a substitute.
-- Active task/owner: **DOC-002 / Codex / terra-first-steps**, In progress. Documentation-only breakdown of MONO-001 and MOBILE-001; implementation remains unstarted.
-- Working scope: new `docs/FIRST_STEPS.md` and shared README/roadmap/workflow/development/context/work-log references, on `main` at observed HEAD `fb7a7ae`. Preserve unrelated `.idea/` files.
-- Latest handoff: DOC-001 in `WORK_LOG.md`; shared rules/import/workflow and related documentation are updated. Static links/import/task/DAG/scenario checks passed; live Claude Code startup was not tested.
-- Working copy: Git repository now exists; inspect current branch/status and preserve unrelated IDE files before editing. No application implementation has started.
-- Next concrete step: implement **MONO-001** when requested, or use the read-only handoff prompt in `AI_WORKFLOW.md` to verify either assistant's context.
+- Active task/owner: **None**. DOC-002 (Codex / terra-first-steps drafting; Claude Code / first-steps-review patch and closure) is completed; ownership released.
+- Latest handoff: DOC-002 in `WORK_LOG.md`. `FIRST_STEPS.md` splits MONO-001/MOBILE-001 into 13 child assignments, all `Planned`. Terra is a model used through Codex; it records its actor as `Codex (Terra)`.
+- Working copy: `main`. Codex's DOC-002 draft is commit `9566405`; Claude Code's review patch and closure are the next commit. Preserve unrelated untracked `.idea/` files. No application implementation has started.
+- Local environment hazards: an ancestor home-directory `package.json` (yarn), `yarn.lock`, and `node_modules/@types`, plus a MEGAsync-synced checkout. MONO-001-A must record mitigations or open user decisions in `docs/TOOLCHAIN.md`. MONO-001-B is blocked until the pnpm bootstrap method and the MEGAsync decision are recorded.
+- Next concrete step: assign **MONO-001-A** using the prompt in `FIRST_STEPS.md`. Do not start it automatically.
 - Before any takeover, inspect current files and latest task handoff. Use one writer at a time in this directory; ownership notes do not synchronize separate checkouts.
 
 ## Planned stack and boundaries
