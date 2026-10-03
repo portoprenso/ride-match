@@ -376,3 +376,69 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - Native startup, `expo start`, and the dev client are unverified until B, G, and H.
 - **Resume from:** Assign MOBILE-001-B when requested.
 - **Ownership:** Released; no active task.
+
+## 2026-10-03 — MOBILE-001-B: Shared package and development commands
+
+- **Actor/session:** Claude Code / dev-commands.
+- **Status:** Completed; ownership released. Parent MOBILE-001 stays `In progress`.
+- **Working copy:** `main` at `c924bf1` (MOBILE-001-A, committed at the user's request). At the user's request, MOBILE-001-B was committed on top of it, without pushing. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "commit and continue with MOBILE-001-B". Only the B card was executed.
+- **Changes:**
+  - **Mobile dependencies:** `@ride-match/contracts: workspace:*` (linked to `packages/contracts`) and dev dependency `expo-doctor` 1.20.4. The lockfile was updated.
+  - **`apps/mobile/src/bootstrap/checkContractsPackage.ts`:** a temporary side-effect `import '@ride-match/contracts'`. Its TSDoc gives the purpose and the removal condition. `app/_layout.tsx` imports it, with a one-line "Temporary" comment.
+  - **Mobile scripts:** `dev` (`expo start --dev-client`), `android` (`expo run:android`), `ios` (`expo run:ios`), `export:android`, `export:ios`, and `doctor` (`expo-doctor`).
+  - **Root scripts:**
+    - `dev` = `turbo run dev --filter=@ride-match/mobile`.
+    - `dev:mobile` = `pnpm build:contracts && pnpm --filter @ride-match/mobile start`.
+    - `doctor:mobile` = `pnpm --filter @ride-match/mobile run doctor`.
+    - `export:android`/`export:ios` and `mobile:android`/`mobile:ios` = `pnpm build:contracts && pnpm --filter @ride-match/mobile <script>`.
+  - **`turbo.json`:** `@ride-match/mobile#dev` with `dependsOn: ["^build"]`, `with: ["@ride-match/contracts#dev"]`, `cache: false`, `persistent: true`, and `passThroughEnv` set to `EXPO_*`, `ANDROID_HOME`, `ANDROID_SDK_ROOT`, `REACT_NATIVE_PACKAGER_HOSTNAME`, `RCT_METRO_PORT`, `EDITOR`, `VISUAL`, `HTTP_PROXY`, and `TMPDIR`.
+  - **Docs:** `TOOLCHAIN.md` (dev task evidence, the doctor naming, Metro resolution, B commands and results), the root `README.md` (new commands), `DEVELOPMENT.md` (statuses), `FIRST_STEPS.md` (B `Completed`; B's work and check lines and H's check line now say `doctor:mobile`), `ROADMAP.md` (progress, and `pnpm doctor:mobile` in the MOBILE-001 and QA-001 verification lines), `ARCHITECTURE.md`, `docs/README.md`, and `AI_CONTEXT.md`.
+- **Decisions:**
+  - **`doctor:mobile` instead of `doctor`.** pnpm 11.28.2's built-in `pnpm doctor` shadows a root `doctor` script. The first `pnpm doctor` run printed pnpm's own installation checks ("All checks passed with 1 warning(s)", exit 0) without checking the app. `pnpm --filter @ride-match/mobile doctor` also printed the built-in's usage. The roadmap verification lines were updated, so a plain `pnpm doctor` can no longer look like an app check.
+  - **The doctor wrapper does not build contracts**, because `expo-doctor` does not load package output. TOOLCHAIN's prose was corrected to match its table.
+  - **`passThroughEnv` from evidence:**
+    - The list comes from `@expo/cli` 57.0.27's `build/` sources, plus `TMPDIR`. Metro's default cache is `os.tmpdir()/metro-cache`, and Turbo filtered `TMPDIR`, so dev would otherwise use `/tmp/metro-cache` while exports use the user's temp directory.
+    - `NODE_ENV`, `BABEL_ENV`, web-only `BROWSER*`, and HTTPS certificate variables are deliberately not passed.
+  - **Package-specific `@ride-match/mobile#dev` in the root `turbo.json`**, not a package `turbo.json`, to keep one Turbo file.
+- **Excluded:** No schemas, fake exports, runtime banners, Metro/Babel config, resolver or hoisting changes, native builds, device permissions, or tests.
+- **Verification** (Node 24.17.0, pnpm 11.28.2; `TURBO_TELEMETRY_DISABLED=1`, `EXPO_NO_TELEMETRY=1`, and `CI=1` for non-interactive Expo runs, in assistant commands only):
+  - **Installs:** both `pnpm --filter @ride-match/mobile add …` commands exited 0. `pnpm peers check` reported "No peer dependency issues found". The final `pnpm install --frozen-lockfile` exited 0.
+  - **Turbo ordering:**
+    - `pnpm exec turbo run dev --filter=@ride-match/mobile --dry-run=json` lists `contracts#build` (dependent: `mobile#dev`), `contracts#dev` (persistent, uncached, no dependencies), and `mobile#dev` (depends on `contracts#build`, persistent, uncached, with the pass-through list).
+    - `turbo run build typecheck lint --dry-run=json` shows mobile `build`, `typecheck`, and `lint` each depending on `contracts#build`.
+  - **Static checks:** `pnpm typecheck` and `pnpm lint` → 3 tasks each (including `contracts#build`), exit 0.
+  - **Exports:** `pnpm export:android` and `pnpm export:ios` → exit 0, each restoring contracts from the cache (`FULL TURBO`).
+    - Android: a 2.7 MB Hermes bundle and 27 assets. iOS: 2.3 MB and 23 assets.
+    - Neither log has warnings or errors; the only match is the `error.png` asset name.
+  - **Metro resolution:**
+    - Production source maps in scratch (Android: 1,231 sources; iOS: 1,097) include `src/bootstrap/checkContractsPackage.ts` and no sources from outside the repository. They omit the empty contracts module.
+    - An unminified `--dev --no-bytecode --no-minify` Android export in scratch shows module 1395 (`src/bootstrap/checkContractsPackage.ts`) requiring module 1396, `../../packages/contracts/dist/index.js`.
+    - With contracts `dist/` moved to scratch, `pnpm --filter @ride-match/mobile export:android` exited 1 with "While trying to resolve module `@ride-match/contracts` … specifies a `main` module field that could not be resolved". `pnpm export:android` then restored `dist/` from cache and exited 0, and `diff -r` against the backup showed no differences.
+  - **`pnpm doctor:mobile`** → `expo-doctor` 1.20.4 (`--version`): "Running 21 checks on your project... 21/21 checks passed. No issues detected!", exit 0.
+  - **`pnpm dev` in a pseudo-terminal** (Python `pty`, 220×50, `TERM=xterm-256color`):
+    - **Startup:** contracts `dist/` was moved away first. Metro `/status` answered `packager-status:running`, and `dist/` was recreated identically.
+    - **Processes:** turbo, `pnpm run dev` ×2, `tsc -p tsconfig.json --watch --preserveWatchOutput`, and `expo/bin/cli start --dev-client`.
+    - **Watcher:** creating `packages/contracts/src/__probe_watch.ts` emitted `dist/__probe_watch.js` and `.d.ts` within about 1 second.
+    - **Keys:** the TUI listed `contracts#build`, `contracts#dev`, and `mobile#dev`. After `j`, `i`, and `?`, Expo printed its verbose-only lines ("shift+a … select an Android device or emulator", "c │ show project QR"), which per `commandsTable.js` appear only after `?`.
+    - **Interrupt:** `Ctrl+z` then `Ctrl+C` exited Turbo, and no process remained.
+    - **Cleanup:** probe source and outputs were deleted. `dist/` again holds `index.d.ts` and `index.js`; `src/` holds only `index.ts`.
+  - **Environment probe (second and third `pnpm dev` runs, `ps eww` on the Expo process):**
+    - Present: `EXPO_NO_TELEMETRY`, `ANDROID_HOME` (set only for the probe), `PATH`, `HOME`, `TERM`, `TURBO_TELEMETRY_DISABLED`.
+    - `TMPDIR` was missing until it was added to the list; then it was present.
+    - The undeclared `RIDE_MATCH_PROBE_NOT_DECLARED` was absent, and the `tsc` watcher received none of the mobile variables.
+    - `Ctrl+C` alone stopped everything.
+    - One check printed a false "leftover" match (my own shell command line). `pgrep -fl "expo/bin/cli start|typescript/bin/tsc|turbo run|darwin-arm64/bin/turbo"` found nothing, and port 8081 was free.
+  - **`pnpm dev:mobile` in a pseudo-terminal:** contracts built first, Metro started, and `Ctrl+C` stopped it with nothing left.
+  - **Help probe:** `pnpm <script> --help` for `dev`, `export:android`, `mobile:ios`, and `dev:mobile` printed only tool help; no build ran, and no `android/`/`ios/` directories were created.
+  - `apps/mobile/dist/` (generated) was deleted after the checks, because the MEGAsync exclusion is still pending.
+  - **Final passes after the doc updates:** `pnpm install --frozen-lockfile` 0, `pnpm peers check` 0, `pnpm build:contracts` 0, `pnpm typecheck` 0, `pnpm lint` 0, and `git diff --check` ok. `AGENTS.md` and `CLAUDE.md` are unchanged, and no `expo`, `tsc`, or `turbo` process is running. Scratch doc validation found 0 errors in 106 local links and anchors across 20 Markdown files: the 19 project files plus Expo's generated, ignored `apps/mobile/.expo/README.md`. It also found 13 child rows matching 13 cards (7 `Completed`).
+  - **Not run:** `pnpm mobile:android`/`mobile:ios` (native builds; G/H) and tests (F).
+- **JSDoc/TSDoc:** Added TSDoc to `checkContractsPackage.ts` covering its purpose, why it is safe (no exports, no runtime behavior), and when to remove it. There is a one-line comment at its import in `_layout.tsx`. JSON configs cannot hold comments, so the `turbo.json` reasons are in `TOOLCHAIN.md`.
+- **Remaining/blockers:**
+  - MEGAsync exclusions for `packages/contracts/dist/` and `apps/mobile/dist/` are still pending user actions.
+  - Native development builds, dev-client startup, and opening apps with `a`/`i` are unverified until MOBILE-001-G/H.
+  - `LANG` pass-through is untested (unset in the probing shell). It matters only for CocoaPods, which runs outside Turbo.
+  - Remove the bootstrap smoke import once a real contract consumer exists.
+- **Resume from:** Assign MOBILE-001-C when requested.
+- **Ownership:** Released; no active task.

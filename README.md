@@ -2,7 +2,7 @@
 
 Ride Match helps nearby people heading in compatible directions form a small group and share a taxi. The first milestone is a React Native (Expo) mobile MVP backed by realistic mocks; there is no backend in this milestone.
 
-**Status:** workspace foundation complete (MONO-001); Expo shell in progress (MOBILE-001). The root pnpm workspace uses Turbo to build the empty `@ride-match/contracts` package and to type-check and lint it together with `@ride-match/mobile`. The mobile app is a minimal Expo Router shell: one home route with a map placeholder. Development, native, export, and test commands do not exist yet. See [docs/AI_CONTEXT.md](docs/AI_CONTEXT.md) for the current state.
+**Status:** workspace foundation complete (MONO-001); Expo shell in progress (MOBILE-001). The root pnpm workspace uses Turbo to build the empty `@ride-match/contracts` package and to type-check and lint it together with `@ride-match/mobile`. The mobile app is a minimal Expo Router shell (one home route with a map placeholder) that imports the shared package. Development, doctor, export, and native commands exist. Native builds are not yet verified (MOBILE-001-G/H), and there is no test command yet. See [docs/AI_CONTEXT.md](docs/AI_CONTEXT.md) for the current state.
 
 ## Requirements
 
@@ -31,10 +31,15 @@ pnpm install --frozen-lockfile
 | `pnpm build:contracts` | `turbo run build` for contracts: compile `packages/contracts/src` into `packages/contracts/dist` (JavaScript and declarations) |
 | `pnpm typecheck` | `turbo run typecheck`: strict TypeScript in contracts and mobile, no emit |
 | `pnpm lint` | `turbo run lint`: contracts use the root [`eslint.config.mjs`](eslint.config.mjs) with type-aware TypeScript rules; mobile uses [`apps/mobile/eslint.config.js`](apps/mobile/eslint.config.js) (Expo's config) |
+| `pnpm dev` | Build contracts, then run the contracts compiler watch and `expo start --dev-client` together in Turbo's terminal UI. To type Expo keys, select the mobile task (`j`/`k`), press `i`, and press `Ctrl+z` to stop interacting. `Ctrl+C` stops both processes |
+| `pnpm dev:mobile` | Build contracts once, then start Expo without Turbo or a watcher. Use it, plus `pnpm --filter @ride-match/contracts dev` in a second terminal, if the terminal UI gets in the way |
+| `pnpm doctor:mobile` | Run `expo-doctor` 1.20.4 on the app. Plain `pnpm doctor` is pnpm's own built-in diagnostic and does not check the app |
+| `pnpm export:android` / `pnpm export:ios` | Build contracts, then export the JavaScript bundle to `apps/mobile/dist/` (ignored by Git) |
+| `pnpm mobile:android` / `pnpm mobile:ios` | Build contracts, then `expo run:android` / `expo run:ios` (local development build). Not yet verified; see the [native prerequisites](docs/TOOLCHAIN.md#native-prerequisites) |
 
 [`turbo.json`](turbo.json) orders tasks after their dependencies' builds and caches results locally in `.turbo/`. A cache hit replays the earlier logs and restores `dist/` without recompiling. Failed tasks are never cached. Turbo sends anonymous usage telemetry unless you opt out with `pnpm exec turbo telemetry disable` or `TURBO_TELEMETRY_DISABLED=1`; Expo CLI does the same unless `EXPO_NO_TELEMETRY=1` is set.
 
-Development, export, native, doctor, and test commands are added one task at a time. [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) describes them and when each one becomes available. Exact versions and per-task install commands are in [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md).
+Test commands are added in MOBILE-001-F. [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) describes them and when each one becomes available. Exact versions and per-task install commands are in [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md).
 
 ## Layout
 

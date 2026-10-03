@@ -95,7 +95,7 @@ Only `packages/contracts` is shared. Do not add UI/config/utils packages for one
 
 The existing empty `apps/api/` directory is intentionally omitted from the planned package structure. Do not populate it during this milestone.
 
-Existing so far: the root instruction files, `docs/`, the root workspace configuration (MONO-001), the empty `packages/contracts` shell, and the minimal mobile shell (MOBILE-001-A: `apps/mobile/package.json`, `app.config.ts`, `app/_layout.tsx`, `app/index.tsx`, `src/features/map/MapPlaceholderScreen.tsx`). The rest of the structure above is still planned. Both Codex and Claude Code use the same [shared workflow](AI_WORKFLOW.md) and update the same state/specification files. Tool-specific private memory does not define application architecture or task completion.
+Existing so far: the root instruction files, `docs/`, the root workspace configuration (MONO-001), the empty `packages/contracts` shell, and the minimal mobile shell (MOBILE-001-A: `apps/mobile/package.json`, `app.config.ts`, `app/_layout.tsx`, `app/index.tsx`, `src/features/map/MapPlaceholderScreen.tsx`), plus MOBILE-001-B's temporary `src/bootstrap/checkContractsPackage.ts` smoke import of `@ride-match/contracts`. The rest of the structure above is still planned. Both Codex and Claude Code use the same [shared workflow](AI_WORKFLOW.md) and update the same state/specification files. Tool-specific private memory does not define application architecture or task completion.
 
 ## One data-source boundary
 

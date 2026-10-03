@@ -8,7 +8,14 @@
   "scripts": {
     "build:contracts": "turbo run build --filter=@ride-match/contracts",
     "typecheck": "turbo run typecheck",
-    "lint": "turbo run lint"
+    "lint": "turbo run lint",
+    "dev": "turbo run dev --filter=@ride-match/mobile",
+    "dev:mobile": "pnpm build:contracts && pnpm --filter @ride-match/mobile start",
+    "doctor:mobile": "pnpm --filter @ride-match/mobile run doctor",
+    "export:android": "pnpm build:contracts && pnpm --filter @ride-match/mobile export:android",
+    "export:ios": "pnpm build:contracts && pnpm --filter @ride-match/mobile export:ios",
+    "mobile:android": "pnpm build:contracts && pnpm --filter @ride-match/mobile android",
+    "mobile:ios": "pnpm build:contracts && pnpm --filter @ride-match/mobile ios"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",

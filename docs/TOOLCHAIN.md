@@ -277,7 +277,11 @@ How each consumer loads this entry:
 
 - **Node 24:** loads the emitted ESM natively. MONO-001-C checks this with the card's `node --input-type=module` import.
 - **TypeScript consumers:** `types` comes first. The mobile `bundler` resolution with `customConditions: ["react-native"]` still selects `types` for declarations.
-- **Metro (Expo 57):** resolves package `exports`, and `default` matches whatever condition set Metro uses. Expected; MOBILE-001-B verifies it with both exports and no source aliases.
+- **Metro (Expo 57):** resolves package `exports`, and `default` matches whatever condition set Metro uses. Verified in MOBILE-001-B:
+  - An unminified development export maps the bootstrap import to module `../../packages/contracts/dist/index.js`.
+  - Production exports omit that empty module from their source maps.
+  - With `dist/` removed, the mobile export fails with "While trying to resolve module `@ride-match/contracts` … specifies a `main` module field that could not be resolved", so there is no source fallback.
+  - No aliases exist.
 - **Jest 29.7.0 via `jest-expo`:** a CommonJS `require` matches `default`. Jest rejects a `.js` file from a `"type": "module"` package (`ERR_REQUIRE_ESM`) only when `vm.SyntheticModule` exists, meaning Node runs with `--experimental-vm-modules`. Evidence: `jest-resolve` 29.7.0 `build/shouldLoadAsEsm.js` and `jest-runtime` 29.7.0 `requireModule`. `jest-expo` does not use that flag, so babel-jest transforms the file. Its real path (`packages/contracts/dist/…`) has no `node_modules` segment, so Expo's `transformIgnorePatterns` does not skip it. MOBILE-001-F verifies this without aliases or mocks.
 
 If a consumer fails, record the evidence and choose one format that all three load. Do not create a dual build.
@@ -340,11 +344,19 @@ If a consumer fails, record the evidence and choose one format that all three lo
 
 **Root `dev` (MOBILE-001-B):** `turbo run dev --filter=@ride-match/mobile`.
 
-- Mobile `dev` is `expo start --dev-client`, with `dependsOn: ["^build"]` and `with: ["@ride-match/contracts#dev"]`.
-- MOBILE-001-B verifies four things: Expo receives keys after `i`; `Ctrl+C` stops both processes; required Expo variables pass Turbo's strict env mode (declare them, do not guess); a contracts source change re-emits.
-- **Documented alternative** if Turbo interaction fails: run `pnpm dev:mobile` in one terminal and `pnpm --filter @ride-match/contracts dev` in a second.
+- Mobile `dev` is `expo start --dev-client`. Root `turbo.json` defines `@ride-match/mobile#dev` with `dependsOn: ["^build"]`, `with: ["@ride-match/contracts#dev"]`, `cache: false`, `persistent: true`, and a `passThroughEnv` list (MOBILE-001-B, implemented).
+- **`passThroughEnv`, from evidence.** `@expo/cli` 57.0.27's `build/` reads `EXPO_*` settings (for example `EXPO_NO_TELEMETRY`, `EXPO_OFFLINE`), `ANDROID_HOME`/`ANDROID_SDK_ROOT` (opening Android with `a`), `REACT_NATIVE_PACKAGER_HOSTNAME`, `RCT_METRO_PORT`, `EDITOR`/`VISUAL` (open in editor), and `HTTP_PROXY`. `TMPDIR` is also passed: Metro's default cache is `os.tmpdir()/metro-cache`, and Turbo filtered `TMPDIR`, so `pnpm dev` would otherwise use `/tmp/metro-cache` while exports and native runs use the user's temp directory. Turbo's framework inference adds `EXPO_PUBLIC_*` automatically. Not passed: `NODE_ENV`/`BABEL_ENV` (would change bundling), web-only `BROWSER*`, and HTTPS certificate variables.
+- **Observed environment of the Expo process** (`ps eww` while `pnpm dev` ran): `EXPO_NO_TELEMETRY`, `ANDROID_HOME`, and `TMPDIR` were present. `PATH`, `HOME`, `TERM`, and `TURBO_*` are Turbo built-ins. An undeclared test variable was filtered out. The contracts watcher received none of the mobile variables. `LANG` was unset in the probing shell, so its pass-through is untested; it matters only for CocoaPods, which runs outside Turbo.
+- **Verified in MOBILE-001-B (pseudo-terminal driver, 2026-10-03):**
+  - **Startup prepares contracts:** with contracts `dist/` removed, `pnpm dev` ran `contracts#build` first and recreated `dist/`, identical to before. Metro's `/status` then answered `packager-status:running`.
+  - **The watcher emits:** a temporary `src/__probe_watch.ts` was emitted as `.js` and `.d.ts` within about a second, then removed together with its outputs.
+  - **Expo receives keys under Turbo:** in the TUI (tasks `contracts#build`, `contracts#dev`, `mobile#dev`), `j` selected the mobile task, `i` started interaction, and `?` made Expo print its verbose-only lines ("shift+a │ select an Android device or emulator", "c │ show project QR").
+  - **Interrupt stops everything:** `Ctrl+z`, then `Ctrl+C`, and also `Ctrl+C` alone, stopped Turbo, Expo, and `tsc --watch`; afterwards no process remained and port 8081 was free.
+- **Documented alternative** if Turbo interaction fails: run `pnpm dev:mobile` in one terminal and `pnpm --filter @ride-match/contracts dev` in a second. `pnpm dev:mobile` was checked too: it built contracts, started Metro, and stopped on `Ctrl+C`.
 
-Native, export, doctor, and test wrappers run `pnpm build:contracts` first, then call `pnpm --filter @ride-match/mobile <script>` outside Turbo. This keeps native tools out of Turbo's strict env filtering (`JAVA_HOME`, `ANDROID_HOME`, `LANG`) and out of the terminal UI.
+Native and export wrappers run `pnpm build:contracts` first, then call `pnpm --filter @ride-match/mobile <script>` outside Turbo. This keeps native tools out of Turbo's strict env filtering (`JAVA_HOME`, `ANDROID_HOME`, `LANG`) and out of the terminal UI. The doctor wrapper does not build contracts, because `expo-doctor` does not load package output. The test wrappers are planned for MOBILE-001-F.
+
+**`doctor:mobile`, not `doctor`:** pnpm 11.28.2 has a built-in `pnpm doctor` ("Run diagnostics on the pnpm installation and environment"). It shadows a root `doctor` script and exits 0 after checking only pnpm. `pnpm --filter <pkg> doctor` also runs the built-in. So the root script is `doctor:mobile`, and it calls the mobile script with an explicit `run`.
 
 | Root script | Command | Task |
 | --- | --- | --- |
@@ -353,7 +365,7 @@ Native, export, doctor, and test wrappers run `pnpm build:contracts` first, then
 | `lint` | `turbo run lint` (D used `pnpm -r run lint`) | D, E |
 | `dev` | `turbo run dev --filter=@ride-match/mobile` | MOBILE-B |
 | `dev:mobile` | `pnpm build:contracts && pnpm --filter @ride-match/mobile start` | MOBILE-B |
-| `doctor` | `pnpm --filter @ride-match/mobile doctor` (mobile: `expo-doctor`) | MOBILE-B |
+| `doctor:mobile` | `pnpm --filter @ride-match/mobile run doctor` (mobile: `expo-doctor`). Not `doctor`; see above | MOBILE-B |
 | `export:android` / `export:ios` | `pnpm build:contracts && pnpm --filter @ride-match/mobile export:android` (mobile: `expo export --platform android`); iOS likewise | MOBILE-B |
 | `mobile:android` / `mobile:ios` | `pnpm build:contracts && pnpm --filter @ride-match/mobile android` (mobile: `expo run:android`); iOS likewise with `expo run:ios` | MOBILE-B |
 | `test:mobile` / `test` | See [Test configuration](#test-configuration-mobile-001-f) | MOBILE-F |
@@ -412,6 +424,11 @@ pnpm --filter @ride-match/mobile exec tsc -p tsconfig.json --listFilesOnly | gre
 # MOBILE-001-B
 pnpm --filter @ride-match/mobile add "@ride-match/contracts@workspace:*"
 pnpm --filter @ride-match/mobile add -D expo-doctor@1.20.4
+pnpm exec turbo run dev --filter=@ride-match/mobile --dry-run=json
+pnpm doctor:mobile
+pnpm export:android
+pnpm export:ios
+pnpm dev   # interactive; stop with Ctrl+C
 
 # MOBILE-001-F
 pnpm --filter @ride-match/mobile add -D jest@29.7.0 jest-expo@57.0.5 @types/jest@29.5.14 @testing-library/react-native@14.0.1 test-renderer@1.3.0 @react-native/jest-preset@0.86.3
@@ -499,10 +516,11 @@ These are expectations recorded here, not checked results. The named task confir
   - **Confirmed:** the `unrs-resolver: false` decision works with mobile lint.
   - **Corrected:** `eslint-config-expo/flat` exposes the `@typescript-eslint` rules only for TypeScript files, so the extra rule block needs `files`.
   - **Confirmed:** typecheck passes with typed routes off, and exports leave `git status` showing only authored files.
-- **MOBILE-001-B:**
-  - Metro resolves the contracts `default` export without aliases.
-  - `expo-doctor` as a dev dependency runs cleanly; the fallback is `pnpm dlx expo-doctor@1.20.4`, with the reason recorded.
-  - Turbo's terminal UI passes Expo keys, interrupt stops both processes, and the env pass-through list is recorded.
+- **MOBILE-001-B:** verified on 2026-10-03.
+  - Metro resolves the contracts `default` export without aliases; see [Contracts module format](#contracts-module-format).
+  - `expo-doctor` 1.20.4 as a dev dependency printed "21/21 checks passed. No issues detected!", so the `dlx` fallback is unused.
+  - Turbo's terminal UI passes Expo keys, interrupt stops both processes, and the pass-through list is recorded above.
+  - Correction: the root script is `doctor:mobile`, because of pnpm's built-in `doctor`.
 - **MOBILE-001-F:** Jest loads contracts through `exports`; whether a `babel.config.js` is needed (if so, declare `babel-preset-expo` where the config resolves it); whether `"jest"` belongs in `types`; arguments reach Jest.
 - **MOBILE-001-G/H:** native builds on the recorded emulator and simulator.
 

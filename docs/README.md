@@ -6,10 +6,10 @@ Ride Match helps nearby people travelling in compatible directions form a small 
 
 ## Current state
 
-- Documentation baseline and workspace foundation (MONO-001) are complete. [TOOLCHAIN.md](TOOLCHAIN.md) records the selected versions, commands, and local prerequisites. The root pnpm workspace runs `pnpm build:contracts`, `pnpm typecheck`, and `pnpm lint` through Turbo (root `turbo.json`, local cache only) for the empty `@ride-match/contracts` package, and type-checks and lints `@ride-match/mobile` too. MOBILE-001 is in progress: `apps/mobile` is a minimal Expo SDK 57 / Expo Router shell with one anonymous home route showing “Ride Match” and “Map coming soon” (MOBILE-001-A). There are no development, native, or test scripts yet.
+- Documentation baseline and workspace foundation (MONO-001) are complete. [TOOLCHAIN.md](TOOLCHAIN.md) records the selected versions, commands, and local prerequisites. The root pnpm workspace runs `pnpm build:contracts`, `pnpm typecheck`, and `pnpm lint` through Turbo (root `turbo.json`, local cache only) for the empty `@ride-match/contracts` package, and type-checks and lints `@ride-match/mobile` too. MOBILE-001 is in progress: `apps/mobile` is a minimal Expo SDK 57 / Expo Router shell with one anonymous home route showing “Ride Match” and “Map coming soon” (MOBILE-001-A). MOBILE-001-B connected the shared package and added `pnpm dev`, `dev:mobile`, `doctor:mobile`, and the export and native wrappers. Native builds are unverified until MOBILE-001-G/H, and there are no test scripts yet.
 - `apps/api/` stays an empty directory; no backend package is planned for the mobile milestone.
 - No contract schemas or tests exist yet. Root setup is in the repository [README](../README.md). A Git repository is present.
-- The next planned assignment is **MOBILE-001-B**, connecting the shared package and the development commands, when requested. [First steps](FIRST_STEPS.md) splits workspace and Expo shell work into 13 small assignments for Terra or either assistant.
+- The next planned assignment is **MOBILE-001-C**, adding two small shared UI components, when requested. [First steps](FIRST_STEPS.md) splits workspace and Expo shell work into 13 small assignments for Terra or either assistant.
 - Architecture and lifecycle choices below are proposed defaults to validate during the mock MVP, not evidence of production capabilities.
 
 ## Using Codex and Claude Code

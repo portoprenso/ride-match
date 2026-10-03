@@ -36,7 +36,7 @@ One assistant writes to this checkout at a time. A new chat may help isolate an 
 | MONO-001-D | Make typecheck and lint real checks | MONO-001-C | Completed |
 | MONO-001-E | Wire Turbo and verify the workspace checkpoint | MONO-001-D | Completed |
 | MOBILE-001-A | Create the smallest Expo Router app | MONO-001-E | Completed |
-| MOBILE-001-B | Connect development commands and the shared package | MOBILE-001-A | Planned |
+| MOBILE-001-B | Connect development commands and the shared package | MOBILE-001-A | Completed |
 | MOBILE-001-C | Add two small shared UI components | MOBILE-001-B | Planned |
 | MOBILE-001-D | Add dismissible auth placeholder navigation | MOBILE-001-C | Planned |
 | MOBILE-001-E | Add inert shells for other planned routes | MOBILE-001-D | Planned |
@@ -182,11 +182,11 @@ Record exact direct dependency versions, owner (root/contracts/mobile), purpose,
 
 **Work:** Add mobile dependency `@ride-match/contracts: workspace:*`. Add a temporary side-effect import of that package in the bootstrap smoke module, imported by the layout, so Metro resolves the public runtime entry. Comment its temporary purpose; remove when a real contract consumer is implemented. No fake export or runtime banner.
 
-Implement root `dev`, `dev:mobile`, `doctor`, `export:android`, `export:ios`, `mobile:android`, `mobile:ios`. Dev commands build contracts once then run compiler watch alongside Expo `--dev-client`. Native/export commands prepare contracts too. Use A's pinned doctor tool. Never make a task wait for a watcher to finish.
+Implement root `dev`, `dev:mobile`, `doctor:mobile`, `export:android`, `export:ios`, `mobile:android`, `mobile:ios`. Dev commands build contracts once then run compiler watch alongside Expo `--dev-client`. Native/export commands prepare contracts too. Use A's pinned doctor tool. Never make a task wait for a watcher to finish.
 
 **Pass when:** Exports resolve public package entry without source aliases. Startup prepares missing artifacts; watch emits a controlled source change; Expo's interactive keys work under Turbo (or A's documented alternative is used); interrupt stops both processes. Restore the temporary probe. No unresolved doctor/dependency failure.
 
-**Check:** Root static checks, `pnpm doctor`, both exports; start/stop `pnpm dev` and inspect emission from an assistant-created temporary source file. Inspect Turbo dry-run ordering. Record outcomes; native launch is G/H.
+**Check:** Root static checks, `pnpm doctor:mobile` (pnpm 11's built-in `pnpm doctor` shadows a root `doctor` script), both exports; start/stop `pnpm dev` and inspect emission from an assistant-created temporary source file. Inspect Turbo dry-run ordering. Record outcomes; native launch is G/H.
 
 **Stop/defer:** No speculative Metro/hoisting patches, dual builds, schemas, device permissions, or lingering background processes.
 
@@ -272,7 +272,7 @@ Implement root `dev`, `dev:mobile`, `doctor`, `export:android`, `export:ios`, `m
 
 **Pass when:** iOS checks pass, Android evidence applies to final files, and all required children are complete. Cross-platform changes require affected Android rechecks.
 
-**Check:** Native flow; final checkpoint `pnpm install --frozen-lockfile`, `pnpm build:contracts`, `pnpm typecheck`, `pnpm lint`, `pnpm test:mobile`, `pnpm doctor`, both root exports, `git diff --check`. Review for unintended generated files/later features.
+**Check:** Native flow; final checkpoint `pnpm install --frozen-lockfile`, `pnpm build:contracts`, `pnpm typecheck`, `pnpm lint`, `pnpm test:mobile`, `pnpm doctor:mobile`, both root exports, `git diff --check`. Review for unintended generated files/later features.
 
 **Checkpoint review:** Commands match docs; compatible pinned dependencies/one lockfile; route/test boundaries; no fake product functionality/backend; native evidence covers both platforms. Mark MOBILE-001 complete only after all checks/review pass.
 

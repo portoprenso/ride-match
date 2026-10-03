@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-10-03. **MONO-001 is completed; MOBILE-001 is in progress (MOBILE-001-A completed); all other implementation tasks are planned.**
+Last updated: 2026-10-03. **MONO-001 is completed; MOBILE-001 is in progress (MOBILE-001-A and B completed); all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -13,7 +13,7 @@ This roadmap covers only items 1–2. No backend implementation or real transpor
 
 ## Progress
 
-Documentation baseline **DOC-000**, shared Codex/Claude Code workflow **DOC-001**, and small first-step task plan **DOC-002** are complete. MONO-001 is completed: **MONO-001-A** recorded the toolchain in [TOOLCHAIN.md](TOOLCHAIN.md), **MONO-001-B** created the root pnpm workspace, **MONO-001-C** added the empty `@ride-match/contracts` package with a working `pnpm build:contracts`, **MONO-001-D** made `pnpm typecheck` and `pnpm lint` real checks (negative probes fail as expected), and **MONO-001-E** routed all three through Turbo with cached build outputs. It also passed the workspace checkpoint review. MOBILE-001 is in progress: **MOBILE-001-A** created the minimal Expo Router app, with one anonymous home route showing a map placeholder; mobile typecheck and lint pass, and the Android and iOS JavaScript exports succeed. See [WORK_LOG.md](WORK_LOG.md) for actual changes and verification. The next assignment is **MOBILE-001-B**, when requested.
+Documentation baseline **DOC-000**, shared Codex/Claude Code workflow **DOC-001**, and small first-step task plan **DOC-002** are complete. MONO-001 is completed: **MONO-001-A** recorded the toolchain in [TOOLCHAIN.md](TOOLCHAIN.md), **MONO-001-B** created the root pnpm workspace, **MONO-001-C** added the empty `@ride-match/contracts` package with a working `pnpm build:contracts`, **MONO-001-D** made `pnpm typecheck` and `pnpm lint` real checks (negative probes fail as expected), and **MONO-001-E** routed all three through Turbo with cached build outputs. It also passed the workspace checkpoint review. MOBILE-001 is in progress: **MOBILE-001-A** created the minimal Expo Router app, with one anonymous home route showing a map placeholder; mobile typecheck and lint pass, and the Android and iOS JavaScript exports succeed. **MOBILE-001-B** connected the app to `@ride-match/contracts` through its public `dist` entry. It also added `pnpm dev` (contracts watch alongside Expo in Turbo's UI), `dev:mobile`, `doctor:mobile`, and the export and native wrappers. See [WORK_LOG.md](WORK_LOG.md) for actual changes and verification. The next assignment is **MOBILE-001-C**, when requested.
 
 Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bounded child assignments, one per request. It owns child statuses; this table owns parent statuses. Complete a parent only after all required children and parent criteria pass. The proposed order is workspace -> Expo shell -> separately planned contract work, which preserves the existing dependencies. The 25 parent tasks and their DAG are unchanged.
 
@@ -118,7 +118,7 @@ Execution: [MOBILE-001-A through MOBILE-001-H](FIRST_STEPS.md#mobile-001-a--crea
 - **Expected files/modules:** `M/app/`, `M/src/bootstrap/`, `M/src/ui/`, app/test configuration.
 - **Dependencies:** MONO-001.
 - **Acceptance criteria:** Map placeholder and auth modal navigation work; the behavior-test harness runs; dependencies pass Expo checks.
-- **Verification:** `pnpm doctor`, `pnpm test:mobile`, `pnpm mobile:android`, `pnpm mobile:ios`; manually open/dismiss auth routes.
+- **Verification:** `pnpm doctor:mobile`, `pnpm test:mobile`, `pnpm mobile:android`, `pnpm mobile:ios`; manually open/dismiss auth routes.
 - **Non-goals:** Domain data, finished map, large design system.
 
 ## DATA-001 — Data-source and Query foundation
@@ -298,7 +298,7 @@ Execution: [MOBILE-001-A through MOBILE-001-H](FIRST_STEPS.md#mobile-001-a--crea
 - **Expected files/modules:** `M/.maestro/`, integration tests/scenarios, development and scenario docs.
 - **Dependencies:** TAXI-001, SAFETY-001, NOTIFICATION-001.
 - **Acceptance criteria:** [MVP completion criteria](DEVELOPMENT.md#mobile-mvp-completion-criteria) pass; outstanding native/product limitations are recorded accurately.
-- **Verification:** `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm doctor`, `pnpm export:android`, `pnpm export:ios`, `pnpm test:e2e`; complete manual A–N matrix and device handoff checks.
+- **Verification:** `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm doctor:mobile`, `pnpm export:android`, `pnpm export:ios`, `pnpm test:e2e`; complete manual A–N matrix and device handoff checks.
 - **Non-goals:** Store release, production load tests, backend development.
 
 ## HANDOFF-001 — Contract review and backend readiness

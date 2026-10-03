@@ -17,6 +17,23 @@
     "dev": {
       "cache": false,
       "persistent": true
+    },
+    "@ride-match/mobile#dev": {
+      "dependsOn": ["^build"],
+      "with": ["@ride-match/contracts#dev"],
+      "passThroughEnv": [
+        "EXPO_*",
+        "ANDROID_HOME",
+        "ANDROID_SDK_ROOT",
+        "REACT_NATIVE_PACKAGER_HOSTNAME",
+        "RCT_METRO_PORT",
+        "EDITOR",
+        "VISUAL",
+        "HTTP_PROXY",
+        "TMPDIR"
+      ],
+      "cache": false,
+      "persistent": true
     }
   }
 }
