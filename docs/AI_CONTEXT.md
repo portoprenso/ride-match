@@ -14,20 +14,25 @@ Last updated: 2026-10-03
   - MOBILE-001-C added `src/ui/Screen.tsx` and `src/ui/Button.tsx`, and the map placeholder now renders inside `Screen`.
     - `Screen` is a `SafeAreaView` with a typed `edges` prop (default: all four) and 24-point padding on top of the insets. Callers omit edges owned by a visible native header or an iOS modal sheet; on iOS the insets come from the app-level provider and are not reduced for position.
     - `Button` has `label`, `onPress`, optional `disabled` (Pressable reports it to screen readers), and optional `accessibilityLabel`, with a 48-point minimum height. It has no consumer until MOBILE-001-D.
+  - MOBILE-001-D added the auth placeholders.
+    - The root `Stack` has `unstable_settings.anchor: 'index'`, and `auth` is presented as a `modal` without a header.
+    - `app/auth/_layout.tsx` is a headerless `Stack` with `anchor: 'phone'`. The `phone` and `otp` routes are thin and wire `router.push('/auth/otp')`, `router.dismissTo('/auth/phone')` (Back), and `router.dismissTo('/')` (Close).
+    - `src/features/auth/AuthPlaceholderScreens.tsx` has `PhonePlaceholder`/`OtpPlaceholder` with “not available yet” copy and `Screen` edges that omit `'top'` on iOS.
+    - Home has a temporary “Sign in” `Button` (`onSignIn` prop) that AUTH-001 replaces with protected-action gating.
 - No contract schemas, domain or backend code, or tests.
 - `apps/api/` is empty. Preserve unrelated files; do not populate `apps/api/` during the mobile milestone.
-- MONO-001 is `Completed` and MOBILE-001 is `In progress` in [ROADMAP.md](ROADMAP.md). MONO-001-A to E and MOBILE-001-A to C are `Completed`. Next planned assignment: **MOBILE-001-D** (auth navigation placeholders) from [FIRST_STEPS.md](FIRST_STEPS.md), only when requested.
+- MONO-001 is `Completed` and MOBILE-001 is `In progress` in [ROADMAP.md](ROADMAP.md). MONO-001-A to E and MOBILE-001-A to D are `Completed`. Next planned assignment: **MOBILE-001-E** (inert shells for the other planned routes) from [FIRST_STEPS.md](FIRST_STEPS.md), only when requested.
 - Sequence: mock mobile MVP -> contract review -> future backend -> future HTTP/Socket.IO adapter.
 
 ## Shared handoff and active work
 
 - Entry points: [AGENTS.md](../AGENTS.md) contains shared rules; [CLAUDE.md](../CLAUDE.md) imports them for Claude Code.
 - Both assistants use [AI_WORKFLOW.md](AI_WORKFLOW.md), this file, the roadmap, relevant specs, and [WORK_LOG.md](WORK_LOG.md) as shared project memory. Private chat/memory is not a substitute.
-- Active task/owner: **None**. MOBILE-001-C (Claude Code / ui-primitives) is completed; ownership released.
-- Latest handoff: MOBILE-001-C in `WORK_LOG.md`. `FIRST_STEPS.md` splits MONO-001/MOBILE-001 into 13 child assignments; MONO-001-A to E and MOBILE-001-A to C are `Completed`; MOBILE-001-D to H are `Planned`. Terra is a model used through Codex; it records its actor as `Codex (Terra)`.
-- Working copy: `main`; MONO-001-A is `2f35ea5`, MONO-001-B is `87bb91c`, MONO-001-C is `46a6865`, MONO-001-D is `f5a6c93`, MONO-001-E is `2e93390`, MOBILE-001-A is `c924bf1`, MOBILE-001-B is `2a4906a`, and MOBILE-001-C is the following commit (none pushed). Preserve unrelated untracked `.idea/` files.
+- Active task/owner: **None**. MOBILE-001-D (Claude Code / auth-placeholders) is completed; ownership released.
+- Latest handoff: MOBILE-001-D in `WORK_LOG.md`. `FIRST_STEPS.md` splits MONO-001/MOBILE-001 into 13 child assignments; MONO-001-A to E and MOBILE-001-A to D are `Completed`; MOBILE-001-E to H are `Planned`. Terra is a model used through Codex; it records its actor as `Codex (Terra)`.
+- Working copy: `main`; MONO-001-A is `2f35ea5`, MONO-001-B is `87bb91c`, MONO-001-C is `46a6865`, MONO-001-D is `f5a6c93`, MONO-001-E is `2e93390`, MOBILE-001-A is `c924bf1`, MOBILE-001-B is `2a4906a`, MOBILE-001-C is `76c8477`, and MOBILE-001-D is the following commit (none pushed). Preserve unrelated untracked `.idea/` files.
 - Local environment decisions (user, 2026-10-03; details in `TOOLCHAIN.md`): Node 24.17.0; the user-approved `corepack enable pnpm` ran in the Node 24.17.0 installation during MONO-001-B. The checkout stays in MEGAsync; the user adds exclusions for generated `dist/`, `android/`, and `ios/` paths. Ancestor home-folder packages stay; the repository relies on guards (explicit tsconfig `types`, compiler file-list check, `require.resolve` check). Reminder: `packages/contracts/dist/` now exists, and on 2026-10-03 the sync-root rules did not yet exclude it (MEGAsync was not running); the user still needs to add that exclusion. In Claude Code's shell, run `export NVM_DIR="$HOME/.nvm" && nvm use` before pnpm (Node 22 is the default; `engineStrict` refuses installs on it). Turbo and Expo CLI anonymous telemetry are still enabled by default for the user. Assistants set `TURBO_TELEMETRY_DISABLED=1` and `EXPO_NO_TELEMETRY=1` (plus `CI=1` for Expo) only in their own commands; disabling telemetry globally is the user's choice. Run Expo only from `apps/mobile`.
-- Next concrete step: assign **MOBILE-001-D** using the prompt in `FIRST_STEPS.md`. Its auth screens use `Button`, and `Screen` without `'top'` wherever a native header or iOS modal sheet already protects the top. Do not start it automatically. Exports (`pnpm export:*`) recreate `apps/mobile/dist/`, so remind the user about that MEGAsync exclusion. To exercise `pnpm dev` from an assistant shell, use a pseudo-terminal and always confirm no `expo`/`tsc --watch` process is left running.
+- Next concrete step: assign **MOBILE-001-E** using the prompt in `FIRST_STEPS.md`. Keep its routes inert, and use `Screen` edges that omit `'top'` under visible native headers. Do not start it automatically. Exports (`pnpm export:*`) recreate `apps/mobile/dist/`, so remind the user about that MEGAsync exclusion. To exercise `pnpm dev` from an assistant shell, use a pseudo-terminal and always confirm no `expo`/`tsc --watch` process is left running.
 - Before any takeover, inspect current files and latest task handoff. Use one writer at a time in this directory; ownership notes do not synchronize separate checkouts.
 
 ## Planned stack and boundaries

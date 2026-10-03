@@ -2,7 +2,7 @@
 
 Ride Match helps nearby people heading in compatible directions form a small group and share a taxi. The first milestone is a React Native (Expo) mobile MVP backed by realistic mocks; there is no backend in this milestone.
 
-**Status:** workspace foundation complete (MONO-001); Expo shell in progress (MOBILE-001). The root pnpm workspace uses Turbo to build the empty `@ride-match/contracts` package and to type-check and lint it together with `@ride-match/mobile`. The mobile app is a minimal Expo Router shell (one home route with a map placeholder) that imports the shared package. Development, doctor, export, and native commands exist. Native builds are not yet verified (MOBILE-001-G/H), and there is no test command yet. See [docs/AI_CONTEXT.md](docs/AI_CONTEXT.md) for the current state.
+**Status:** workspace foundation complete (MONO-001); Expo shell in progress (MOBILE-001). The root pnpm workspace uses Turbo to build the empty `@ride-match/contracts` package and to type-check and lint it together with `@ride-match/mobile`. The mobile app is a minimal Expo Router shell that imports the shared package: a home route with a map placeholder and a temporary “Sign in” entry to inert phone and code placeholders. Development, doctor, export, and native commands exist. Native builds are not yet verified (MOBILE-001-G/H), and there is no test command yet. See [docs/AI_CONTEXT.md](docs/AI_CONTEXT.md) for the current state.
 
 ## Requirements
 

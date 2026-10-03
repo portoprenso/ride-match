@@ -28,6 +28,8 @@ One account occupies one seat. Multi-seat bookings are outside the MVP. Bishkek-
 | `/settings` | Minimal session, permission, and blocked-user controls |
 | `/dev/scenarios` | Development/preview mock builds only |
 
+Current shell (MOBILE-001-D): home has a temporary, always-visible “Sign in” button that opens inert `/auth/phone` and `/auth/otp` placeholders in a modal. They collect nothing and never sign anyone in. AUTH-001 replaces that entry with protected-action gating.
+
 Map-local sheets cover destination search, selected ride/group preview, create confirmation, active request/matches, and meeting-point inspection. Do not make every sheet position a route. Preserve camera state when opening and dismissing sheets.
 
 Notification/deep-link entries carry resource IDs. Validate payload, restore authentication if required, fetch authoritative state, then navigate. Expired, removed, or unauthorized targets show a clear unavailable state rather than stale private content.

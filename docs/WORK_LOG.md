@@ -487,3 +487,54 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - The MEGAsync exclusions for `packages/contracts/dist/` and `apps/mobile/dist/` are still pending.
 - **Resume from:** Assign MOBILE-001-D when requested.
 - **Ownership:** Released; no active task.
+
+## 2026-10-03 — MOBILE-001-D: Auth navigation placeholders
+
+- **Actor/session:** Claude Code / auth-placeholders.
+- **Status:** Completed; ownership released. Parent MOBILE-001 stays `In progress`.
+- **Working copy:** `main` at `76c8477` (MOBILE-001-C, committed at the user's request). At the user's request, MOBILE-001-D was committed on top of it, without pushing. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "commit and continue with MOBILE-001-D". Only the D card was executed.
+- **Changes:**
+  - **`app/_layout.tsx`:** `export const unstable_settings = { anchor: 'index' }`. The root `Stack` has `index` (no header) and `auth` (`presentation: 'modal'`, no header). The bootstrap import is unchanged.
+  - **`app/auth/_layout.tsx`:** a headerless `Stack` with `unstable_settings = { anchor: 'phone' }`.
+  - **Thin routes:**
+    - `app/auth/phone.tsx` renders `PhonePlaceholder`, with `onPreviewCode` = `router.push('/auth/otp')` and `onClose` = `router.dismissTo('/')`.
+    - `app/auth/otp.tsx` renders `OtpPlaceholder`, with `onBack` = `router.dismissTo('/auth/phone')` and `onClose` = `router.dismissTo('/')`.
+  - **`src/features/auth/AuthPlaceholderScreens.tsx`:**
+    - An internal layout: `Screen` with platform edges, a header title, and the notice "Sign-in is not available yet. This preview only shows navigation; no phone number or code is collected."
+    - `PhonePlaceholder`: "Preview code step" and "Close" (spoken as "Close sign-in").
+    - `OtpPlaceholder`: "Back" (spoken as "Back to phone step") and "Close".
+  - **Home:** `MapPlaceholderScreen` takes `onSignIn` and shows a "Sign in" `Button`; `app/index.tsx` wires `router.push('/auth/phone')`.
+  - **Docs:** `PRODUCT.md` (a current-shell note under Navigation), the root `README.md`, `ARCHITECTURE.md`, `docs/README.md`, `ROADMAP.md`, `FIRST_STEPS.md` (D `Completed`), and `AI_CONTEXT.md`.
+- **Decisions:**
+  - **Navigation calls.** Close uses `dismissTo('/')`, which Expo Router 57.0.24 implements as `linkTo(href, { event: 'POP_TO' })`. It returns to the existing home instead of pushing a new one, and its documented fallback replaces the current screen when home is absent. OTP Back uses `dismissTo('/auth/phone')` for the same reason, so a directly opened OTP screen still reaches the phone step.
+  - **Anchors** make deep links into `/auth/...` build home (and phone) beneath. `getRoutesCore.js` reads `unstable_settings.anchor ?? initialRouteName`.
+  - **Headers hidden** in the auth stack. Explicit Back and Close buttons use C's `Button`. Android hardware back and iOS swipe gestures still follow the stack.
+  - **Auth `Screen` edges by platform.** On iOS, the vendored native stack treats `modal` as a sheet: `NativeStackView.native.js` sets the header `topInset` to 0 for iOS modals. Fabric's `RNCSafeAreaViewComponentView.mm` applies the provider's window insets unchanged, so iOS omits `'top'`. Android presents the modal full screen and keeps all edges.
+  - The routes stay thin: they only map callbacks to router calls. The components are presentational, for F's tests.
+- **Excluded:** No phone or code inputs, validation, OTP service, session or signed-in state, credential storage, protected-action continuation, data source, or new dependencies. `package.json` and the lockfile are unchanged.
+- **Verification:**
+  - **Static checks:** `pnpm typecheck` → 3 tasks, exit 0. `pnpm lint` → 3 tasks, exit 0.
+  - **Exports:** `pnpm export:android` → exit 0, 2.7 MB Hermes bundle. `pnpm export:ios` → exit 0, 2.3 MB. The logs have no warnings or errors apart from the `error.png` asset name.
+  - **Bundled sources:** an iOS `--source-maps` export into the session scratch directory listed these app sources: the route context, `app/_layout.tsx`, `checkContractsPackage.ts`, `app/auth/_layout.tsx`, `app/auth/otp.tsx`, `src/features/auth/AuthPlaceholderScreens.tsx`, `src/ui/Button.tsx`, `src/ui/Screen.tsx`, `app/auth/phone.tsx`, `app/index.tsx`, and `MapPlaceholderScreen.tsx`. The scratch output and `apps/mobile/dist/` were deleted afterwards.
+  - **Route-tree probe:** in Node, Expo Router's `getRoutesCore.getRoutes` ran on a stand-in context with the same five files and the same `unstable_settings`. It printed `(root)` with `initialRouteName=index` (children `index` and `auth`), and `auth` with `initialRouteName=phone` (children `phone` and `otp`).
+    - Computing deep-link state needs `getReactNavigationConfig`, which imports `react-native` (Flow source; `SyntaxError` in plain Node), so it was not run. MOBILE-001-F's Jest harness covers it.
+  - **Inspection:**
+    - Browsing has no gate.
+    - `grep` for `TextInput`, `useState`, `useReducer`, `SecureStore`, `fetch(`, and `AsyncStorage` in `apps/mobile/app` and `src` found nothing.
+    - The stack is home → modal auth (phone → otp). Close returns to home through POP_TO; Back returns to phone through POP_TO, with a replace fallback; anchors cover direct entry.
+  - **Final passes after the doc updates:** `pnpm install --frozen-lockfile` 0, `pnpm typecheck` 0, `pnpm lint` 0, and `git diff --check` ok. Scratch doc validation found 0 errors in 106 local links across 20 Markdown files: the 19 project files plus Expo's ignored `.expo/README.md`. It also found 13 child rows matching 13 cards (9 `Completed`).
+  - **Not run:** automated transitions (MOBILE-001-F), and native modal, back, and swipe behavior with on-device insets (G/H).
+- **JSDoc/TSDoc:**
+  - `PhonePlaceholder` and `OtpPlaceholder`: what they do not do, the AUTH-001 replacement, and the callback parameters.
+  - `MapPlaceholderScreen`: the `onSignIn` entry is temporary and AUTH-001 gates sign-in instead.
+  - Comments on the anchors and on the platform `Screen` edges.
+- **Remaining/blockers:**
+  - Unverified until F, G, and H:
+    - deep-link state for `/auth/otp`;
+    - iOS sheet insets;
+    - Android full-screen modal insets;
+    - hardware back and swipe dismissal.
+  - The MEGAsync exclusions for `packages/contracts/dist/` and `apps/mobile/dist/` are still pending.
+- **Resume from:** Assign MOBILE-001-E when requested.
+- **Ownership:** Released; no active task.

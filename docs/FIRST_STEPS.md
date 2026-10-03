@@ -38,7 +38,7 @@ One assistant writes to this checkout at a time. A new chat may help isolate an 
 | MOBILE-001-A | Create the smallest Expo Router app | MONO-001-E | Completed |
 | MOBILE-001-B | Connect development commands and the shared package | MOBILE-001-A | Completed |
 | MOBILE-001-C | Add two small shared UI components | MOBILE-001-B | Completed |
-| MOBILE-001-D | Add dismissible auth placeholder navigation | MOBILE-001-C | Planned |
+| MOBILE-001-D | Add dismissible auth placeholder navigation | MOBILE-001-C | Completed |
 | MOBILE-001-E | Add inert shells for other planned routes | MOBILE-001-D | Planned |
 | MOBILE-001-F | Verify behavior with the mobile test harness | MOBILE-001-E | Planned |
 | MOBILE-001-G | Build and verify Android | MOBILE-001-F | Planned |
