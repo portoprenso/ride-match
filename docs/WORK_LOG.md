@@ -442,3 +442,48 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - Remove the bootstrap smoke import once a real contract consumer exists.
 - **Resume from:** Assign MOBILE-001-C when requested.
 - **Ownership:** Released; no active task.
+
+## 2026-10-03 — MOBILE-001-C: Screen and Button primitives
+
+- **Actor/session:** Claude Code / ui-primitives.
+- **Status:** Completed; ownership released. Parent MOBILE-001 stays `In progress`.
+- **Working copy:** `main` at `2a4906a` (MOBILE-001-B, committed at the user's request). At the user's request, MOBILE-001-C was committed on top of it, without pushing. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "commit and continue with MOBILE-001-C". Only the C card was executed.
+- **Changes:**
+  - **`apps/mobile/src/ui/Screen.tsx`:** a `SafeAreaView` from `react-native-safe-area-context` with `flex: 1`, a white background, and 24-point padding. Insets for the requested edges are added on top of the padding (the library's default `additive` mode). It has a typed `edges?: readonly Edge[]` prop, defaulting to all four.
+  - **`apps/mobile/src/ui/Button.tsx`:** a `Pressable` with `accessibilityRole="button"` and props `label`, `onPress`, `disabled` (default `false`), and `accessibilityLabel` (optional). It has a 48-point minimum height, 0.8 opacity while pressed, and 0.4 when disabled.
+  - **`MapPlaceholderScreen`:** now renders inside `Screen`. Its own padding and background moved into `Screen`; the text and TSDoc are unchanged.
+  - **Docs:** `FIRST_STEPS.md` (C `Completed`), `ROADMAP.md`, `ARCHITECTURE.md`, `docs/README.md`, and `AI_CONTEXT.md`.
+- **Decisions:**
+  - **No root layout change.** Expo Router 57.0.24's `ExpoRoot` already wraps the app in `SafeAreaProvider`.
+  - **`edges` prop, so insets apply once.** Native code in `react-native-safe-area-context` 5.7.0:
+    - **iOS:** `RNCSafeAreaView.m` applies the nearest provider's `safeAreaInsets` unchanged.
+    - **Android:** `SafeAreaUtils.kt` subtracts the view's position.
+
+    So on iOS, a top inset under a visible native header or inside a modal sheet would double the gap. Screens without chrome use the default; D's header or modal screens omit `'top'`. The TSDoc records this ownership rule.
+  - **Button disabled state.** React Native 0.86.3's `Pressable` merges `disabled` into `accessibilityState` (`Pressable.js`), so no explicit `accessibilityState` is needed. Without `accessibilityLabel`, the accessible name comes from the visible label text.
+  - Fixed neutral colors (`#111111` and `#ffffff`). No theme, variants, icons, or animation.
+- **Excluded:** No design system, theme provider, variants, sheets or animation, global store, domain imports, or new dependencies. `package.json` and `pnpm-lock.yaml` are unchanged. Button has no consumer yet (D) and no tests (F).
+- **Verification:**
+  - `pnpm typecheck` → 3 tasks, exit 0. `pnpm lint` → 3 tasks, exit 0. Mobile ESLint now also lints `src/ui/Button.tsx` and `src/ui/Screen.tsx`.
+  - **Type probe** (temporary `apps/mobile/src/__probe_ui.tsx`, deleted): mobile `tsc --noEmit` reported:
+    - TS2322 for `edges={['middle']}`.
+    - TS2741 for a `Button` without `onPress`.
+    - TS2322 for a numeric `label`.
+    - TS2322 for an unknown `variant` prop.
+  - **Inset inspection:** `grep` for `SafeAreaView`, `useSafeAreaInsets`, and `SafeAreaProvider` in `apps/mobile/app` and `src` matches only `src/ui/Screen.tsx`. The home route hides the stack header, and `Screen` uses all edges, so each inset is applied once on home.
+  - **Disabled and accessibility inspection:** the role is `button`; `disabled` reaches `Pressable` (presses blocked, state announced); the label is the accessible name unless overridden.
+  - **Export check:** after `pnpm build:contracts`, `expo export --platform android --source-maps --output-dir <session scratch>` (in `apps/mobile`) exited 0.
+    - App sources: the route context, `_layout.tsx`, `checkContractsPackage.ts`, `index.tsx`, `MapPlaceholderScreen.tsx`, and `src/ui/Screen.tsx`, plus the library's `src/SafeAreaView.tsx`.
+    - `Button.tsx` is not bundled yet, because nothing uses it.
+    - The scratch output was deleted, and no `apps/mobile/dist/` was created.
+  - **Final passes after the doc updates:** `pnpm install --frozen-lockfile` 0, `pnpm typecheck` 0, `pnpm lint` 0, and `git diff --check` ok. Scratch doc validation found 0 errors in 106 local links across 20 Markdown files: the 19 project files plus Expo's ignored `.expo/README.md`. It also found 13 child rows matching 13 cards (8 `Completed`).
+  - **Not run:** executable Button assertions (grouped into MOBILE-001-F) and on-device inset checks (G/H).
+- **JSDoc/TSDoc:**
+  - `Screen`: inset ownership, the iOS doubling caveat, additive padding, and the provider source.
+  - `Button`: disabled behavior, including the screen-reader announcement; when to use `accessibilityLabel`; the touch-target size.
+- **Remaining/blockers:**
+  - On-device inset rendering, especially iOS headers and modals in D, is unverified until G/H.
+  - The MEGAsync exclusions for `packages/contracts/dist/` and `apps/mobile/dist/` are still pending.
+- **Resume from:** Assign MOBILE-001-D when requested.
+- **Ownership:** Released; no active task.

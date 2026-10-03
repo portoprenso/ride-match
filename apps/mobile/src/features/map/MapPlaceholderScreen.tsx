@@ -1,5 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { Screen } from '../../ui/Screen';
+
 /**
  * Temporary home screen standing in for the map-first experience.
  *
@@ -8,23 +10,23 @@ import { StyleSheet, Text, View } from 'react-native';
  */
 export function MapPlaceholderScreen() {
   return (
-    <View style={styles.container}>
-      <Text accessibilityRole="header" style={styles.title}>
-        Ride Match
-      </Text>
-      <Text style={styles.subtitle}>Map coming soon</Text>
-    </View>
+    <Screen>
+      <View style={styles.content}>
+        <Text accessibilityRole="header" style={styles.title}>
+          Ride Match
+        </Text>
+        <Text style={styles.subtitle}>Map coming soon</Text>
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  content: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    padding: 24,
-    backgroundColor: '#ffffff',
   },
   title: {
     fontSize: 28,
