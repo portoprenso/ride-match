@@ -28,7 +28,7 @@ One account occupies one seat. Multi-seat bookings are outside the MVP. Bishkek-
 | `/settings` | Minimal session, permission, and blocked-user controls |
 | `/dev/scenarios` | Development/preview mock builds only |
 
-Current shell (MOBILE-001-D): home has a temporary, always-visible “Sign in” button that opens inert `/auth/phone` and `/auth/otp` placeholders in a modal. They collect nothing and never sign anyone in. AUTH-001 replaces that entry with protected-action gating.
+Current shell (MOBILE-001-D/E): home has a temporary, always-visible “Sign in” button that opens inert `/auth/phone` and `/auth/otp` placeholders in a modal. They collect nothing and never sign anyone in. AUTH-001 replaces that entry with protected-action gating. The group, group chat, and settings routes show only a “not available yet” message and a “Go to map” action, for any group ID; home does not link to them. `/dev/scenarios` shows a similar placeholder in development builds and an unavailable state in other builds, without redirecting.
 
 Map-local sheets cover destination search, selected ride/group preview, create confirmation, active request/matches, and meeting-point inspection. Do not make every sheet position a route. Preserve camera state when opening and dismissing sheets.
 

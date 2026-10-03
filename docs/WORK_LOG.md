@@ -538,3 +538,50 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - The MEGAsync exclusions for `packages/contracts/dist/` and `apps/mobile/dist/` are still pending.
 - **Resume from:** Assign MOBILE-001-E when requested.
 - **Ownership:** Released; no active task.
+
+## 2026-10-03 — MOBILE-001-E: Inert remaining route shells
+
+- **Actor/session:** Claude Code / route-shells.
+- **Status:** Completed; ownership released. Parent MOBILE-001 stays `In progress`.
+- **Working copy:** `main` at `99d3572` (MOBILE-001-D, committed at the user's request). At the user's request, MOBILE-001-E was committed on top of it, without pushing. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "commit and continue with MOBILE-001-E". MOBILE-001-D was committed first; only the E card was executed.
+- **Changes:**
+  - **`src/ui/UnavailableScreen.tsx`:** a full-screen unavailable state: header-role title, message, and one “Go to map” `Button` (`onGoHome`). It renders only the given text. It replaces what would otherwise be five copies of the same layout.
+  - **`src/config/isDevelopmentMode.ts`:** `isDevelopmentMode()` returns `__DEV__`. It is the only place the flag is read.
+  - **Thin routes,** each rendering `UnavailableScreen` with `onGoHome` = `router.dismissTo('/')`:
+    - `app/groups/[groupId]/index.tsx`: “Group” / “Group details are not available yet.”
+    - `app/groups/[groupId]/chat.tsx`: “Group chat” / “Group chat is not available yet.”
+    - `app/settings.tsx`: “Settings” / “Settings are not available yet.”
+    - `app/dev/scenarios.tsx`: calls `isDevelopmentMode()` during render. Development builds show “Mock scenarios” / “Scenario switching is not available yet, and no scenario is running.” Other builds show “Not available” / “This page is only available in development builds.” Neither redirects.
+  - **`app/_layout.tsx`:** `<Stack screenOptions={{ headerShown: false }}>` replaces the per-screen `headerShown: false`; `index` stays registered first and `auth` keeps `presentation: 'modal'`. The anchor comment now covers every direct entry.
+  - **Docs:** `PRODUCT.md` (current-shell note), `DEVELOPMENT.md` (scenario gating), the root `README.md`, `docs/README.md`, `ARCHITECTURE.md` (existing files; also restored a missing comma in that sentence), `ROADMAP.md`, `FIRST_STEPS.md` (E `Completed`), and `AI_CONTEXT.md`.
+- **Decisions:**
+  - **No native headers.** Without registration, Expo Router would show headers titled with raw route names such as `groups/[groupId]/index`, and iOS back labels would read `index`. Headerless screens match the auth placeholders, keep all four `Screen` edges, and need no per-route options.
+  - **One home action.** “Go to map” uses `dismissTo('/')`: it pops to the existing home, which the root anchor always places beneath a directly opened route, and replaces the screen if home is somehow absent. Android back and the iOS edge swipe still follow the stack. Nothing links between group and chat, so a separate Back button would duplicate the same action.
+  - **Group ID never read.** No `useLocalSearchParams`, so any ID shows the same state and membership is never inferred from the URL.
+  - **Gate read at render time,** not at import, so MOBILE-001-F can switch it per test by overriding only `isDevelopmentMode()`.
+  - **No home links** to the new routes, and no `+not-found` route; `/groups` alone is not a planned URL and falls to Expo Router's built-in unmatched screen.
+- **Excluded:** No authorization framework, UUID schema, fixture groups or chat, settings state, session or permission controls, scenario engine, data source, or new dependencies. `package.json` and the lockfile are unchanged.
+- **Verification:**
+  - **Static checks:** `pnpm typecheck` → 3 tasks, exit 0. `pnpm lint` → 3 tasks, exit 0. `tsc --listFilesOnly -p tsconfig.json` in `apps/mobile` lists all six new files.
+  - **Exports:** `pnpm export:android` → exit 0, 2.7 MB Hermes bundle (1251 modules). `pnpm export:ios` → exit 0, 2.4 MB (1116 modules). No warnings apart from the `error.png` asset line. Each export replaces `apps/mobile/dist/`, so only the iOS bundle was inspected: `strings` found every new message and “Go to map”. Both scenario messages are present because the gate is evaluated at runtime, not stripped.
+  - **Bundled sources:** an iOS `--source-maps` export into the session scratch directory listed `app/dev/scenarios.tsx`, `src/config/isDevelopmentMode.ts`, `src/ui/UnavailableScreen.tsx`, `app/groups/[groupId]/chat.tsx`, `app/groups/[groupId]/index.tsx`, and `app/settings.tsx` alongside the earlier sources. The scratch output and `apps/mobile/dist/` were deleted afterwards.
+  - **Route audit (scratch Node script):** Expo Router's `getRoutesCore.getRoutes` ran on a stand-in context built from the real `app/` file list, with `unstable_settings` read from the sources. Its URL patterns `/`, `/auth/phone`, `/auth/otp`, `/groups/[groupId]`, `/groups/[groupId]/chat`, `/settings`, and `/dev/scenarios` exactly match the PRODUCT.md navigation table (none missing, none extra).
+  - **Direct-entry state:** with only `react-native` stubbed (a `Platform` object, because its Flow source cannot load in Node), `getReactNavigationConfig(tree, true)` plus Expo Router's forked `getStateFromPath` produced:
+    - `/` → `index`; `/auth/otp` → `index, auth[phone, otp]` (the deep-link check MOBILE-001-D deferred);
+    - `/groups/abc-123` → `index, groups/[groupId]/index`; `/groups/not%20a%20uuid/chat` → `index, groups/[groupId]/chat` with `groupId` `not a uuid`;
+    - `/groups/%E0%A4%A/chat` (malformed encoding) → the same chat state with the raw `groupId`, no exception;
+    - `/settings` → `index, settings`; `/dev/scenarios` → `index, dev/scenarios`; `/groups` → no match.
+    - Expo Router also copies the group ID onto the anchored `index` entry's params; home ignores params.
+  - **Inspection:** `grep` in `apps/mobile/app` and `src` found no `useLocalSearchParams`, `useGlobalSearchParams`, `useSegments`, `TextInput`, `Switch`, `useState`, `useReducer`, `SecureStore`, `AsyncStorage`, or `fetch(`; no source links to `/groups`, `/settings`, or `/dev/`; `__DEV__` is read only in `isDevelopmentMode.ts`.
+  - **Final passes after the doc updates:** `pnpm install --frozen-lockfile` 0, `pnpm typecheck` 0, `pnpm lint` 0, and `git diff --check` ok. Scratch doc validation found 0 errors in 106 local links across 20 Markdown files: the 19 project files plus Expo's ignored `.expo/README.md`. It also found 13 child rows matching 13 cards (10 `Completed`).
+  - **Not run:** rendering and interaction tests (MOBILE-001-F), native back/swipe and on-device appearance (G/H). `pnpm doctor:mobile` was not rerun because dependencies and app configuration are unchanged.
+- **JSDoc/TSDoc:**
+  - `UnavailableScreen`: purpose, that it renders no parameters, private data, or working-looking controls, and per-prop notes.
+  - `isDevelopmentMode`: what it gates, why it must be read only through the function at render time, the Jest `__DEV__` note, and the DATA-001 replacement.
+  - Route comments on why the group ID is not read, the settings exclusions, the scenario gating, and the headerless root stack.
+- **Remaining/blockers:**
+  - Rendering, “Go to map”, and the non-development scenario state are tested only in MOBILE-001-F; native presentation in G/H.
+  - The MEGAsync exclusions for `packages/contracts/dist/` and `apps/mobile/dist/` are still pending.
+- **Resume from:** Assign MOBILE-001-F when requested.
+- **Ownership:** Released; no active task.

@@ -35,7 +35,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) for the 13 small assignments under MONO-001
 
 Commands become available incrementally. Implemented so far: `pnpm install --frozen-lockfile` (MONO-001-B; setup in the root [README](../README.md)), `build:contracts` (MONO-001-C), and root lint/typecheck (MONO-001-D). MONO-001-E routed all three through Turbo. MOBILE-001-A added mobile `start` (`expo start --dev-client`), `typecheck`, and `lint` package scripts; root typecheck and lint now include mobile. MOBILE-001-B added the root development, doctor, export, and native wrappers. Native runs are verified in MOBILE-001-G/H. Still planned: mobile/root tests in MOBILE-001-F. CONTRACT-001 adds actual contract schemas/tests later. Do not create success-only placeholders for unavailable commands.
 
-Review workspace setup after MONO-001-E and the shell after MOBILE-001-H. Android and iOS development-build checks are separate required assignments; missing native verification stays unresolved. The shell's auth/private/settings/scenario routes are inert navigation placeholders. Real session, membership, configuration, and scenario behavior remain in their later roadmap tasks.
+Review workspace setup after MONO-001-E and the shell after MOBILE-001-H. Android and iOS development-build checks are separate required assignments; missing native verification stays unresolved. The shell's auth/private/settings/scenario routes are inert navigation placeholders (MOBILE-001-D/E). Outside development builds (`__DEV__` false), `/dev/scenarios` shows an unavailable state instead of its placeholder. Real session, membership, configuration, and scenario behavior remain in their later roadmap tasks.
 
 ## Configuration
 
