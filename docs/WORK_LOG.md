@@ -120,3 +120,44 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - Native runs need per-command `ANDROID_HOME`, `JAVA_HOME` (JDK 17), the SDK adb first on `PATH`, and a UTF-8 locale for CocoaPods; the commands are recorded. Nothing is missing.
 - **Resume from:** Assign MONO-001-B when requested. Follow the bootstrap order in `TOOLCHAIN.md`: activate Node 24.17.0, enable the pnpm shim (user-approved), write the root `package.json` before the first pnpm command, then run `corepack install`.
 - **Ownership:** Released; no active task.
+
+## 2026-10-03 — MONO-001-B: Root pnpm workspace
+
+- **Actor/session:** Claude Code / root-workspace.
+- **Status:** Completed; ownership released. Parent MONO-001 stays `In progress`.
+- **Working copy:** `main`. The user asked to commit MONO-001-A first, which became `2f35ea5`. At the user's request, MONO-001-B was committed on top of it, without pushing. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "commit this and continue with MONO-001-B". Only the B card was executed.
+- **Changes:**
+  - Root `package.json`: private `ride-match`, `packageManager: pnpm@11.28.2`, `engines.node: ^24.17.0`, and exact devDependencies `turbo` 2.11.6, `typescript` 6.0.3, `eslint` 9.39.5, `@eslint/js` 9.39.5, `typescript-eslint` 8.71.0. There are no scripts yet.
+  - `pnpm-workspace.yaml`: `apps/*` and `packages/*`, `savePrefix: ''`, `engineStrict: true`.
+  - `.nvmrc` with `24.17.0`.
+  - `.gitignore`: `node_modules/`, `packages/*/dist/`, `.turbo/`, `*.tsbuildinfo`, `.env*.local`, `.DS_Store`.
+  - Generated `pnpm-lock.yaml` (lockfile v9; 110 packages).
+  - Root `README.md` with requirements, setup, the command status, layout, and documentation links.
+  - **Machine change, user-approved in MONO-001-A:** `corepack enable pnpm` with Node 24.17.0 active. This added `pnpm` and `pnpx` symlinks in `~/.nvm/versions/node/v24.17.0/bin`. `corepack install` cached pnpm 11.28.2. Nothing else outside the repository changed; the pnpm store at `~/Library/pnpm/store/v11` is pnpm's default.
+- **Decisions:**
+  - Added `engineStrict: true`. The pnpm v11 docs say a project's own `engines` mismatch always fails, but under pnpm 11.28.2 with Node 22.23.2 a frozen install only warned and exited 0. With `engineStrict` it fails with `ERR_PNPM_UNSUPPORTED_ENGINE`.
+  - Recorded that Claude Code's shell needs `export NVM_DIR="$HOME/.nvm"` before `nvm use`.
+  - Ignored pnpm's update notice for 12.8.1 and its `curl | sh` suggestion.
+  - The README documents only implemented commands.
+  - `TOOLCHAIN.md` was updated with these corrections and the results.
+- **Excluded:** No contracts or mobile packages, scripts, Turbo config, lint or TypeScript configs, Expo files, product dependencies, CI, or remote cache. `.idea/` was not hidden. No changes to MEGAsync settings, shell profiles, or home-folder files.
+- **Verification:**
+  - `corepack install` → `Adding pnpm@11.28.2 to the cache...`; `pnpm --version` → `11.28.2` under Node 24.17.0.
+  - `pnpm add -w -D …` → exit 0. It printed `[WARN] deprecated eslint@9.39.5` (expected) and the update notice, with no peer or build warnings.
+  - After `rm -rf node_modules`, `pnpm install --frozen-lockfile` → exit 0 (resolution skipped). This was repeated after adding `engineStrict`, and passed again.
+  - Under Node 22.23.2: before `engineStrict`, the install gave a warning and exit 0; after, it failed with `ERR_PNPM_UNSUPPORTED_ENGINE` and exit 1.
+  - A scan of `node_modules/.pnpm` found 0 packages with install hooks.
+  - `pnpm exec tsc --version` → 6.0.3; `eslint --version` → v9.39.5; `turbo --version` → 2.11.6 (with `TURBO_TELEMETRY_DISABLED=1` for that command only).
+  - `require.resolve` for `typescript`, `eslint`, `@eslint/js`, `typescript-eslint`, and `turbo` → all inside `<repo>/node_modules/.pnpm`.
+  - Inventory: exactly one `package.json` and one `pnpm-lock.yaml` outside `node_modules`, with no nested lockfile. `pnpm ls -r --depth -1` lists only the root.
+  - `git check-ignore -v` confirmed the six ignore patterns. `.idea/vcs.xml`, `.env`, `.nvmrc`, `pnpm-lock.yaml`, and contracts `src` are not ignored.
+  - The scratch doc validation (now excluding `node_modules`) passed over 19 Markdown files: 101 local links and anchors with 0 errors, and 13 child rows matching 13 cards (2 `Completed`). `git diff --check` passed.
+  - Root lint and typecheck do not exist until MONO-001-D, so they were not run.
+- **JSDoc/TSDoc:** Not applicable; no source code.
+- **Remaining/blockers:**
+  - The user's MEGAsync exclusion for `packages/contracts/dist/` should be in place before MONO-001-C builds.
+  - `engineStrict` may reject a future dependency whose `engines` excludes Node 24; record and decide if that happens.
+  - Turbo has no `turbo.json` yet (MONO-001-E).
+- **Resume from:** Assign MONO-001-C when requested, using the C commands in `TOOLCHAIN.md`.
+- **Ownership:** Released; no active task.

@@ -5,20 +5,20 @@ Last updated: 2026-10-03
 ## Purpose and state
 
 - Ride Match: map-first discovery of nearby compatible ride intentions, groups of up to four, temporary text chat, shared meeting point, external Yandex Go handoff.
-- **Implemented:** Documentation baseline, shared Codex/Claude Code instructions, and the toolchain record [TOOLCHAIN.md](TOOLCHAIN.md) (MONO-001-A). No application or backend code, packages, dependencies, runnable scripts, or tests.
+- **Implemented:** Documentation baseline, shared Codex/Claude Code instructions, the toolchain record [TOOLCHAIN.md](TOOLCHAIN.md) (MONO-001-A), and the root pnpm workspace (MONO-001-B): root `package.json` (`packageManager` pnpm 11.28.2, `engines` Node `^24.17.0`), `pnpm-workspace.yaml` (`apps/*`, `packages/*`, exact saves, `engineStrict`), `.nvmrc`, `.gitignore`, root `README.md`, and `pnpm-lock.yaml` with root dev tools (Turbo 2.11.6, TypeScript 6.0.3, ESLint 9.39.5, `@eslint/js`, `typescript-eslint`). No workspace packages, application or backend code, runnable scripts, or tests.
 - Existing `apps/mobile/` and `apps/api/` are empty. Preserve unrelated files; do not populate `apps/api/` during the mobile milestone.
-- MONO-001 is `In progress` in [ROADMAP.md](ROADMAP.md); child MONO-001-A is `Completed`. Next planned assignment: **MONO-001-B** (root pnpm workspace) from [FIRST_STEPS.md](FIRST_STEPS.md), only when requested.
+- MONO-001 is `In progress` in [ROADMAP.md](ROADMAP.md); children MONO-001-A and B are `Completed`. Next planned assignment: **MONO-001-C** (compile an empty contracts package) from [FIRST_STEPS.md](FIRST_STEPS.md), only when requested.
 - Sequence: mock mobile MVP -> contract review -> future backend -> future HTTP/Socket.IO adapter.
 
 ## Shared handoff and active work
 
 - Entry points: [AGENTS.md](../AGENTS.md) contains shared rules; [CLAUDE.md](../CLAUDE.md) imports them for Claude Code.
 - Both assistants use [AI_WORKFLOW.md](AI_WORKFLOW.md), this file, the roadmap, relevant specs, and [WORK_LOG.md](WORK_LOG.md) as shared project memory. Private chat/memory is not a substitute.
-- Active task/owner: **None**. MONO-001-A (Claude Code / toolchain-record) is completed; ownership released.
-- Latest handoff: MONO-001-A in `WORK_LOG.md`. `FIRST_STEPS.md` splits MONO-001/MOBILE-001 into 13 child assignments; MONO-001-A is `Completed`; the other 12 are `Planned`. Terra is a model used through Codex; it records its actor as `Codex (Terra)`.
-- Working copy: `main` at `0a01d3c`; MONO-001-A documentation changes are uncommitted. Preserve unrelated untracked `.idea/` files. No workspace or application files exist yet.
-- Local environment decisions (user, 2026-10-03; details in `TOOLCHAIN.md`): Node 24.17.0, and MONO-001-B may run `corepack enable pnpm` under Node 24. The checkout stays in MEGAsync; the user adds exclusions for generated `dist/`, `android/`, and `ios/` paths. Ancestor home-folder packages stay; the repository relies on guards (explicit tsconfig `types`, compiler file-list check, `require.resolve` check). No open decision blocks MONO-001-B.
-- Next concrete step: assign **MONO-001-B** using the prompt in `FIRST_STEPS.md`; follow the bootstrap order in `TOOLCHAIN.md`. Do not start it automatically.
+- Active task/owner: **None**. MONO-001-B (Claude Code / root-workspace) is completed; ownership released.
+- Latest handoff: MONO-001-B in `WORK_LOG.md`. `FIRST_STEPS.md` splits MONO-001/MOBILE-001 into 13 child assignments; MONO-001-A and B are `Completed`; the other 11 are `Planned`. Terra is a model used through Codex; it records its actor as `Codex (Terra)`.
+- Working copy: `main`; MONO-001-A is commit `2f35ea5`, and MONO-001-B is the following commit (not pushed). Preserve unrelated untracked `.idea/` files.
+- Local environment decisions (user, 2026-10-03; details in `TOOLCHAIN.md`): Node 24.17.0; the user-approved `corepack enable pnpm` ran in the Node 24.17.0 installation during MONO-001-B. The checkout stays in MEGAsync; the user adds exclusions for generated `dist/`, `android/`, and `ios/` paths. Ancestor home-folder packages stay; the repository relies on guards (explicit tsconfig `types`, compiler file-list check, `require.resolve` check). Reminder: the user's MEGAsync exclusion for `packages/contracts/dist/` should be in place before MONO-001-C builds. In Claude Code's shell, run `export NVM_DIR="$HOME/.nvm" && nvm use` before pnpm (Node 22 is the default; `engineStrict` refuses installs on it).
+- Next concrete step: assign **MONO-001-C** using the prompt in `FIRST_STEPS.md` and the C commands in `TOOLCHAIN.md`. Do not start it automatically.
 - Before any takeover, inspect current files and latest task handoff. Use one writer at a time in this directory; ownership notes do not synchronize separate checkouts.
 
 ## Planned stack and boundaries

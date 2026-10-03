@@ -6,10 +6,10 @@ Ride Match helps nearby people travelling in compatible directions form a small 
 
 ## Current state
 
-- Documentation baseline is complete. MONO-001 is in progress: [TOOLCHAIN.md](TOOLCHAIN.md) records the selected versions, commands, and local prerequisites. No workspace, package, or application files exist yet.
+- Documentation baseline is complete. MONO-001 is in progress: [TOOLCHAIN.md](TOOLCHAIN.md) records the selected versions, commands, and local prerequisites, and the root pnpm workspace exists with its tools (Turbo, TypeScript, ESLint). No workspace package, application, or runnable build/lint/test script exists yet.
 - `apps/mobile/` and `apps/api/` already exist as empty directories. No backend package is planned for the mobile milestone.
-- No pnpm workspace, Expo app, contracts package, dependencies, tests, or build scripts have been initialized. A Git repository is present.
-- The next planned assignment is **MONO-001-B**, creating the root pnpm workspace, when requested. [First steps](FIRST_STEPS.md) splits workspace and Expo shell work into 13 small assignments for Terra or either assistant.
+- No Expo app, contracts package, tests, or build scripts have been initialized. Root setup is in the repository [README](../README.md). A Git repository is present.
+- The next planned assignment is **MONO-001-C**, compiling an empty contracts package, when requested. [First steps](FIRST_STEPS.md) splits workspace and Expo shell work into 13 small assignments for Terra or either assistant.
 - Architecture and lifecycle choices below are proposed defaults to validate during the mock MVP, not evidence of production capabilities.
 
 ## Using Codex and Claude Code

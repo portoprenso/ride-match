@@ -8,7 +8,7 @@ From MONO-001-B onward, tasks use the versions, commands, and decisions recorded
 
 | Area | Decision |
 | --- | --- |
-| Node.js | 24.17.0 (Active LTS line 24 "Krypton"); `.nvmrc` and root `engines` |
+| Node.js | 24.17.0 (Active LTS line 24 "Krypton"); `.nvmrc`, root `engines`, and `engineStrict` |
 | Package manager | pnpm 11.28.2 through Corepack; root `packageManager: "pnpm@11.28.2"` |
 | Mobile SDK | Expo SDK 57: `expo` 57.0.26, React Native 0.86.3, React 19.2.3 |
 | TypeScript | 6.0.3 in every package |
@@ -25,7 +25,7 @@ From MONO-001-B onward, tasks use the versions, commands, and decisions recorded
 2. **MEGAsync:** The checkout stays in the synced folder. The user adds sync exclusions for the generated paths listed in [MEGAsync exclusions](#megasync-exclusions-user-action). Assistants do not edit sync settings and cannot verify them.
 3. **Ancestor home-directory packages:** They stay. The repository relies on the guards in [Ancestor guards](#ancestor-guards).
 
-No open decision blocks MONO-001-B.
+No open user decision remains. MONO-001-B ran the approved `corepack enable pnpm` on 2026-10-03.
 
 ## Local environment (observed 2026-10-03)
 
@@ -60,21 +60,24 @@ These are read-only probes from Claude Code's non-interactive shell. The user's 
 
 The installed 24.17.0 is used so no new Node installation is needed.
 
-- **Version file:** `.nvmrc` contains `24.17.0`. Root `package.json` has `"engines": { "node": "^24.17.0" }`. pnpm always refuses to install a project whose own `engines` field rejects the running Node, so this guards against nvm's default 22.
-- **Non-interactive shells** start on Node 22. Activate the pinned version in the same command line, for example `nvm use >/dev/null && pnpm install --frozen-lockfile`. In Claude Code's shell, `nvm` is available as a shell function.
+- **Version file:** `.nvmrc` contains `24.17.0`. Root `package.json` has `"engines": { "node": "^24.17.0" }`.
+- **Engines guard (corrected in MONO-001-B):** the pnpm v11 docs say a project's own `engines` mismatch always fails installation. With pnpm 11.28.2, `pnpm install --frozen-lockfile` under Node 22.23.2 only printed `[WARN] Unsupported engine` and exited 0. `engineStrict: true` in `pnpm-workspace.yaml` makes the same command fail with `ERR_PNPM_UNSUPPORTED_ENGINE` (exit 1), and it passes under Node 24.17.0. `engineStrict` also rejects any dependency whose `engines` excludes the running Node; if that happens, record the package and decide with evidence.
+- **Non-interactive shells** start on Node 22. Activate the pinned version in the same command line. In Claude Code's shell, `nvm` is a shell function but `NVM_DIR` is unset, so `nvm use 24.17.0` reported "not yet installed". Use `export NVM_DIR="$HOME/.nvm" && nvm use >/dev/null && pnpm install --frozen-lockfile`, where `nvm use` reads `.nvmrc`.
 
 **pnpm 11.28.2.** This is the `latest-11` tag, published 2026-09-28.
 
 - pnpm 12 (`latest`, 12.8.1) was not selected. Its first release was on 2026-08-26, and it ships a native-binary launcher with platform `optionalDependencies`. Corepack 0.34.6 and 0.35.0 map `>=11.0.0` to the tarball's `bin/pnpm.mjs`; whether that works with 12's layout is unverified.
 - **Provisioning:** Corepack 0.35.0, bundled with Node 24.17.0. The Node.js 26 API docs have no Corepack page (HTTP 404 on 2026-10-03), so re-plan provisioning before any move to Node 26 or later.
 
-**MONO-001-B bootstrap order (user-approved):**
+**MONO-001-B bootstrap order (user-approved; completed 2026-10-03):**
 
 1. `nvm use 24.17.0`
 2. `corepack enable pnpm` (Node 24.17.0 installation only).
 3. Write the root `package.json` with `packageManager` **before the first pnpm command**. Corepack uses the nearest manifest, so this declaration takes precedence over the ancestor yarn one.
 4. `corepack install`, which downloads pnpm 11.28.2 into the Corepack cache. It prompts only when stdin is a TTY.
 5. `pnpm --version` must print `11.28.2`.
+
+Result: after `nvm use`, Node 24.17.0's `bin` directory came first on `PATH`. `corepack enable pnpm` added `pnpm` and `pnpx` symlinks there. `corepack install` printed "Adding pnpm@11.28.2 to the cache...", and `pnpm --version` printed `11.28.2`. The pnpm store is at `~/Library/pnpm/store/v11`, outside the synced folder. pnpm prints an update notice (11.28.2 → 12.8.1) that suggests a `curl … | sh` installer. Ignore it; pnpm 12 is not selected, and global installers are user decisions.
 
 **pnpm 11 behavior that matters** (from the v11 settings documentation):
 
@@ -92,9 +95,10 @@ packages:
   - apps/*
   - packages/*
 savePrefix: ''
+engineStrict: true
 ```
 
-`savePrefix: ''` saves exact versions for every `pnpm add`. `apps/api/` has no manifest, so it is not a workspace package.
+`savePrefix: ''` saves exact versions for every `pnpm add`. `engineStrict: true` is the Node guard described above. `apps/api/` has no manifest, so it is not a workspace package.
 
 ## Build-script policy
 
@@ -105,7 +109,7 @@ savePrefix: ''
 
 | Package | Decision | Reason and verification | Task |
 | --- | --- | --- | --- |
-| *(none yet)* | | | |
+| *(none yet)* | | MONO-001-B: the root tree (110 packages) has no `preinstall`/`install`/`postinstall` scripts (scan of `node_modules/.pnpm`), and `pnpm install` passed under the strict default | MONO-001-B |
 
 ## Direct dependencies
 
@@ -329,10 +333,11 @@ Mobile `start` and `dev` are both `expo start --dev-client`. Mobile `typecheck` 
 
 ## Commands by task
 
-Run each from the repository root after `nvm use` unless noted. Each `pnpm --filter <pkg> add` needs that package's `package.json` to exist first.
+Run each from the repository root after `export NVM_DIR="$HOME/.nvm" && nvm use` unless noted. Each `pnpm --filter <pkg> add` needs that package's `package.json` to exist first.
 
 ```bash
 # MONO-001-B (after writing package.json, pnpm-workspace.yaml, .nvmrc, .gitignore, README.md)
+export NVM_DIR="$HOME/.nvm"
 nvm use 24.17.0
 corepack enable pnpm
 corepack install
@@ -435,7 +440,7 @@ LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pnpm mobile:ios
 
 These are expectations recorded here, not checked results. The named task confirms or corrects each one and updates this file.
 
-- **MONO-001-B:** Corepack shim plus `corepack install` under Node 24; `pnpm --version` prints 11.28.2; `pnpm install --frozen-lockfile` passes with strict build checks; the expected ESLint 9 deprecation warning is recorded.
+- **MONO-001-B:** verified on 2026-10-03; see the bootstrap result, the engines-guard correction, and the build-script table. The expected `[WARN] deprecated eslint@9.39.5` appeared on install.
 - **MONO-001-C:** emitted ESM imports in Node; the compiler file-list check prints nothing.
 - **MOBILE-001-A:**
   - Auto-installed peers raise no missing or invalid peer warnings, and `expo install --check` passes.
