@@ -21,6 +21,7 @@ Both tools then read current state and task-specific docs. Shared project memory
 | `CLAUDE.md` | Thin Claude Code entry point; no duplicated rules or status |
 | `docs/AI_CONTEXT.md` | Current implemented capabilities, active task/owner, limitations, exact next continuation |
 | `docs/ROADMAP.md` | Planned scope, dependencies, acceptance criteria, task status |
+| `docs/FIRST_STEPS.md` | Small assignments and child statuses for MONO-001/MOBILE-001; parent criteria remain in the roadmap |
 | `docs/WORK_LOG.md` | Dated and attributed history/handoffs with files, decisions, verification, unfinished work |
 | Product/architecture/API/development docs | Current intended behavior and operational specifications |
 | Actual code and checks | Evidence of what is implemented and verified |
@@ -108,7 +109,9 @@ Updating docs in one checkout does not automatically synchronize another checkou
 
 Start a bounded task:
 
-> Read AGENTS.md, docs/AI_CONTEXT.md, docs/AI_WORKFLOW.md, the latest relevant WORK_LOG.md entry, and the MONO-001 task in docs/ROADMAP.md. Implement only MONO-001, respecting dependencies and existing changes. Verify it and update the shared documentation before finishing.
+> Read AGENTS.md, docs/AI_CONTEXT.md, docs/AI_WORKFLOW.md, the latest relevant WORK_LOG.md entry, the MONO-001 parent in docs/ROADMAP.md, and docs/FIRST_STEPS.md. Execute only MONO-001-A, respecting its file scope, checks, and exclusions. Update the shared documentation and child/parent statuses, then stop. Do not implement the other children or commit automatically.
+
+For Terra and other assistants, the first batch uses one child per assignment. [FIRST_STEPS.md](FIRST_STEPS.md) has full task cards, completion rules, and copyable implementation/review prompts. This changes assignment size, not the shared handoff or ownership requirements. Do not use a parent title as permission to implement all its children.
 
 Continue another assistant's work:
 

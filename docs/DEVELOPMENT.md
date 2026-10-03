@@ -29,6 +29,14 @@ Install only justified dependencies during an authorized implementation task. Pi
 
 Each bounded task should leave runnable behavior, focused tests where useful, updated current specs, and an honest work-log entry. Do not mark incomplete native checks as passing because a JavaScript export succeeds.
 
+## First implementation batch
+
+Use [FIRST_STEPS.md](FIRST_STEPS.md) for the 13 small assignments under MONO-001 and MOBILE-001. Assign one child at a time. MONO-001-A will create `docs/TOOLCHAIN.md` with exact compatible versions and commands; that file does not exist yet. Do not guess independent latest dependency versions while implementing later cards.
+
+Commands become available incrementally: `build:contracts` in MONO-001-C; root lint/typecheck in MONO-001-D; Turbo orchestration in MONO-001-E; development/doctor/export/native wrappers in MOBILE-001-B; mobile/root tests in MOBILE-001-F. CONTRACT-001 adds actual contract schemas/tests later. Do not create success-only placeholders for unavailable commands.
+
+Review workspace setup after MONO-001-E and the shell after MOBILE-001-H. Android and iOS development-build checks are separate required assignments; missing native verification stays unresolved. The shell's auth/private/settings/scenario routes are inert navigation placeholders. Real session, membership, configuration, and scenario behavior remain in their later roadmap tasks.
+
 ## Configuration
 
 | Configuration | Planned use |

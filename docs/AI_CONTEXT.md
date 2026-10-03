@@ -14,7 +14,8 @@ Last updated: 2026-10-03
 
 - Entry points: [AGENTS.md](../AGENTS.md) contains shared rules; [CLAUDE.md](../CLAUDE.md) imports them for Claude Code.
 - Both assistants use [AI_WORKFLOW.md](AI_WORKFLOW.md), this file, the roadmap, relevant specs, and [WORK_LOG.md](WORK_LOG.md) as shared project memory. Private chat/memory is not a substitute.
-- Active task/owner: **None**; DOC-001 completed by **Codex / shared-ai-docs**, ownership released.
+- Active task/owner: **DOC-002 / Codex / terra-first-steps**, In progress. Documentation-only breakdown of MONO-001 and MOBILE-001; implementation remains unstarted.
+- Working scope: new `docs/FIRST_STEPS.md` and shared README/roadmap/workflow/development/context/work-log references, on `main` at observed HEAD `fb7a7ae`. Preserve unrelated `.idea/` files.
 - Latest handoff: DOC-001 in `WORK_LOG.md`; shared rules/import/workflow and related documentation are updated. Static links/import/task/DAG/scenario checks passed; live Claude Code startup was not tested.
 - Working copy: Git repository now exists; inspect current branch/status and preserve unrelated IDE files before editing. No application implementation has started.
 - Next concrete step: implement **MONO-001** when requested, or use the read-only handoff prompt in `AI_WORKFLOW.md` to verify either assistant's context.

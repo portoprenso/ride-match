@@ -13,7 +13,9 @@ This roadmap covers only items 1–2. No backend implementation or real transpor
 
 ## Progress
 
-Documentation baseline **DOC-000** and shared Codex/Claude Code workflow **DOC-001** are complete; no implementation task has started. See [WORK_LOG.md](WORK_LOG.md) for actual changes and verification. The next implementation task is **MONO-001**, when requested.
+Documentation baseline **DOC-000**, shared Codex/Claude Code workflow **DOC-001**, and small first-step task plan **DOC-002** are complete; no implementation task has started. See [WORK_LOG.md](WORK_LOG.md) for actual changes and verification. The next assignment is **MONO-001-A** within MONO-001, when requested.
+
+Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bounded child assignments, one per request. It owns child statuses; this table owns parent statuses. Complete a parent only after all required children and parent criteria pass. The proposed order is workspace -> Expo shell -> separately planned contract work, which preserves the existing dependencies. The 25 parent tasks and their DAG are unchanged.
 
 | ID | Task | Status |
 | --- | --- | --- |
@@ -45,7 +47,7 @@ Documentation baseline **DOC-000** and shared Codex/Claude Code workflow **DOC-0
 
 ## Task rules
 
-Each task is intended to become one bounded implementation request for either Codex or Claude Code. Implement only requested scope and preserve completed behavior. Read the latest task handoff before resuming another assistant's work.
+Each parent task defines a bounded capability for either Codex or Claude Code. It can require several smaller assignments. For Terra, use the explicit child cards in [FIRST_STEPS.md](FIRST_STEPS.md) for the first batch; split later parents similarly before implementation. Implement only requested scope and preserve completed behavior. Read the latest task handoff before resuming another assistant's work.
 
 In task file lists, `M` means `apps/mobile` and `C` means `packages/contracts`. Paths and commands are proposed and do not currently exist. Update them if implementation chooses an equivalent clearer organization.
 
@@ -56,6 +58,8 @@ After meaningful work, update affected specifications, this progress table, [WOR
 Use the statuses and attribution procedure in [AI_WORKFLOW.md](AI_WORKFLOW.md): `Planned`, `In progress`, `Paused`, `Blocked`, `Completed`. Active owner/session, working-copy scope, and resume point live in `AI_CONTEXT.md`; detailed attributed handoffs live in `WORK_LOG.md`. A new assistant must verify actual files and unfinished criteria instead of restarting a task based on its title alone.
 
 ## MONO-001 — Workspace foundation
+
+Execution: [MONO-001-A through MONO-001-E](FIRST_STEPS.md#task-cards), assigned individually.
 
 - **Goal:** Workspace commands and shared-package builds work.
 - **Scope:** pnpm/Turborepo setup, strict TypeScript, contracts package shell, root scripts, README, documentation alignment.
@@ -106,6 +110,8 @@ Use the statuses and attribution procedure in [AI_WORKFLOW.md](AI_WORKFLOW.md): 
 - **Non-goals:** Socket.IO server/client implementation, remote push delivery.
 
 ## MOBILE-001 — Expo shell and navigation
+
+Execution: [MOBILE-001-A through MOBILE-001-H](FIRST_STEPS.md#mobile-001-a--create-the-minimal-expo-router-shell), assigned individually. Early routes are inert placeholders; real authentication, membership, and scenarios remain in their later tasks.
 
 - **Goal:** A development application launches on both platforms.
 - **Scope:** Expo Router, native app configuration, basic UI primitives/providers, test harness, route skeletons.

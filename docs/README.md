@@ -9,7 +9,7 @@ Ride Match helps nearby people travelling in compatible directions form a small 
 - Documentation baseline is complete; application implementation has not started.
 - `apps/mobile/` and `apps/api/` already exist as empty directories. No backend package is planned for the mobile milestone.
 - No pnpm workspace, Expo app, contracts package, dependencies, tests, or build scripts have been initialized. A Git repository is present.
-- The next planned implementation task is **MONO-001**, when implementation is requested.
+- The next planned assignment is **MONO-001-A**, the toolchain preparation child of MONO-001, when requested. [First steps](FIRST_STEPS.md) splits workspace and Expo shell work into 13 small assignments for Terra or either assistant.
 - Architecture and lifecycle choices below are proposed defaults to validate during the mock MVP, not evidence of production capabilities.
 
 ## Using Codex and Claude Code
@@ -17,6 +17,8 @@ Ride Match helps nearby people travelling in compatible directions form a small 
 Both assistants share [AGENTS.md](../AGENTS.md). [CLAUDE.md](../CLAUDE.md) imports those instructions for Claude Code. Start either tool in this project root and give it a bounded task ID or ask it to continue the latest handoff.
 
 Read [AI_WORKFLOW.md](AI_WORKFLOW.md) for the start/resume/finish procedure, ownership rules, handoff template, and copyable prompts. Each meaningful task records its actor, changed files, decisions, verification results, unfinished work, and next concrete step in the shared docs. This makes work portable between tools without copying chat histories.
+
+For the first implementation batch, assign one child from [FIRST_STEPS.md](FIRST_STEPS.md) per request. It defines file scope, fixed decisions, checks, exclusions, and two review checkpoints. Its child statuses complement the parent statuses in the roadmap; all remain planned.
 
 Use one writer at a time in a shared directory. Separate checkouts must receive both code and documentation updates before continuation; shared docs are not automatic cross-tool synchronization.
 
@@ -72,4 +74,4 @@ The work log is a history of actual work, not a replacement for current specific
 
 ## Plan coverage
 
-The original planning request is preserved across these documents: architecture/monorepo/features/contracts in `ARCHITECTURE.md`; REST and realtime in `api/`; simulation in `MOCK_SCENARIOS.md`; navigation/map/location/flows/errors in `PRODUCT.md`; analytics/testing/workflow/completion in `DEVELOPMENT.md`; all 25 implementation tasks and the DAG in `ROADMAP.md`; backend readiness in `api/overview.md`.
+The original planning request is preserved across these documents: architecture/monorepo/features/contracts in `ARCHITECTURE.md`; REST and realtime in `api/`; simulation in `MOCK_SCENARIOS.md`; navigation/map/location/flows/errors in `PRODUCT.md`; analytics/testing/workflow/completion in `DEVELOPMENT.md`; all 25 implementation tasks and the DAG in `ROADMAP.md`; backend readiness in `api/overview.md`. `FIRST_STEPS.md` provides a more detailed execution breakdown for the first two parent tasks without changing the DAG.
