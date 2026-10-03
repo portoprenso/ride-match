@@ -14,7 +14,7 @@ From MONO-001-B onward, tasks use the versions, commands, and decisions recorded
 | TypeScript | 6.0.3 in every package |
 | Task runner | Turbo 2.11.6; root `turbo.json` with `agentGuidance: false` (MONO-001-E) |
 | Lint | ESLint 9.39.5 (flat config); `typescript-eslint` 8.71.0 for contracts; `eslint-config-expo` 57.0.2 for mobile |
-| Mobile tests | Jest 29.7.0, `jest-expo` 57.0.5, React Native Testing Library 14.0.1 with `test-renderer` 1.3.0 |
+| Mobile tests | Jest 29.7.0, `jest-expo` 57.0.5, React Native Testing Library 14.0.1 with `test-renderer` 1.2.0 (MOBILE-001-F; see the correction below) |
 | Doctor | `expo-doctor` 1.20.4 as an exact mobile dev dependency |
 | Contracts format | ESM (`"type": "module"`), one `exports` entry with `types` then `default` |
 | Typed routes | Off for this batch (see [Mobile](#mobile-tsconfigjson-mobile-001-a)) |
@@ -163,8 +163,14 @@ There are no runtime dependencies. Zod arrives with CONTRACT-001.
 | `jest-expo` | 57.0.5 | dev | Expo Jest preset | Expo `~57.0.5` | MOBILE-001-F |
 | `@types/jest` | 29.5.14 | dev | Jest types | Expo `29.5.14` | MOBILE-001-F |
 | `@testing-library/react-native` | 14.0.1 | dev | Behavior tests | Expo Router testing requires 14 or newer | MOBILE-001-F |
-| `test-renderer` | 1.3.0 | dev | Testing Library 14's required renderer peer (`^1.0.0`) | Peer `react ^19.0.0` | MOBILE-001-F |
+| `test-renderer` | 1.2.0 | dev | Testing Library 14's required renderer peer (`^1.0.0`) | Peer `react ^19.0.0`; depends on `react-reconciler ~0.33.0`, whose 0.33.0 needs `react ^19.2.0` | MOBILE-001-F |
 | `@react-native/jest-preset` | 0.86.3 | dev | Required peer of `jest-expo` 57 (`^0.86.3`) | Matches React Native 0.86.3 | MOBILE-001-F |
+| `@babel/runtime` | 7.29.7 | dev | Imported by Babel helpers in Jest-transformed files (`babel-preset-expo` enables the runtime transform; Jest's non-Hermes profile emits helpers such as `asyncToGenerator`) | The version `expo` 57.0.26 (`^7.20.0`) already resolved in the lockfile | MOBILE-001-F |
+
+**Correction from MOBILE-001-F (2026-10-03):**
+
+- `test-renderer` 1.3.0 depends on `react-reconciler ~0.34.0`, and 0.34.0 requires `react ^19.3.0`, so `pnpm peers check` reported an unmet React peer against 19.2.3. `test-renderer` 1.2.0 (`react-reconciler ~0.33.0`, resolving to 0.33.0, peer `react ^19.2.0`) is the newest release that fits React 19.2.3 and is inside Testing Library 14's `^1.0.0` peer range. After a clean frozen install, the tree has one `test-renderer` and one `react-reconciler`, and `pnpm peers check` reports no issues.
+- `@babel/runtime` was undeclared. Jest-transformed tests imported its helpers by walking up from `apps/mobile` and loaded them from `/Users/home/node_modules/@babel/runtime` (7.29.7). Declaring it keeps resolution in the repository; Metro exports contain no `@babel/runtime` source before or after.
 
 **Required peers auto-installed, not listed directly:** `@expo/log-box` 57.0.4 and `@expo/metro-runtime` 57.0.16, both required by `expo-router`. They resolved at the Expo versions in MOBILE-001-A.
 
@@ -237,7 +243,7 @@ Package scripts:
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
-    "types": []
+    "types": ["jest"]
   },
   "include": ["**/*.ts", "**/*.tsx"]
 }
@@ -245,7 +251,7 @@ Package scripts:
 
 - `expo/tsconfig.base` (57.0.26) supplies `module: preserve`, `moduleResolution: bundler`, `customConditions: ["react-native"]`, `jsx: react-jsx`, `noEmit`, `allowJs`, `skipLibCheck`, and `lib: ["DOM", "ESNext"]`. Its `exclude` covers `node_modules`, `android`, `ios`, and Babel, Metro, and Jest config files. It sets no `types`.
 - React Native 0.86.3 declares `__DEV__` in its own types (`src/types/globals.d.ts`), which load through `react-native` imports. No global types package is needed for the shell.
-- MOBILE-001-F adds `"jest"` to `types` only if tests need the global Jest types, which is expected because Expo Router's matchers extend Jest's `expect`. Record the outcome.
+- **MOBILE-001-F outcome:** `types` is `["jest"]`. Testing Library 14 declares its matchers on the global `jest` namespace, which needs `@types/jest`. Expo Router's own matchers ship no type declarations, so tests compare `getPathname()` with ordinary matchers instead. Node types are not added; the compiler file list contains `@types/jest` from the repository and no `@types/node`.
 - `app.config.ts` is type-checked with these settings and imports the `ExpoConfig` type from `expo/config`.
 
 **Implemented in MOBILE-001-A** exactly as above. The compiler file-list check printed nothing outside the repo: 605 files, of which 4 are app sources and the rest are repository `node_modules` declarations, with `@types/react` as the only `@types` package.
@@ -306,13 +312,17 @@ If a consumer fails, record the evidence and choose one format that all three lo
 
 - **`apps/mobile/jest.config.js`** (CommonJS; Expo's base tsconfig excludes it):
   - `preset: 'jest-expo'`
-  - Expo's pnpm pattern: `transformIgnorePatterns: ['node_modules/(?!(.pnpm|(jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg))']`
   - `testMatch` limited to `<rootDir>/tests/**/*.test.ts?(x)`
-- Route tests use `renderRouter` and `screen` from `expo-router/testing-library` against the real `app/` directory. Tests stay outside `app/`.
+  - **Correction (MOBILE-001-F):** no `transformIgnorePatterns` override. `jest-expo` 57.0.5's preset already starts with `/node_modules/(?!(.pnpm|react-native|@react-native|…|expo|@expo|…))`, which transforms Expo and React Native packages inside the `.pnpm` store. It also excludes `react-native-reanimated/plugin/` and `@react-native/babel-preset/`, which the pattern planned here would have dropped.
+  - No `babel.config.js`: without one, `jest-expo` resolves `expo/internal/babel-preset` from `process.cwd()`, so Jest must run in `apps/mobile` (the `test` script does).
+- Route tests use `renderRouter` from `expo-router/testing-library` against the real `app/` directory, through `tests/helpers/renderApp.ts`. Tests stay outside `app/`.
+  - Testing Library 14's `render` is async. `renderRouter` attaches `getPathname()` and `getRouterState()` to the returned promise, so the helper awaits it and keeps those functions.
+  - `renderRouter` enables Jest's modern fake timers, which also fake `queueMicrotask`. After Testing Library's automatic cleanup, each router test runs pending timers, runs fake microtasks (React's `act()` queues one), asserts `jest.getTimerCount()` is 0, and restores real timers.
+  - Its built-in mocks cover only `expo-linking`'s URL helpers and Reanimated; navigation itself is not mocked.
 - **Scripts:**
   - Mobile `test`: `jest`. No `--watchAll` and no `passWithNoTests`.
   - Root `test:mobile`: `pnpm build:contracts && pnpm --filter @ride-match/mobile test`. pnpm appends extra arguments to the end, so `--runTestsByPath tests/navigation.test.tsx` (relative to `apps/mobile`) reaches Jest.
-  - Root `test`: `turbo run test`.
+  - Root `test`: `turbo run test`; `turbo.json` has `test` with `dependsOn: ["^build"]`, so contracts are built first. Only mobile defines `test`.
 
 ## Turbo and development commands
 
@@ -431,7 +441,10 @@ pnpm export:ios
 pnpm dev   # interactive; stop with Ctrl+C
 
 # MOBILE-001-F
-pnpm --filter @ride-match/mobile add -D jest@29.7.0 jest-expo@57.0.5 @types/jest@29.5.14 @testing-library/react-native@14.0.1 test-renderer@1.3.0 @react-native/jest-preset@0.86.3
+pnpm --filter @ride-match/mobile add -D jest@29.7.0 jest-expo@57.0.5 @types/jest@29.5.14 @testing-library/react-native@14.0.1 test-renderer@1.2.0 @react-native/jest-preset@0.86.3 @babel/runtime@7.29.7
+pnpm test:mobile
+pnpm test:mobile --runTestsByPath tests/navigation.test.tsx
+pnpm test
 ```
 
 The remaining checks for each card are listed in [FIRST_STEPS.md](FIRST_STEPS.md). The file-list checks pass when they print nothing, because `grep` then exits 1. The `require.resolve` check passes when every printed path is inside the repository.
@@ -469,7 +482,7 @@ The user chose to keep the home-folder packages (decision 3), so the repository 
 | --- | --- | --- |
 | Corepack obeys the ancestor `yarn@4.18.0` declaration | Root `packageManager: "pnpm@11.28.2"` is written before the first pnpm command | B: `pnpm --version` prints 11.28.2 |
 | TypeScript includes ancestor `@types` (`jest` and `mocha` conflict) | Explicit `types` in every tsconfig (the TS 6 default is also `[]`) | C and MOBILE-001-A: compiler file-list check prints nothing; rerun when tsconfig or dependencies change |
-| Node, Jest, or Metro fall back to `/Users/home/node_modules` (`react` 18.2.0, `metro`, `@babel/core`) | Each package declares what it imports; pnpm isolated layout; no aliases | MOBILE-001-A, B, F: the `require.resolve` check stays inside the repo. Errors naming `/Users/home/node_modules` are resolution defects, not reasons for resolver overrides. A: passed for `react`, `react-native`, `expo`, `expo-router`, reanimated, worklets, and `react-dom` |
+| Node, Jest, or Metro fall back to `/Users/home/node_modules` (`react` 18.2.0, `metro`, `@babel/core`) | Each package declares what it imports; pnpm isolated layout; no aliases | MOBILE-001-A, B, F: the `require.resolve` check stays inside the repo. Errors naming `/Users/home/node_modules` are resolution defects, not reasons for resolver overrides. A: passed for `react`, `react-native`, `expo`, `expo-router`, reanimated, worklets, and `react-dom`. F: Jest loaded `@babel/runtime` from there until it was declared; afterwards a logging resolver over the whole suite found no resolution outside the repository |
 | Metro hierarchical lookup reaches parent folders | Expo's automatic monorepo config watches only the workspace root. Whether Metro would bundle a file from the home `node_modules` is unverified | MOBILE-001-B: exports succeed and the resolution check passes. No Metro overrides without a reproduced failure. A: all 1,230 sources in an Android export's source map were under the repository root, and none came from `/Users/home/node_modules` |
 | `/Users/home/app.json` (`{"expo": {}}`) | Run Expo only from `apps/mobile` (`pnpm --filter @ride-match/mobile …` or `cd apps/mobile`), never from the repo root or home folder | Every Expo command |
 
@@ -521,7 +534,10 @@ These are expectations recorded here, not checked results. The named task confir
   - `expo-doctor` 1.20.4 as a dev dependency printed "21/21 checks passed. No issues detected!", so the `dlx` fallback is unused.
   - Turbo's terminal UI passes Expo keys, interrupt stops both processes, and the pass-through list is recorded above.
   - Correction: the root script is `doctor:mobile`, because of pnpm's built-in `doctor`.
-- **MOBILE-001-F:** Jest loads contracts through `exports`; whether a `babel.config.js` is needed (if so, declare `babel-preset-expo` where the config resolves it); whether `"jest"` belongs in `types`; arguments reach Jest.
+- **MOBILE-001-F:** verified on 2026-10-03.
+  - Jest resolves `@ride-match/contracts` to `packages/contracts/dist/index.js` (a logging wrapper around React Native's Jest resolver); with `dist/` removed, the suite fails with "Cannot find module '@ride-match/contracts' from 'src/bootstrap/checkContractsPackage.ts'". No alias or mock.
+  - No `babel.config.js` is needed; `"jest"` belongs in `types` (see above); `pnpm test:mobile --runTestsByPath tests/navigation.test.tsx` runs `jest --runTestsByPath tests/navigation.test.tsx`.
+  - **Corrected:** `test-renderer` 1.2.0 instead of 1.3.0, `@babel/runtime` declared, and no `transformIgnorePatterns` override.
 - **MOBILE-001-G/H:** native builds on the recorded emulator and simulator.
 
 ## Sources (checked 2026-10-03)

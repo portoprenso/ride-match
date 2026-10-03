@@ -23,20 +23,25 @@ Last updated: 2026-10-03
     - `app/groups/[groupId]/{index,chat}.tsx` and `app/settings.tsx` render `src/ui/UnavailableScreen.tsx` (title, “not available yet” message, one “Go to map” `Button` wired to `router.dismissTo('/')`). The group routes never read `groupId`. Home does not link to any of them.
     - `app/dev/scenarios.tsx` calls `isDevelopmentMode()` (`src/config/isDevelopmentMode.ts`, returns `__DEV__`) at render time: development builds get an inert “Mock scenarios” placeholder, other builds an unavailable state, never a redirect. DATA-001 replaces the check with validated environment/data-source gating.
     - The root `Stack` now sets `screenOptions={{ headerShown: false }}`; every screen draws its own title and actions, and the anchor puts home beneath any direct entry.
-- No contract schemas, domain or backend code, or tests.
+  - MOBILE-001-F added the behavior-test harness.
+    - Mobile dev dependencies: Jest 29.7.0, `jest-expo` 57.0.5, `@types/jest` 29.5.14, Testing Library 14.0.1, `test-renderer` **1.2.0** (1.3.0 pulls `react-reconciler` 0.34, which needs React 19.3), `@react-native/jest-preset` 0.86.3, and `@babel/runtime` 7.29.7 (Jest-transformed files import its helpers; undeclared, they loaded from `/Users/home/node_modules`).
+    - `apps/mobile/jest.config.js` (`preset: 'jest-expo'`, `testMatch` `tests/**/*.test.ts?(x)`, preset's own pnpm-aware `transformIgnorePatterns`), no `babel.config.js`, mobile tsconfig `types: ["jest"]`.
+    - Scripts: mobile `test` (`jest`), root `test:mobile` (`pnpm build:contracts && pnpm --filter @ride-match/mobile test`, arguments forwarded), root `test` (`turbo run test`; `turbo.json` `test` after `^build`).
+    - `tests/navigation.test.tsx` (14 tests) renders the real `app/` through `tests/helpers/renderApp.ts` (`renderRouter`); `tests/ui.test.tsx` (2 tests) covers `Button`. Each router test ends with no pending fake timer.
+- No contract schemas, domain or backend code, or contract tests.
 - `apps/api/` is empty. Preserve unrelated files; do not populate `apps/api/` during the mobile milestone.
-- MONO-001 is `Completed` and MOBILE-001 is `In progress` in [ROADMAP.md](ROADMAP.md). MONO-001-A to E and MOBILE-001-A to E are `Completed`. Next planned assignment: **MOBILE-001-F** (mobile behavior test harness) from [FIRST_STEPS.md](FIRST_STEPS.md), only when requested.
+- MONO-001 is `Completed` and MOBILE-001 is `In progress` in [ROADMAP.md](ROADMAP.md). MONO-001-A to E and MOBILE-001-A to F are `Completed`. Next planned assignment: **MOBILE-001-G** (build and verify Android) from [FIRST_STEPS.md](FIRST_STEPS.md), only when requested.
 - Sequence: mock mobile MVP -> contract review -> future backend -> future HTTP/Socket.IO adapter.
 
 ## Shared handoff and active work
 
 - Entry points: [AGENTS.md](../AGENTS.md) contains shared rules; [CLAUDE.md](../CLAUDE.md) imports them for Claude Code.
 - Both assistants use [AI_WORKFLOW.md](AI_WORKFLOW.md), this file, the roadmap, relevant specs, and [WORK_LOG.md](WORK_LOG.md) as shared project memory. Private chat/memory is not a substitute.
-- Active task/owner: **None**. MOBILE-001-E (Claude Code / route-shells) is completed; ownership released.
-- Latest handoff: MOBILE-001-E in `WORK_LOG.md`. `FIRST_STEPS.md` splits MONO-001/MOBILE-001 into 13 child assignments; MONO-001-A to E and MOBILE-001-A to E are `Completed`; MOBILE-001-F to H are `Planned`. Terra is a model used through Codex; it records its actor as `Codex (Terra)`.
-- Working copy: `main`; MONO-001-A is `2f35ea5`, MONO-001-B is `87bb91c`, MONO-001-C is `46a6865`, MONO-001-D is `f5a6c93`, MONO-001-E is `2e93390`, MOBILE-001-A is `c924bf1`, MOBILE-001-B is `2a4906a`, MOBILE-001-C is `76c8477`, MOBILE-001-D is `99d3572`, and MOBILE-001-E is the following commit (none pushed). Preserve unrelated untracked `.idea/` files.
+- Active task/owner: **None**. MOBILE-001-F (Claude Code / test-harness) is completed; ownership released.
+- Latest handoff: MOBILE-001-F in `WORK_LOG.md`. `FIRST_STEPS.md` splits MONO-001/MOBILE-001 into 13 child assignments; MONO-001-A to E and MOBILE-001-A to F are `Completed`; MOBILE-001-G and H are `Planned`. Terra is a model used through Codex; it records its actor as `Codex (Terra)`.
+- Working copy: `main`; MONO-001-A is `2f35ea5`, MONO-001-B is `87bb91c`, MONO-001-C is `46a6865`, MONO-001-D is `f5a6c93`, MONO-001-E is `2e93390`, MOBILE-001-A is `c924bf1`, MOBILE-001-B is `2a4906a`, MOBILE-001-C is `76c8477`, MOBILE-001-D is `99d3572`, MOBILE-001-E is `243a715`, and MOBILE-001-F is the following commit (none pushed). Preserve unrelated untracked `.idea/` files.
 - Local environment decisions (user, 2026-10-03; details in `TOOLCHAIN.md`): Node 24.17.0; the user-approved `corepack enable pnpm` ran in the Node 24.17.0 installation during MONO-001-B. The checkout stays in MEGAsync; the user adds exclusions for generated `dist/`, `android/`, and `ios/` paths. Ancestor home-folder packages stay; the repository relies on guards (explicit tsconfig `types`, compiler file-list check, `require.resolve` check). Reminder: `packages/contracts/dist/` now exists, and on 2026-10-03 the sync-root rules did not yet exclude it (MEGAsync was not running); the user still needs to add that exclusion. In Claude Code's shell, run `export NVM_DIR="$HOME/.nvm" && nvm use` before pnpm (Node 22 is the default; `engineStrict` refuses installs on it). Turbo and Expo CLI anonymous telemetry are still enabled by default for the user. Assistants set `TURBO_TELEMETRY_DISABLED=1` and `EXPO_NO_TELEMETRY=1` (plus `CI=1` for Expo) only in their own commands; disabling telemetry globally is the user's choice. Run Expo only from `apps/mobile`.
-- Next concrete step: assign **MOBILE-001-F** using the prompt in `FIRST_STEPS.md`. Its navigation tests should override only `isDevelopmentMode()` for the non-development scenario case and can reuse the route/URL expectations recorded in the MOBILE-001-E work-log entry, including a malformed percent-encoded group ID. Do not start it automatically. Exports (`pnpm export:*`) recreate `apps/mobile/dist/`, so remind the user about that MEGAsync exclusion. To exercise `pnpm dev` from an assistant shell, use a pseudo-terminal and always confirm no `expo`/`tsc --watch` process is left running.
+- Next concrete step: assign **MOBILE-001-G** using the prompt in `FIRST_STEPS.md`. Use the per-command Android invocation in `TOOLCHAIN.md` (`ANDROID_HOME`, JDK 17 `JAVA_HOME`, SDK tools first on `PATH`); record missing tools as unresolved checks rather than reconfiguring the machine. Generated `apps/mobile/android/` stays untracked and needs a MEGAsync exclusion. Do not start it automatically. Exports (`pnpm export:*`) recreate `apps/mobile/dist/`, so remind the user about that MEGAsync exclusion. To exercise `pnpm dev` from an assistant shell, use a pseudo-terminal and always confirm no `expo`/`tsc --watch` process is left running.
 - Before any takeover, inspect current files and latest task handoff. Use one writer at a time in this directory; ownership notes do not synchronize separate checkouts.
 
 ## Planned stack and boundaries
@@ -85,7 +90,7 @@ Last updated: 2026-10-03
 - Planned: `EXPO_PUBLIC_DATA_SOURCE=mock`, `EXPO_PUBLIC_MOCK_SCENARIO=active-neighborhood`, `EXPO_PUBLIC_APP_ENV=development`.
 - Future API URL is documented only; `api` mode must fail clearly until implemented, never fall back to mocks.
 - Google Maps native build configuration will be required. No values have been configured.
-- Planned checks: typecheck/lint, Vitest contracts, Jest/React Native Testing Library mobile, targeted Maestro/native checks. None exist or have run yet.
+- Checks: typecheck/lint (MONO-001) and Jest/React Native Testing Library mobile tests (MOBILE-001-F) exist. Vitest contracts and targeted Maestro/native checks are planned.
 - Mocks reset on cold reload/scenario reset; foreground resume catches up against timestamps. No persistent fake database.
 
 ## Rules for future work

@@ -585,3 +585,52 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - The MEGAsync exclusions for `packages/contracts/dist/` and `apps/mobile/dist/` are still pending.
 - **Resume from:** Assign MOBILE-001-F when requested.
 - **Ownership:** Released; no active task.
+
+## 2026-10-03 — MOBILE-001-F: Behavior test harness
+
+- **Actor/session:** Claude Code / test-harness.
+- **Status:** Completed; ownership released. Parent MOBILE-001 stays `In progress` until Android and iOS (G/H) pass.
+- **Working copy:** `main` at `243a715` (MOBILE-001-E, committed at the user's request). At the user's request, MOBILE-001-F was committed on top of it, without pushing. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "commit and continue with MOBILE-001-F". MOBILE-001-E was committed first; only the F card was executed.
+- **Changes:**
+  - **Dependencies (mobile dev, exact):** `jest` 29.7.0, `jest-expo` 57.0.5, `@types/jest` 29.5.14, `@testing-library/react-native` 14.0.1, `test-renderer` 1.2.0, `@react-native/jest-preset` 0.86.3, `@babel/runtime` 7.29.7. `pnpm-lock.yaml` updated.
+  - **`apps/mobile/jest.config.js`:** `preset: 'jest-expo'` and `testMatch: ['<rootDir>/tests/**/*.test.ts?(x)']`.
+  - **`apps/mobile/tsconfig.json`:** `types: ["jest"]`.
+  - **Scripts:** mobile `test` = `jest`; root `test:mobile` = `pnpm build:contracts && pnpm --filter @ride-match/mobile test`; root `test` = `turbo run test`. `turbo.json` gains `test` with `dependsOn: ["^build"]`.
+  - **`tests/helpers/renderApp.ts`:** `renderApp(initialUrl)` wraps `renderRouter('./app', …)`, awaits Testing Library 14's async render, and returns `getPathname()` and `getRootStack()` (the root layout's stack, nested under Expo Router's `__root`). `flushTimersAndRestore()` runs pending timers inside `act`, runs fake microtasks, asserts `jest.getTimerCount()` is 0, and restores real timers.
+  - **`tests/navigation.test.tsx` (14 tests):**
+    - Anonymous home at `/`: header, “Map coming soon”, “Sign in”, no auth screen.
+    - Sign in → `/auth/phone` → Preview code step → `/auth/otp` → “Back to phone step” → `/auth/phone`.
+    - Close from the phone step and from the code step → `/` with the root stack exactly `['index']` (the existing home, no duplicate).
+    - Direct `/auth/otp`: Close → `/` (fallback); Back → `/auth/phone`.
+    - `/groups/abc-123`, `/groups/not%20a%20uuid`, `/groups/%E0%A4%A`, `/groups/abc-123/chat`, `/groups/%E0%A4%A/chat`, and `/settings`: the unavailable message, no ID text, exactly one button, and “Go to map” → `/`.
+    - `/dev/scenarios`: the “Mock scenarios” placeholder by default; with only `isDevelopmentMode()` overridden to false (`jest.spyOn`), the pathname stays `/dev/scenarios`, the unavailable message shows, and “Go to map” → `/`.
+  - **`tests/ui.test.tsx` (2 tests):** an enabled `Button` is enabled and calls `onPress` exactly once per `userEvent.press`; a disabled one reports `toBeDisabled()` and ignores the press.
+  - No C–E source files changed; the tests exposed no defect in them.
+  - **Docs:** `TOOLCHAIN.md` (versions, dependency rows, corrections, test configuration, tsconfig outcome, install commands, guard result), `DEVELOPMENT.md` (command statuses, Turbo `test`, current harness), the root `README.md` (status and commands), `docs/README.md`, `ARCHITECTURE.md`, `ROADMAP.md`, `FIRST_STEPS.md` (F `Completed`), and `AI_CONTEXT.md`.
+- **Decisions and corrections:**
+  - **`test-renderer` 1.2.0, not the planned 1.3.0.** The first install made `pnpm peers check` report `react-reconciler@0.34.0` wanting `react ^19.3.0`; 1.3.0 depends on `react-reconciler ~0.34.0`. 1.2.0 depends on `~0.33.0` (0.33.0 is the only stable 0.33, peer `react ^19.2.0`) and is within Testing Library's `^1.0.0` peer. Expo's `bundledNativeModules.json` pins only `jest-expo` among these packages. A stale 1.3.0 copy stayed in `node_modules` until a clean `pnpm install --frozen-lockfile` (root, mobile, and contracts `node_modules` removed first, as in MOBILE-001-A).
+  - **`@babel/runtime` declared.** The first run's stack traces showed `asyncToGenerator` loading from `/Users/home/node_modules/@babel/runtime` (7.29.7). `babel-preset-expo` enables Babel's runtime transform, and Jest's non-Hermes profile emits helper imports that resolve from each test or source file; pnpm does not hoist `@babel/runtime`, so lookup left the repository. This is the TOOLCHAIN ancestor-folder hazard; the documented guard is to declare the import, not to add a resolver override. 7.29.7 is the version `expo` already resolved. A Metro iOS export has no `@babel/runtime` source before or after the change.
+  - **No `transformIgnorePatterns` override and no `babel.config.js`.** `jest-expo` 57.0.5 already handles `.pnpm` paths and keeps two exclusions that the planned pattern would have lost; it loads `expo/internal/babel-preset` from `process.cwd()`.
+  - **App directory `'./app'` relative to the working directory**, not `__dirname`, so the mobile tsconfig needs no Node types; jest-expo already requires `apps/mobile` as the working directory.
+  - **Pathname checks use `getPathname()` with ordinary matchers**, because Expo Router's matchers (`toHavePathname`) ship no type declarations.
+  - **The one leftover fake “timer”** after flushing was a microtask from React's `act()` (`queueSeveralMicrotasks` in `react.development.js`), queued through the `queueMicrotask` that Jest's modern fake timers replace. `jest.runAllTicks()` clears it; no app or navigation timer persists after unmount.
+- **Verification:**
+  - **Dependency checks:** `pnpm peers check` → "No peer dependency issues found" after the clean install. `pnpm doctor:mobile` → "21/21 checks passed. No issues detected!". From `apps/mobile`, `require.resolve` puts `jest`, `jest-expo`, Testing Library, `test-renderer` (1.2.0), `@react-native/jest-preset`, `@babel/runtime`, `@types/jest`, and `expo-router/testing-library` inside the repository; Testing Library resolves to the same copy from `expo-router`.
+  - **Tests:** `pnpm test:mobile` → 2 suites, 16 tests passed, exit 0. `pnpm test:mobile --runTestsByPath tests/navigation.test.tsx` → runs `jest --runTestsByPath tests/navigation.test.tsx`, 1 suite, 14 tests, exit 0. `pnpm test` → Turbo built contracts (cached) and ran `@ride-match/mobile:test`, 16 passed, 2 tasks successful, exit 0. `jest --detectOpenHandles` → 16 passed, no open-handle report. No console warnings, errors, or `act` warnings in the output.
+  - **Resolution:** an uncached run (`--no-cache`) through a scratch resolver wrapping React Native's Jest resolver logged no resolution outside the repository, and `@ride-match/contracts` → `packages/contracts/dist/index.js`. `jest --showConfig`'s `moduleNameMapper` has only the preset's `react-native` and vector-icons entries; no test or config references contracts.
+  - **Contracts negative probe:** with `packages/contracts/dist` removed, `jest tests/navigation.test.tsx` failed with "Cannot find module '@ride-match/contracts' from 'src/bootstrap/checkContractsPackage.ts'". `pnpm build:contracts` restored it and all 16 passed.
+  - **Mutation probes (each reverted with `git checkout`):** Close using `router.push('/')` → 1 failure (root stack); the scenario gate reading `__DEV__` instead of `isDevelopmentMode()` → 1 failure; `Button` without `disabled` → 1 failure; the group route rendering its ID → 3 failures. `git diff` on `app/` and `src/` was empty afterwards.
+  - **Static checks:** `pnpm typecheck` → 3 tasks, exit 0 (the first attempt failed on `node:path`/`__dirname` in the helper, which led to the `'./app'` decision). `pnpm lint` → 3 tasks, exit 0; mobile ESLint checks 22 files, including `jest.config.js` and all three test files. `tsc --listFilesOnly` lists the three test files and `@types/jest` from the repository, no `@types/node`, and nothing outside the repository.
+  - **Exports:** `pnpm export:android` → exit 0, 2.7 MB, 1251 modules; `pnpm export:ios` → exit 0, 2.4 MB, 1116 modules (both unchanged from E). An iOS `--source-maps` export into scratch had 1109 sources, none from Jest, Testing Library, `test-renderer`, `react-reconciler`, `@babel/runtime`, or `tests/`, and none outside the repository. The scratch output and `apps/mobile/dist/` were deleted.
+  - **Final passes after the doc updates:** `pnpm install --frozen-lockfile` 0, `pnpm typecheck` 0, `pnpm lint` 0, `pnpm test:mobile` 16 passed, `pnpm test` 16 passed (2 Turbo tasks), and `git diff --check` ok. Scratch doc validation found 0 errors in 106 local links across 20 Markdown files (the 19 project files plus Expo's ignored `.expo/README.md`), after restoring a TOOLCHAIN heading whose anchor another link uses. It also found 13 child rows matching 13 cards (11 `Completed`). `apps/mobile/dist/` is absent.
+  - **Not run:** native builds and on-device interactions (MOBILE-001-G/H). Jest cannot show native modal presentation, Android hardware back, iOS swipe dismissal, or real safe-area insets.
+- **JSDoc/TSDoc:**
+  - `renderApp`: what it renders, why it awaits and re-exposes Expo Router's helpers, and the fake-timer handoff.
+  - `flushTimersAndRestore`: when to call it and why fake microtasks are run before the zero-timer assertion.
+  - Comments on the app-directory path and on `jest.config.js`'s preset defaults and `testMatch`.
+- **Remaining/blockers:**
+  - MOBILE-001-G (Android) and MOBILE-001-H (iOS and the final checkpoint) are still required before MOBILE-001 can be `Completed`.
+  - The MEGAsync exclusions for `packages/contracts/dist/` and `apps/mobile/dist/` are still pending, and G/H will add `apps/mobile/android/` and `apps/mobile/ios/`.
+- **Resume from:** Assign MOBILE-001-G when requested.
+- **Ownership:** Released; no active task.
