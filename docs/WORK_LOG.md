@@ -195,3 +195,36 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - Stale files in `dist/` are not cleaned by `build` (no source has been removed yet). Revisit if outputs drift, for example in MONO-001-E's cache-restoration check.
 - **Resume from:** Assign MONO-001-D when requested, using the D commands and lint choices in `TOOLCHAIN.md`.
 - **Ownership:** Released; no active task.
+
+## 2026-10-03 — MONO-001-D: Typecheck and lint are real checks
+
+- **Actor/session:** Claude Code / static-checks.
+- **Status:** Completed; ownership released. Parent MONO-001 stays `In progress`.
+- **Working copy:** `main` at `46a6865` (MONO-001-C, committed at the user's request). At the user's request, MONO-001-D was committed on top of it, without pushing. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "commit and continue with MONO-001-D". Only the D card was executed.
+- **Changes:**
+  - Added root `eslint.config.mjs`. It uses `defineConfig` and `globalIgnores` from `eslint/config` and ignores `**/dist/`, `**/node_modules/`, and `apps/`, because mobile gets its own Expo config in MOBILE-001-A. For `packages/contracts/**/*.ts` it applies `@eslint/js` recommended plus `typescript-eslint` `recommendedTypeChecked`, with `projectService` and `tsconfigRootDir: import.meta.dirname`, and sets `@typescript-eslint/no-explicit-any` to `error`.
+  - Contracts gained `lint` (`eslint .`) and the dev dependency `eslint` 9.39.5; the lockfile importer was updated.
+  - Root scripts: `typecheck` = `pnpm -r run typecheck` and `lint` = `pnpm -r run lint` (direct wrappers until MONO-001-E routes them through Turbo).
+  - Updated the root `README.md` commands, `TOOLCHAIN.md` (implementation and probe results), `DEVELOPMENT.md`, `docs/README.md`, `ROADMAP.md`, `FIRST_STEPS.md` (D `Completed`), and `AI_CONTEXT.md`.
+- **Decisions:**
+  - Type-aware `recommendedTypeChecked` rather than plain `recommended`, so async and promise correctness rules apply to contracts. A third probe confirmed this.
+  - No formatting rules and no mock-import boundary rules; those are deferred.
+- **Excluded:** No test runner, no Turbo config (MONO-001-E), and no mobile lint config (MOBILE-001-A). No `@ts-ignore`, blanket exclusions, disabled strictness, or success-only scripts.
+- **Verification:**
+  - `pnpm --filter @ride-match/contracts add -D eslint@9.39.5` → exit 0, with the expected deprecation warning. Contracts' `eslint` links to the same `.pnpm/eslint@9.39.5_supports-color@7.2.0` directory as the root's.
+  - `pnpm typecheck` → exit 0; `pnpm lint` → exit 0.
+  - `eslint . --debug` from `packages/contracts` → it used the root `eslint.config.mjs` with the repo root as base path, and linted only `src/index.ts`.
+  - **Negative probes,** each a temporary file in `packages/contracts/src/`, deleted right after its run:
+    - `__probe_type_error.ts` (`const probe: number = 'not a number'`) → `pnpm typecheck` failed with TS2322, exit 2.
+    - `__probe_explicit_any.ts` (`(value: any)`) → `pnpm typecheck` exit 0, and `pnpm lint` failed with `@typescript-eslint/no-explicit-any`, exit 1.
+    - `__probe_floating_promise.ts` (unawaited async call) → `pnpm lint` failed with `@typescript-eslint/no-floating-promises`, exit 1.
+  - After the deletions, `src/` contains only `index.ts`.
+  - **Final passes after cleanup:** `pnpm typecheck` 0, `pnpm lint` 0, `pnpm build:contracts` 0, `pnpm install --frozen-lockfile` ok. `git diff --check` passed. Scratch doc validation passed over 19 Markdown files: 102 local links and anchors with 0 errors, and 13 child rows matching 13 cards (4 `Completed`).
+  - No Git reset or restore was used.
+- **JSDoc/TSDoc:** Not applicable; config only. `eslint.config.mjs` has a short comment on why `apps/` is ignored.
+- **Remaining/blockers:**
+  - The MEGAsync exclusion for `packages/contracts/dist/` is still a pending user action.
+  - Root lint does not lint root-level config files (none are TypeScript). Revisit if root scripts are added.
+- **Resume from:** Assign MONO-001-E when requested; it ends with the MONO-001 checkpoint review.
+- **Ownership:** Released; no active task.

@@ -2,7 +2,7 @@
 
 Ride Match helps nearby people heading in compatible directions form a small group and share a taxi. The first milestone is a React Native (Expo) mobile MVP backed by realistic mocks; there is no backend in this milestone.
 
-**Status:** workspace foundation in progress (MONO-001). The root pnpm workspace and its tools exist, and the empty `@ride-match/contracts` package compiles. No mobile app or lint, typecheck, or test command exists yet. See [docs/AI_CONTEXT.md](docs/AI_CONTEXT.md) for the current state.
+**Status:** workspace foundation in progress (MONO-001). The root pnpm workspace and its tools exist, and the empty `@ride-match/contracts` package compiles, type-checks, and lints. No mobile app or test command exists yet. See [docs/AI_CONTEXT.md](docs/AI_CONTEXT.md) for the current state.
 
 ## Requirements
 
@@ -29,8 +29,10 @@ pnpm install --frozen-lockfile
 | --- | --- |
 | `pnpm install --frozen-lockfile` | Install the workspace exactly as locked |
 | `pnpm build:contracts` | Compile `packages/contracts/src` into `packages/contracts/dist` (JavaScript and declarations) |
+| `pnpm typecheck` | Run every package's `typecheck` script (strict TypeScript, no emit) |
+| `pnpm lint` | Run every package's `lint` script; contracts use the root [`eslint.config.mjs`](eslint.config.mjs) with type-aware TypeScript rules |
 
-Root typecheck, lint, development, export, native, doctor, and test commands are added one task at a time. [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) describes them and when each one becomes available. Exact versions and per-task install commands are in [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md).
+Development, export, native, doctor, and test commands are added one task at a time. [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) describes them and when each one becomes available. Exact versions and per-task install commands are in [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md).
 
 ## Layout
 

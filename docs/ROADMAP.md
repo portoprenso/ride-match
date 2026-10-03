@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-10-03. **MONO-001 is in progress (children MONO-001-A to MONO-001-C completed); all other implementation tasks are planned.**
+Last updated: 2026-10-03. **MONO-001 is in progress (children MONO-001-A to MONO-001-D completed); all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -13,7 +13,7 @@ This roadmap covers only items 1–2. No backend implementation or real transpor
 
 ## Progress
 
-Documentation baseline **DOC-000**, shared Codex/Claude Code workflow **DOC-001**, and small first-step task plan **DOC-002** are complete. MONO-001 is in progress: **MONO-001-A** recorded the toolchain in [TOOLCHAIN.md](TOOLCHAIN.md), **MONO-001-B** created the root pnpm workspace, and **MONO-001-C** added the empty `@ride-match/contracts` package with a working `pnpm build:contracts`. Lint, typecheck wrappers, and Turbo wiring remain. See [WORK_LOG.md](WORK_LOG.md) for actual changes and verification. The next assignment is **MONO-001-D**, when requested.
+Documentation baseline **DOC-000**, shared Codex/Claude Code workflow **DOC-001**, and small first-step task plan **DOC-002** are complete. MONO-001 is in progress: **MONO-001-A** recorded the toolchain in [TOOLCHAIN.md](TOOLCHAIN.md), **MONO-001-B** created the root pnpm workspace, **MONO-001-C** added the empty `@ride-match/contracts` package with a working `pnpm build:contracts`, and **MONO-001-D** made `pnpm typecheck` and `pnpm lint` real checks (negative probes fail as expected). Turbo wiring and the workspace checkpoint remain. See [WORK_LOG.md](WORK_LOG.md) for actual changes and verification. The next assignment is **MONO-001-E**, when requested.
 
 Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bounded child assignments, one per request. It owns child statuses; this table owns parent statuses. Complete a parent only after all required children and parent criteria pass. The proposed order is workspace -> Expo shell -> separately planned contract work, which preserves the existing dependencies. The 25 parent tasks and their DAG are unchanged.
 
