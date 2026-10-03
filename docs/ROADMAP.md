@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-10-03. **All implementation tasks are planned; none has started.**
+Last updated: 2026-10-03. **MONO-001 is in progress (child MONO-001-A completed); all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -13,13 +13,13 @@ This roadmap covers only items 1–2. No backend implementation or real transpor
 
 ## Progress
 
-Documentation baseline **DOC-000**, shared Codex/Claude Code workflow **DOC-001**, and small first-step task plan **DOC-002** are complete; no implementation task has started. See [WORK_LOG.md](WORK_LOG.md) for actual changes and verification. The next assignment is **MONO-001-A** within MONO-001, when requested.
+Documentation baseline **DOC-000**, shared Codex/Claude Code workflow **DOC-001**, and small first-step task plan **DOC-002** are complete. MONO-001 is in progress: **MONO-001-A** recorded the toolchain in [TOOLCHAIN.md](TOOLCHAIN.md). No workspace or application files exist yet. See [WORK_LOG.md](WORK_LOG.md) for actual changes and verification. The next assignment is **MONO-001-B**, when requested.
 
 Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bounded child assignments, one per request. It owns child statuses; this table owns parent statuses. Complete a parent only after all required children and parent criteria pass. The proposed order is workspace -> Expo shell -> separately planned contract work, which preserves the existing dependencies. The 25 parent tasks and their DAG are unchanged.
 
 | ID | Task | Status |
 | --- | --- | --- |
-| MONO-001 | Workspace foundation | Planned |
+| MONO-001 | Workspace foundation | In progress |
 | CONTRACT-001 | Common, location, authentication contracts | Planned |
 | CONTRACT-002 | Places, rides, matching contracts | Planned |
 | CONTRACT-003 | Groups, chat, safety contracts | Planned |

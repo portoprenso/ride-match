@@ -6,10 +6,10 @@ Ride Match helps nearby people travelling in compatible directions form a small 
 
 ## Current state
 
-- Documentation baseline is complete; application implementation has not started.
+- Documentation baseline is complete. MONO-001 is in progress: [TOOLCHAIN.md](TOOLCHAIN.md) records the selected versions, commands, and local prerequisites. No workspace, package, or application files exist yet.
 - `apps/mobile/` and `apps/api/` already exist as empty directories. No backend package is planned for the mobile milestone.
 - No pnpm workspace, Expo app, contracts package, dependencies, tests, or build scripts have been initialized. A Git repository is present.
-- The next planned assignment is **MONO-001-A**, the toolchain preparation child of MONO-001, when requested. [First steps](FIRST_STEPS.md) splits workspace and Expo shell work into 13 small assignments for Terra or either assistant.
+- The next planned assignment is **MONO-001-B**, creating the root pnpm workspace, when requested. [First steps](FIRST_STEPS.md) splits workspace and Expo shell work into 13 small assignments for Terra or either assistant.
 - Architecture and lifecycle choices below are proposed defaults to validate during the mock MVP, not evidence of production capabilities.
 
 ## Using Codex and Claude Code
@@ -18,7 +18,7 @@ Both assistants share [AGENTS.md](../AGENTS.md). [CLAUDE.md](../CLAUDE.md) impor
 
 Read [AI_WORKFLOW.md](AI_WORKFLOW.md) for the start/resume/finish procedure, ownership rules, handoff template, and copyable prompts. Each meaningful task records its actor, changed files, decisions, verification results, unfinished work, and next concrete step in the shared docs. This makes work portable between tools without copying chat histories.
 
-For the first implementation batch, assign one child from [FIRST_STEPS.md](FIRST_STEPS.md) per request. It defines file scope, fixed decisions, checks, exclusions, and two review checkpoints. Its child statuses complement the parent statuses in the roadmap; all remain planned.
+For the first implementation batch, assign one child from [FIRST_STEPS.md](FIRST_STEPS.md) per request. It defines file scope, fixed decisions, checks, exclusions, and two review checkpoints. Its child statuses complement the parent statuses in the roadmap.
 
 Use one writer at a time in a shared directory. Separate checkouts must receive both code and documentation updates before continuation; shared docs are not automatic cross-tool synchronization.
 
@@ -32,7 +32,7 @@ Read applicable root instructions first, then use this map (the workflow and rel
 4. [Shared AI workflow](AI_WORKFLOW.md): task ownership, resuming work, and handoff requirements.
 5. [Work log](WORK_LOG.md): attributed actions, actual verification, and unfinished work; read the latest relevant entry.
 6. [Product](PRODUCT.md): map UX, routes, flows, privacy presentation, and edge states.
-7. [Development](DEVELOPMENT.md): proposed commands, configuration, testing, and completion criteria.
+7. [Development](DEVELOPMENT.md): proposed commands, configuration, testing, and completion criteria. [Toolchain](TOOLCHAIN.md) pins versions, install commands, and local prerequisites for the first batch.
 8. [Mock scenarios](MOCK_SCENARIOS.md): simulator behavior and reproducible demonstrations.
 9. [API overview](api/overview.md): future transport conventions, errors, privacy, and authority.
 

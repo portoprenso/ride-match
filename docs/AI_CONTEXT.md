@@ -5,25 +5,25 @@ Last updated: 2026-10-03
 ## Purpose and state
 
 - Ride Match: map-first discovery of nearby compatible ride intentions, groups of up to four, temporary text chat, shared meeting point, external Yandex Go handoff.
-- **Implemented:** Documentation baseline and shared Codex/Claude Code instructions only. No application or backend code, packages, dependencies, runnable scripts, or tests.
+- **Implemented:** Documentation baseline, shared Codex/Claude Code instructions, and the toolchain record [TOOLCHAIN.md](TOOLCHAIN.md) (MONO-001-A). No application or backend code, packages, dependencies, runnable scripts, or tests.
 - Existing `apps/mobile/` and `apps/api/` are empty. Preserve unrelated files; do not populate `apps/api/` during the mobile milestone.
-- Next planned assignment: **MONO-001-A** (toolchain record) from [FIRST_STEPS.md](FIRST_STEPS.md), part of MONO-001 in [ROADMAP.md](ROADMAP.md), only when requested.
+- MONO-001 is `In progress` in [ROADMAP.md](ROADMAP.md); child MONO-001-A is `Completed`. Next planned assignment: **MONO-001-B** (root pnpm workspace) from [FIRST_STEPS.md](FIRST_STEPS.md), only when requested.
 - Sequence: mock mobile MVP -> contract review -> future backend -> future HTTP/Socket.IO adapter.
 
 ## Shared handoff and active work
 
 - Entry points: [AGENTS.md](../AGENTS.md) contains shared rules; [CLAUDE.md](../CLAUDE.md) imports them for Claude Code.
 - Both assistants use [AI_WORKFLOW.md](AI_WORKFLOW.md), this file, the roadmap, relevant specs, and [WORK_LOG.md](WORK_LOG.md) as shared project memory. Private chat/memory is not a substitute.
-- Active task/owner: **None**. DOC-002 (Codex / terra-first-steps drafting; Claude Code / first-steps-review patch and closure) is completed; ownership released.
-- Latest handoff: DOC-002 in `WORK_LOG.md`. `FIRST_STEPS.md` splits MONO-001/MOBILE-001 into 13 child assignments, all `Planned`. Terra is a model used through Codex; it records its actor as `Codex (Terra)`.
-- Working copy: `main`. Codex's DOC-002 draft is commit `9566405`; Claude Code's review patch and closure are the next commit. Preserve unrelated untracked `.idea/` files. No application implementation has started.
-- Local environment hazards: an ancestor home-directory `package.json` (yarn), `yarn.lock`, and `node_modules/@types`, plus a MEGAsync-synced checkout. MONO-001-A must record mitigations or open user decisions in `docs/TOOLCHAIN.md`. MONO-001-B is blocked until the pnpm bootstrap method and the MEGAsync decision are recorded.
-- Next concrete step: assign **MONO-001-A** using the prompt in `FIRST_STEPS.md`. Do not start it automatically.
+- Active task/owner: **None**. MONO-001-A (Claude Code / toolchain-record) is completed; ownership released.
+- Latest handoff: MONO-001-A in `WORK_LOG.md`. `FIRST_STEPS.md` splits MONO-001/MOBILE-001 into 13 child assignments; MONO-001-A is `Completed`; the other 12 are `Planned`. Terra is a model used through Codex; it records its actor as `Codex (Terra)`.
+- Working copy: `main` at `0a01d3c`; MONO-001-A documentation changes are uncommitted. Preserve unrelated untracked `.idea/` files. No workspace or application files exist yet.
+- Local environment decisions (user, 2026-10-03; details in `TOOLCHAIN.md`): Node 24.17.0, and MONO-001-B may run `corepack enable pnpm` under Node 24. The checkout stays in MEGAsync; the user adds exclusions for generated `dist/`, `android/`, and `ios/` paths. Ancestor home-folder packages stay; the repository relies on guards (explicit tsconfig `types`, compiler file-list check, `require.resolve` check). No open decision blocks MONO-001-B.
+- Next concrete step: assign **MONO-001-B** using the prompt in `FIRST_STEPS.md`; follow the bootstrap order in `TOOLCHAIN.md`. Do not start it automatically.
 - Before any takeover, inspect current files and latest task handoff. Use one writer at a time in this directory; ownership notes do not synchronize separate checkouts.
 
 ## Planned stack and boundaries
 
-- pnpm workspaces, Turborepo, TypeScript; Expo/React Native development builds; Expo Router.
+- pnpm workspaces, Turborepo, TypeScript; Expo/React Native development builds; Expo Router. Exact versions: [TOOLCHAIN.md](TOOLCHAIN.md) (Node 24.17.0, pnpm 11.28.2, Expo SDK 57 / React Native 0.86.3 / React 19.2.3, TypeScript 6.0.3, Turbo 2.11.6, ESLint 9.39.5, Jest 29.7.0).
 - `react-native-maps`: Apple Maps on iOS, Google Maps on Android; verify local coverage and native configuration early.
 - TanStack Query for remote-like state; local React state/reducers for presentation. No Redux/Zustand by default.
 - One `AppDataSource` boundary: feature hooks -> typed operations/events -> in-memory mocks now, HTTP/Socket.IO later.

@@ -31,7 +31,7 @@ Each bounded task should leave runnable behavior, focused tests where useful, up
 
 ## First implementation batch
 
-Use [FIRST_STEPS.md](FIRST_STEPS.md) for the 13 small assignments under MONO-001 and MOBILE-001. Assign one child at a time. MONO-001-A will create `docs/TOOLCHAIN.md` with exact compatible versions and commands; that file does not exist yet. Do not guess independent latest dependency versions while implementing later cards.
+Use [FIRST_STEPS.md](FIRST_STEPS.md) for the 13 small assignments under MONO-001 and MOBILE-001. Assign one child at a time. [TOOLCHAIN.md](TOOLCHAIN.md), recorded by MONO-001-A, pins Node 24.17.0, pnpm 11.28.2 through Corepack, Expo SDK 57, TypeScript 6.0.3, Turbo 2.11.6, and the lint and test packages, with exact per-task install commands and local prerequisites. Use those versions and commands; do not guess independent latest dependency versions while implementing later cards.
 
 Commands become available incrementally: `build:contracts` in MONO-001-C; root lint/typecheck in MONO-001-D; Turbo orchestration in MONO-001-E; development/doctor/export/native wrappers in MOBILE-001-B; mobile/root tests in MOBILE-001-F. CONTRACT-001 adds actual contract schemas/tests later. Do not create success-only placeholders for unavailable commands.
 

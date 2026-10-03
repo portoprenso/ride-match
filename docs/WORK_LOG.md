@@ -60,3 +60,63 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **Remaining/blockers:** Codex's original verification for the draft is unknown because no entry was recorded. The environment hazards are unresolved. MONO-001-A must record mitigations or open user decisions, and MONO-001-B stays blocked until the pnpm bootstrap method and the MEGAsync decision are recorded. Claims about Jest's handling of `type: module` and Corepack's distribution are flagged for verification in A, not asserted as verified.
 - **Resume from:** Assign MONO-001-A when requested, using the prompt in `docs/FIRST_STEPS.md`.
 - **Ownership:** Released; no active task.
+
+## 2026-10-03 — MONO-001-A: Toolchain recorded
+
+- **Actor/session:** Claude Code / toolchain-record.
+- **Status:** Completed; ownership released. Parent MONO-001 stays `In progress`.
+- **Working copy:** `main` at `0a01d3c`. Changes are uncommitted, with no commit or push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** The user asked to start the first steps one child at a time; only MONO-001-A was executed. Scope: create `docs/TOOLCHAIN.md` from read-only probes and published metadata, plus status and handoff updates.
+- **Changes:** Added `docs/TOOLCHAIN.md`, which covers:
+  - Selected versions with owner, purpose, and compatibility evidence: Node 24.17.0, pnpm 11.28.2 through Corepack, Expo SDK 57 (`expo` 57.0.26, React Native 0.86.3, React 19.2.3), TypeScript 6.0.3, Turbo 2.11.6, ESLint 9.39.5, `typescript-eslint` 8.71.0, `eslint-config-expo` 57.0.2, Jest 29.7.0, `jest-expo` 57.0.5, Testing Library 14.0.1 with `test-renderer` 1.3.0, `expo-doctor` 1.20.4.
+  - The Corepack bootstrap order and pnpm 11 defaults.
+  - The build-script policy.
+  - Contracts and mobile tsconfigs with explicit `types`.
+  - The contracts ESM `exports` evidence for Node, Metro, and Jest.
+  - Lint, test, and Turbo choices, with the documented alternative for interactive dev.
+  - Exact install commands for B, C, D, MOBILE-001-A, B, and F.
+  - The Expo-generated ignore convention and the MEGAsync exclusion list.
+  - Ancestor guards, native prerequisites, verify-later items, and sources.
+
+  Updated statuses and pointers in `FIRST_STEPS.md` (A `Completed`), `ROADMAP.md` (MONO-001 `In progress`), `AI_CONTEXT.md`, `DEVELOPMENT.md`, and `docs/README.md`.
+- **Decisions:**
+  - **User, via questions in this session:**
+    - Node 24; B may run `corepack enable pnpm` under Node 24.17.0.
+    - The checkout stays in MEGAsync, and the user adds exclusions for generated paths.
+    - Ancestor home-folder packages stay, guarded in the repository.
+  - **Assistant, with evidence in `TOOLCHAIN.md`:**
+    - pnpm 11, not 12: Corepack's `>=11` entry expects `bin/pnpm.mjs`, and 12 is a new native-binary distribution.
+    - Turbo 2.11.6, not 2.11.7: pnpm 11's default `minimumReleaseAge` is one day.
+    - TypeScript 6.0.3, not 7: `typescript-eslint` peer range and Expo SDK 57's `~6.0.3`.
+    - ESLint 9: Expo's lint plugins lack ESLint 10 peers, and Expo CLI 57 installs `^9`; npm marks 9.39.5 deprecated, which is accepted and recorded.
+    - Jest 29: `jest-expo` 57 is built on it.
+    - Testing Library 14: required by Expo Router testing.
+    - Typed routes off for this batch: Expo CLI rewrites `tsconfig.json` and `.gitignore` around `expo-env.d.ts`.
+    - Native and test wrappers run outside Turbo to avoid its strict env filtering.
+    - `allowBuilds` defaults to deny; `unrs-resolver: false` is expected in MOBILE-001-A.
+- **Excluded:** No installation, `corepack enable`, scaffolding, manifests, lockfile, or config files. No changes outside the repository, to shell profiles, to MEGAsync settings, or to home-folder files. MONO-001-B and later children were not started.
+- **Verification (all read-only):**
+  - Local probes (exact results are in `TOOLCHAIN.md`):
+    - `node --version`, `npm --version`, `corepack --version` (both Node lines), `pnpm --version` (refused because of the ancestor yarn manifest)
+    - `ls ~/.nvm/versions/node`, Corepack's bundled pnpm definitions and README
+    - `watchman --version`, `java -version`, `/usr/libexec/java_home -V`, Android SDK directory listings
+    - `adb --version` (PATH and SDK), `emulator -version`, `emulator -list-avds`, AVD `config.ini`
+    - `xcodebuild -version`, `xcrun simctl list runtimes`, `pod --version` (warns without UTF-8; works with `LANG=en_US.UTF-8`)
+    - Ancestor directory inventory and the sync-root `.megaignore`
+  - Registry and source checks:
+    - `npm view` for dist-tags, publish times, peers, engines, dependencies, install scripts, and deprecation of every selected package
+    - Expo versions API, and `bundledNativeModules.json` / `tsconfig.base.json` for `expo@57.0.26`
+    - `@expo/cli` 57.0.27 sources (lint prerequisite; `expo-env.d.ts` and tsconfig type generation), Expo's SDK 57 template `gitignore`
+    - Node release index, pnpm v11 settings docs, TypeScript 6.0 notes, Turbo 2.11.6 configuration docs, React Native 0.86.3 Gradle versions and `__DEV__` types
+    - `jest-resolve` and `jest-runtime` 29.7.0 ESM-loading source
+  - Document checks:
+    - A scratch Python validation passed over 18 Markdown files: 86 local links and anchors resolved with 0 errors, fences were balanced, and 13 child rows matched 13 cards (1 `Completed`, 12 `Planned`). Of the 25 roadmap tasks, MONO-001 is `In progress` and the rest are `Planned`.
+    - `git diff --check` passed on tracked files, and a trailing-whitespace scan of the new untracked `TOOLCHAIN.md` found none.
+  - No application checks apply, because no code or tooling exists.
+- **JSDoc/TSDoc:** Not applicable; documentation only.
+- **Remaining/blockers:**
+  - Expectations listed under "Verify later" in `TOOLCHAIN.md` must be confirmed by their tasks: Corepack under Node 24, Metro and Jest loading of contracts `exports`, Turbo terminal-UI interactivity and env pass-through, peer warnings, the `unrs-resolver` decision, the `babel.config.js` need, and `types: ["jest"]`.
+  - The user still needs to add the MEGAsync exclusions, before MONO-001-C creates `dist/`.
+  - Native runs need per-command `ANDROID_HOME`, `JAVA_HOME` (JDK 17), the SDK adb first on `PATH`, and a UTF-8 locale for CocoaPods; the commands are recorded. Nothing is missing.
+- **Resume from:** Assign MONO-001-B when requested. Follow the bootstrap order in `TOOLCHAIN.md`: activate Node 24.17.0, enable the pnpm shim (user-approved), write the root `package.json` before the first pnpm command, then run `corepack install`.
+- **Ownership:** Released; no active task.
