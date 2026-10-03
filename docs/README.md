@@ -6,10 +6,10 @@ Ride Match helps nearby people travelling in compatible directions form a small 
 
 ## Current state
 
-- Documentation baseline and workspace foundation (MONO-001) are complete. [TOOLCHAIN.md](TOOLCHAIN.md) records the selected versions, commands, and local prerequisites. The root pnpm workspace runs `pnpm build:contracts`, `pnpm typecheck`, and `pnpm lint` through Turbo (root `turbo.json`, local cache only) for the empty `@ride-match/contracts` package. There is no application or test script yet.
-- `apps/mobile/` and `apps/api/` already exist as empty directories. No backend package is planned for the mobile milestone.
-- No Expo app, contract schemas, or tests have been initialized. Root setup is in the repository [README](../README.md). A Git repository is present.
-- The next planned assignment is **MOBILE-001-A**, creating the smallest Expo Router app, when requested. [First steps](FIRST_STEPS.md) splits workspace and Expo shell work into 13 small assignments for Terra or either assistant.
+- Documentation baseline and workspace foundation (MONO-001) are complete. [TOOLCHAIN.md](TOOLCHAIN.md) records the selected versions, commands, and local prerequisites. The root pnpm workspace runs `pnpm build:contracts`, `pnpm typecheck`, and `pnpm lint` through Turbo (root `turbo.json`, local cache only) for the empty `@ride-match/contracts` package, and type-checks and lints `@ride-match/mobile` too. MOBILE-001 is in progress: `apps/mobile` is a minimal Expo SDK 57 / Expo Router shell with one anonymous home route showing “Ride Match” and “Map coming soon” (MOBILE-001-A). There are no development, native, or test scripts yet.
+- `apps/api/` stays an empty directory; no backend package is planned for the mobile milestone.
+- No contract schemas or tests exist yet. Root setup is in the repository [README](../README.md). A Git repository is present.
+- The next planned assignment is **MOBILE-001-B**, connecting the shared package and the development commands, when requested. [First steps](FIRST_STEPS.md) splits workspace and Expo shell work into 13 small assignments for Terra or either assistant.
 - Architecture and lifecycle choices below are proposed defaults to validate during the mock MVP, not evidence of production capabilities.
 
 ## Using Codex and Claude Code

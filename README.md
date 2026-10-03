@@ -2,7 +2,7 @@
 
 Ride Match helps nearby people heading in compatible directions form a small group and share a taxi. The first milestone is a React Native (Expo) mobile MVP backed by realistic mocks; there is no backend in this milestone.
 
-**Status:** workspace foundation complete (MONO-001). The root pnpm workspace uses Turbo to build, type-check, and lint the empty `@ride-match/contracts` package. No mobile app or test command exists yet; the Expo shell (MOBILE-001) comes next. See [docs/AI_CONTEXT.md](docs/AI_CONTEXT.md) for the current state.
+**Status:** workspace foundation complete (MONO-001); Expo shell in progress (MOBILE-001). The root pnpm workspace uses Turbo to build the empty `@ride-match/contracts` package and to type-check and lint it together with `@ride-match/mobile`. The mobile app is a minimal Expo Router shell: one home route with a map placeholder. Development, native, export, and test commands do not exist yet. See [docs/AI_CONTEXT.md](docs/AI_CONTEXT.md) for the current state.
 
 ## Requirements
 
@@ -29,10 +29,10 @@ pnpm install --frozen-lockfile
 | --- | --- |
 | `pnpm install --frozen-lockfile` | Install the workspace exactly as locked |
 | `pnpm build:contracts` | `turbo run build` for contracts: compile `packages/contracts/src` into `packages/contracts/dist` (JavaScript and declarations) |
-| `pnpm typecheck` | `turbo run typecheck`: strict TypeScript in every package, no emit |
-| `pnpm lint` | `turbo run lint`: every package's lint; contracts use the root [`eslint.config.mjs`](eslint.config.mjs) with type-aware TypeScript rules |
+| `pnpm typecheck` | `turbo run typecheck`: strict TypeScript in contracts and mobile, no emit |
+| `pnpm lint` | `turbo run lint`: contracts use the root [`eslint.config.mjs`](eslint.config.mjs) with type-aware TypeScript rules; mobile uses [`apps/mobile/eslint.config.js`](apps/mobile/eslint.config.js) (Expo's config) |
 
-[`turbo.json`](turbo.json) orders tasks after their dependencies' builds and caches results locally in `.turbo/`. A cache hit replays the earlier logs and restores `dist/` without recompiling. Failed tasks are never cached. Turbo sends anonymous usage telemetry unless you opt out with `pnpm exec turbo telemetry disable` or `TURBO_TELEMETRY_DISABLED=1`.
+[`turbo.json`](turbo.json) orders tasks after their dependencies' builds and caches results locally in `.turbo/`. A cache hit replays the earlier logs and restores `dist/` without recompiling. Failed tasks are never cached. Turbo sends anonymous usage telemetry unless you opt out with `pnpm exec turbo telemetry disable` or `TURBO_TELEMETRY_DISABLED=1`; Expo CLI does the same unless `EXPO_NO_TELEMETRY=1` is set.
 
 Development, export, native, doctor, and test commands are added one task at a time. [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) describes them and when each one becomes available. Exact versions and per-task install commands are in [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md).
 
@@ -40,7 +40,7 @@ Development, export, native, doctor, and test commands are added one task at a t
 
 | Path | Contents |
 | --- | --- |
-| `apps/mobile/` | Planned Expo app; currently empty |
+| `apps/mobile/` | `@ride-match/mobile`: Expo SDK 57 app with Expo Router. Run Expo commands from this directory (`pnpm exec expo …`), never from the repository root |
 | `apps/api/` | Intentionally empty; not a workspace package and not populated during the mobile milestone |
 | `packages/contracts/` | `@ride-match/contracts`: shared transport contracts (ESM, `exports` to `dist/`); currently empty until CONTRACT-001 |
 | `docs/` | Product, architecture, roadmap, toolchain, and handoff documentation |

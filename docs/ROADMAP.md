@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-10-03. **MONO-001 is completed (children MONO-001-A to MONO-001-E); all other implementation tasks are planned.**
+Last updated: 2026-10-03. **MONO-001 is completed; MOBILE-001 is in progress (MOBILE-001-A completed); all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -13,7 +13,7 @@ This roadmap covers only items 1–2. No backend implementation or real transpor
 
 ## Progress
 
-Documentation baseline **DOC-000**, shared Codex/Claude Code workflow **DOC-001**, and small first-step task plan **DOC-002** are complete. MONO-001 is completed: **MONO-001-A** recorded the toolchain in [TOOLCHAIN.md](TOOLCHAIN.md), **MONO-001-B** created the root pnpm workspace, **MONO-001-C** added the empty `@ride-match/contracts` package with a working `pnpm build:contracts`, **MONO-001-D** made `pnpm typecheck` and `pnpm lint` real checks (negative probes fail as expected), and **MONO-001-E** routed all three through Turbo with cached build outputs. It also passed the workspace checkpoint review. See [WORK_LOG.md](WORK_LOG.md) for actual changes and verification. The next assignment is **MOBILE-001-A**, when requested.
+Documentation baseline **DOC-000**, shared Codex/Claude Code workflow **DOC-001**, and small first-step task plan **DOC-002** are complete. MONO-001 is completed: **MONO-001-A** recorded the toolchain in [TOOLCHAIN.md](TOOLCHAIN.md), **MONO-001-B** created the root pnpm workspace, **MONO-001-C** added the empty `@ride-match/contracts` package with a working `pnpm build:contracts`, **MONO-001-D** made `pnpm typecheck` and `pnpm lint` real checks (negative probes fail as expected), and **MONO-001-E** routed all three through Turbo with cached build outputs. It also passed the workspace checkpoint review. MOBILE-001 is in progress: **MOBILE-001-A** created the minimal Expo Router app, with one anonymous home route showing a map placeholder; mobile typecheck and lint pass, and the Android and iOS JavaScript exports succeed. See [WORK_LOG.md](WORK_LOG.md) for actual changes and verification. The next assignment is **MOBILE-001-B**, when requested.
 
 Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bounded child assignments, one per request. It owns child statuses; this table owns parent statuses. Complete a parent only after all required children and parent criteria pass. The proposed order is workspace -> Expo shell -> separately planned contract work, which preserves the existing dependencies. The 25 parent tasks and their DAG are unchanged.
 
@@ -24,7 +24,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | CONTRACT-002 | Places, rides, matching contracts | Planned |
 | CONTRACT-003 | Groups, chat, safety contracts | Planned |
 | CONTRACT-004 | Realtime and notification contracts | Planned |
-| MOBILE-001 | Expo shell and navigation | Planned |
+| MOBILE-001 | Expo shell and navigation | In progress |
 | DATA-001 | Data-source and Query foundation | Planned |
 | MOCK-001 | Simulator foundation | Planned |
 | SYNC-001 | Event synchronization and recovery | Planned |

@@ -295,3 +295,84 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - `build` does not clean stale files in `dist/`, and cache restoration does not delete extra files either. Revisit when source files are removed.
 - **Resume from:** Assign MOBILE-001-A when requested.
 - **Ownership:** Released; no active task.
+
+## 2026-10-03 — MOBILE-001-A: Minimal Expo Router shell
+
+- **Actor/session:** Claude Code / expo-shell.
+- **Status:** Completed; ownership released. Parent MOBILE-001 is now `In progress`.
+- **Working copy:** `main` at `2e93390` (MONO-001-E, committed at the user's request). At the user's request, MOBILE-001-A was committed on top of it, without pushing. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "commit and continue with MOBILE-001-A". Only the A card was executed.
+- **Changes:**
+  - **`apps/mobile/package.json`:** `@ride-match/mobile`, private, version `0.0.0`, `main: "expo-router/entry"`. Scripts: `start` (`expo start --dev-client`), `typecheck` (`tsc --noEmit -p tsconfig.json`), `lint` (`eslint .`).
+  - **Exact dependencies:**
+    - Runtime: `expo` 57.0.26, `react` 19.2.3, `react-native` 0.86.3, `expo-router` 57.0.24, `react-native-safe-area-context` 5.7.0, `react-native-screens` 4.26.2, `expo-linking` 57.0.11, `expo-constants` 57.0.20, `expo-status-bar` 57.0.1, and `expo-dev-client` 57.0.19.
+    - Peer pins: `react-native-reanimated` 4.5.1, `react-native-worklets` 0.10.1, and `react-dom` 19.2.3.
+    - Dev: `typescript` 6.0.3, `@types/react` 19.2.18, `eslint` 9.39.5, `eslint-config-expo` 57.0.2, and `@react-native/metro-config` 0.86.3.
+  - **`app.config.ts`:** typed `ExpoConfig` with name `Ride Match`, slug and scheme `ride-match`, and iOS `bundleIdentifier` / Android `package` `com.ridematch.dev`, commented as provisional. No plugins, typed routes, icons, or extra settings.
+  - **`tsconfig.json`:** extends `expo/tsconfig.base` with `strict: true`, `types: []`, and includes `**/*.ts` and `**/*.tsx`.
+  - **`eslint.config.js`:** `eslint-config-expo/flat`; ignores `dist/*`, `.expo/*`, `android/*`, `ios/*`; and `no-explicit-any` as an error for `**/*.ts`, `**/*.tsx`, and `**/*.d.ts`.
+  - **`.gitignore`:** the TOOLCHAIN entries, anchored to `apps/mobile`.
+  - **Routes:**
+    - `app/_layout.tsx` is a root `Stack`, with the `index` header hidden.
+    - `app/index.tsx` is a thin route rendering `MapPlaceholderScreen`.
+    - `src/features/map/MapPlaceholderScreen.tsx` shows static “Ride Match” (accessibility header) and “Map coming soon”, with a TSDoc comment.
+  - `pnpm-workspace.yaml`: `allowBuilds: { unrs-resolver: false }`, with a comment. `pnpm-lock.yaml` gained the mobile importer.
+  - Docs updated: `TOOLCHAIN.md`, the root `README.md`, `DEVELOPMENT.md`, `ARCHITECTURE.md` (which parts of the structure exist), `docs/README.md`, `ROADMAP.md`, `FIRST_STEPS.md`, and `AI_CONTEXT.md`.
+- **Decisions:**
+  - **Peer pins (correcting TOOLCHAIN).** `expo-router` 57.0.24 depends on `react-native-drawer-layout`, which requires `react-native-reanimated`, and on `vaul` and Radix, which require `react-dom`. pnpm auto-installed the highest matching versions, and `pnpm peers check` exited 1 with three unmet peers:
+    - worklets 0.13.0 for `expo-modules-core`'s `^0.7.4` … `^0.10.0`;
+    - `@react-native/metro-config` 0.87.1 for `community-cli-plugin`'s `0.86.3` (it also added Metro 0.87.1);
+    - `react` 19.2.3 for `react-dom` 19.3.0's `^19.3.0`.
+
+    Following TOOLCHAIN's rule to add mismatched peers at Expo versions, I declared Expo SDK 57's `bundledNativeModules.json` versions (reanimated 4.5.1, worklets 0.10.1, `react-dom` 19.2.3) and React Native's matching `@react-native/metro-config` 0.86.3. No `overrides` or `peerDependencyRules` were used. All four were published between 2025-12-11 and 2026-08-24, well beyond pnpm's one-day minimum.
+  - **`unrs-resolver` build denied.** Its postinstall only downloads a missing native binding, and pnpm installed `@unrs/resolver-binding-darwin-arm64`.
+  - **Lint `files` scope.** `eslint-config-expo` registers `@typescript-eslint` only for TS globs, so the extra rule block needs `files`.
+  - **No Babel or Metro config, and no `expo-router` plugin entry.** The current manual-install docs require only `main` and `scheme`; the Babel config is optional.
+  - **Explicit placeholder colors**, so the text stays readable in any system theme; no theming system.
+- **Excluded:**
+  - No auth routes, tabs, native map, providers, Query, branding or icons, `@ride-match/contracts` dependency, or root `dev`/export/native/doctor scripts (B).
+  - No tests (F). No `expo start`, prebuild, or native build (G/H).
+- **Verification** (Node 24.17.0, pnpm 11.28.2; `TURBO_TELEMETRY_DISABLED=1`, `EXPO_NO_TELEMETRY=1`, and `CI=1` in assistant commands only):
+  - **Installs:**
+    - The first `pnpm --filter @ride-match/mobile add …` (runtime) exited 0, warning about deprecated `eslint` 9.39.5 and `uuid` 7.0.3 and about peer issues.
+    - `add -D …` exited 1 with `ERR_PNPM_IGNORED_BUILDS` for `unrs-resolver@1.12.2`. After adding `allowBuilds`, `pnpm install` exited 0.
+    - `pnpm peers check` exited 1 (three unmet peers, above) until the pins were added. It then reported "No peer dependency issues found".
+    - After deleting all `node_modules` directories (generated), `pnpm install --frozen-lockfile` exited 0, and `pnpm peers check` passed again. The tree had one reanimated (4.5.1), one worklets (0.10.1), one `react-dom` (19.2.3), one `@react-native/metro-config` (0.86.3), Metro 0.84.5 and 0.84.6, and no Metro 0.87.
+  - **Ancestor guards:**
+    - `require.resolve` for `react`, `react-native`, `expo`, `expo-router`, reanimated, worklets, and `react-dom` resolved inside the repository's `node_modules/.pnpm`.
+    - The mobile `tsc --listFilesOnly` check printed nothing outside the repo: 605 files, 4 app sources, and `@types/react` as the only `@types` package.
+  - **Static checks:**
+    - `pnpm typecheck` → exit 0 for contracts and mobile.
+    - The first `pnpm lint` → exit 2, because `@typescript-eslint` was not found while linting `eslint.config.js`. After scoping the rule, `pnpm lint` → exit 0.
+    - `eslint . --debug` in `apps/mobile` used `apps/mobile/eslint.config.js` (base path `apps/mobile`) and linted `app.config.ts`, `app/_layout.tsx`, `app/index.tsx`, `src/features/map/MapPlaceholderScreen.tsx`, and `eslint.config.js`.
+  - **Negative probes** (temporary `apps/mobile/src/__probe_mobile.tsx`, deleted; `src/` again holds only `features/map/MapPlaceholderScreen.tsx`):
+    - Type error → `pnpm typecheck` exit 2 (TS2322).
+    - Explicit `any` → `pnpm lint` exit 1 (`@typescript-eslint/no-explicit-any`).
+    - Missing import → `eslint` exit 1 (`import/no-unresolved`).
+  - **Expo checks:**
+    - In `apps/mobile`, `pnpm exec expo config --type public --json` → exit 0, showing name `Ride Match`, slug and scheme `ride-match`, `sdkVersion` 57.0.0, `version` 0.0.0, and iOS and Android `com.ridematch.dev`. There are no plugins and no experiments; `platforms` defaults to ios, android, and web.
+    - `pnpm exec expo install --check` → "Dependencies are up to date", exit 0.
+    - `pnpm exec expo export --platform android` → exit 0: a 2.7 MB Hermes bundle and 27 assets.
+    - `pnpm exec expo export --platform ios` → exit 0: a 2.3 MB Hermes bundle and 23 assets.
+    - Both export logs contain no warnings or errors and print "Expo Autolinking module resolution enabled".
+  - **Bundle contents:** an extra Android export with `--source-maps --output-dir` into the session scratch directory (outside the synced checkout) listed 1,230 sources.
+    - All were under the repository root, with 0 from `/Users/home/node_modules`.
+    - App sources: the `app` route context, `app/_layout.tsx`, `app/index.tsx`, and `src/features/map/MapPlaceholderScreen.tsx`.
+    - `react-native-worklets` is bundled; reanimated and `react-dom` are not.
+    - The Hermes bundle contains "Ride Match" and "Map coming soon".
+  - **Git status after the exports:** only the 8 authored `apps/mobile` files are untracked. `apps/mobile/{.expo,.turbo,dist,node_modules}/` are ignored (`git check-ignore` matched `.gitignore` lines 2 and 3). `tsconfig.json` was unchanged, and no `expo-env.d.ts` was created.
+  - `apps/mobile/dist/` (generated) and the scratch exports were then deleted, because the MEGAsync exclusion is still pending.
+  - **Turbo graph:** the `--dry-run=json` graph lists `@ride-match/contracts` and `@ride-match/mobile`. Mobile has `typecheck` and `lint`; its `build` and `dev` are `<NONEXISTENT>` and skipped. No API package. `apps/api/` has 0 entries.
+  - **Final passes after the doc updates:** `pnpm install --frozen-lockfile` 0, `pnpm peers check` 0, `pnpm build:contracts` 0, `pnpm typecheck` 0 and `pnpm lint` 0 (both packages), and `git diff --check` ok; `AGENTS.md` and `CLAUDE.md` are unchanged. Scratch doc validation passed over 19 Markdown files: 104 local links and anchors with 0 errors, 13 child rows matching 13 cards (6 `Completed`), and roadmap statuses `Completed`, `In progress`, `Planned`.
+  - **Not run:** `expo start` (interactive; B), native builds (G/H), and tests (F). Exports do not prove native startup.
+- **JSDoc/TSDoc:**
+  - Added TSDoc to `MapPlaceholderScreen`: its temporary purpose, that it does no location, network, or auth work, and that MAP-001 replaces it.
+  - The route files are thin defaults without comments.
+  - `app.config.ts` notes that the identifiers are provisional, and `eslint.config.js` explains the `files` scope.
+- **Remaining/blockers:**
+  - The MEGAsync exclusions for `packages/contracts/dist/` and `apps/mobile/dist/` are pending user actions.
+  - Expo's default `platforms` includes web, so exports must always pass `--platform`.
+  - Metro 0.84.5 and 0.84.6 coexist, with no failure observed.
+  - Native startup, `expo start`, and the dev client are unverified until B, G, and H.
+- **Resume from:** Assign MOBILE-001-B when requested.
+- **Ownership:** Released; no active task.

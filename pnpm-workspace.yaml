@@ -3,3 +3,7 @@ packages:
   - packages/*
 savePrefix: ''
 engineStrict: true
+allowBuilds:
+  # Its postinstall only fetches the native binding when the platform package is
+  # missing; pnpm installs that optional binding, so the script is not needed.
+  unrs-resolver: false

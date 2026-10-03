@@ -11,8 +11,8 @@ Codex and Claude Code follow the same [shared AI workflow](AI_WORKFLOW.md). Begi
 | `pnpm dev` | Build contracts once, then run contracts watch and Expo development server | Planned (MOBILE-001-B) |
 | `pnpm dev:mobile` | Start mobile with contracts prepared | Planned (MOBILE-001-B) |
 | `pnpm build:contracts` | Emit shared JavaScript and declarations | Implemented: `turbo run build --filter=@ride-match/contracts` (MONO-001-E) |
-| `pnpm typecheck` | Type-check all workspace packages | Implemented: `turbo run typecheck` (MONO-001-E) |
-| `pnpm lint` | Lint application/contracts and enforce import boundaries | Implemented for contracts: `turbo run lint` (MONO-001-E); mobile lint from MOBILE-001-A, import-boundary rules from DATA-001/MOCK-001 |
+| `pnpm typecheck` | Type-check all workspace packages | Implemented: `turbo run typecheck` (MONO-001-E); covers mobile from MOBILE-001-A |
+| `pnpm lint` | Lint application/contracts and enforce import boundaries | Implemented: `turbo run lint` (MONO-001-E); covers mobile from MOBILE-001-A. Import-boundary rules are planned (DATA-001/MOCK-001) |
 | `pnpm test` | Run contract and mobile tests once | Planned (MOBILE-001-F; contracts from CONTRACT-001) |
 | `pnpm test:contracts` | Vitest contracts; forward file filters | Planned (CONTRACT-001) |
 | `pnpm test:mobile` | Jest mobile; forward `--runTestsByPath` and other test arguments | Planned (MOBILE-001-F) |
@@ -33,7 +33,7 @@ Each bounded task should leave runnable behavior, focused tests where useful, up
 
 Use [FIRST_STEPS.md](FIRST_STEPS.md) for the 13 small assignments under MONO-001 and MOBILE-001. Assign one child at a time. [TOOLCHAIN.md](TOOLCHAIN.md), recorded by MONO-001-A, pins Node 24.17.0, pnpm 11.28.2 through Corepack, Expo SDK 57, TypeScript 6.0.3, Turbo 2.11.6, and the lint and test packages, with exact per-task install commands and local prerequisites. Use those versions and commands; do not guess independent latest dependency versions while implementing later cards.
 
-Commands become available incrementally. Implemented so far: `pnpm install --frozen-lockfile` (MONO-001-B; setup in the root [README](../README.md)), `build:contracts` (MONO-001-C), and root lint/typecheck (MONO-001-D). MONO-001-E routed all three through Turbo. Still planned: development/doctor/export/native wrappers in MOBILE-001-B, and mobile/root tests in MOBILE-001-F. CONTRACT-001 adds actual contract schemas/tests later. Do not create success-only placeholders for unavailable commands.
+Commands become available incrementally. Implemented so far: `pnpm install --frozen-lockfile` (MONO-001-B; setup in the root [README](../README.md)), `build:contracts` (MONO-001-C), and root lint/typecheck (MONO-001-D). MONO-001-E routed all three through Turbo. MOBILE-001-A added mobile `start` (`expo start --dev-client`), `typecheck`, and `lint` package scripts; root typecheck and lint now include mobile. Still planned: root development/doctor/export/native wrappers in MOBILE-001-B, and mobile/root tests in MOBILE-001-F. CONTRACT-001 adds actual contract schemas/tests later. Do not create success-only placeholders for unavailable commands.
 
 Review workspace setup after MONO-001-E and the shell after MOBILE-001-H. Android and iOS development-build checks are separate required assignments; missing native verification stays unresolved. The shell's auth/private/settings/scenario routes are inert navigation placeholders. Real session, membership, configuration, and scenario behavior remain in their later roadmap tasks.
 

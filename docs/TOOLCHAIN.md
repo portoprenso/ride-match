@@ -105,11 +105,12 @@ engineStrict: true
 - **Default:** deny, matching pnpm 11's strict default. Never set `dangerouslyAllowAllBuilds`.
 - When an install fails with ignored builds, read that package's script and add an explicit `allowBuilds` entry to `pnpm-workspace.yaml`. Use `true` only when the package cannot work without its script. Record the decision in the table below. Warnings are resolved, not silenced.
 - None of the planned direct dependencies declares a `preinstall`, `install`, or `postinstall` script (checked with `npm view <pkg>@<version> scripts`).
-- **Expected in MOBILE-001-A:** `unrs-resolver` 1.12.2 arrives through `eslint-config-expo` → `eslint-import-resolver-typescript` 3.10.1. It has `postinstall: node postinstall.js`, a fallback that fetches its native binding when the platform optional package is missing. The expected decision is `false`, provided mobile lint passes with the binding pnpm installs. Confirm this at install time.
+- **MOBILE-001-A:** `unrs-resolver` 1.12.2 arrives through `eslint-config-expo` → `eslint-import-resolver-typescript` 3.10.1. Its `postinstall` (`node postinstall.js`) calls `napi-postinstall`'s `checkAndPreparePackage`, which first `require.resolve`s the platform binding and only fetches one when it is missing. The strict install failed with `ERR_PNPM_IGNORED_BUILDS` as expected. pnpm had installed `@unrs/resolver-binding-darwin-arm64` 1.12.2, so the decision is `false`. Mobile lint then reported `import/no-unresolved` for a missing module, which shows the resolver binding works without the script.
 
 | Package | Decision | Reason and verification | Task |
 | --- | --- | --- | --- |
-| *(none yet)* | | MONO-001-B: the root tree (110 packages) has no `preinstall`/`install`/`postinstall` scripts (scan of `node_modules/.pnpm`), and `pnpm install` passed under the strict default | MONO-001-B |
+| *(none)* | | MONO-001-B: the root tree (110 packages) has no `preinstall`/`install`/`postinstall` scripts (scan of `node_modules/.pnpm`), and `pnpm install` passed under the strict default | MONO-001-B |
+| `unrs-resolver` | `false` | The script only downloads a missing native binding; pnpm installs the platform's optional binding package. Mobile `import/no-unresolved` works without it. No other mobile package was blocked by the strict policy | MOBILE-001-A |
 
 ## Direct dependencies
 
@@ -148,11 +149,15 @@ There are no runtime dependencies. Zod arrives with CONTRACT-001.
 | `expo-constants` | 57.0.20 | runtime | Router peer | Expo `~57.0.20` | MOBILE-001-A |
 | `expo-status-bar` | 57.0.1 | runtime | Listed in Expo Router's install command | Expo `~57.0.1` | MOBILE-001-A |
 | `expo-dev-client` | 57.0.19 | runtime | Development builds | Expo `~57.0.19` | MOBILE-001-A |
+| `react-native-reanimated` | 4.5.1 | runtime | Required peer of `react-native-drawer-layout`, an `expo-router` dependency; pinned so pnpm does not pick a newer release | Expo `4.5.1`; peer `react-native` `0.83 - 0.86` | MOBILE-001-A |
+| `react-native-worklets` | 0.10.1 | runtime | Required peer of reanimated 4.5.1 (`0.10.x`); optional peer of `expo-modules-core` (`^0.7.4` … `^0.10.0`) | Expo `0.10.1` | MOBILE-001-A |
+| `react-dom` | 19.2.3 | runtime | Required peer of `expo-router`'s web dependencies (`vaul`, Radix); must match `react` | Expo `19.2.3`; peer `react ^19.2.3` | MOBILE-001-A |
 | `@ride-match/contracts` | `workspace:*` | runtime | Shared package | Fixed decision | MOBILE-001-B |
 | `typescript` | 6.0.3 | dev | Typecheck | Expo `~6.0.3` | MOBILE-001-A |
 | `@types/react` | 19.2.18 | dev | React types | Expo `~19.2.4` | MOBILE-001-A |
 | `eslint` | 9.39.5 | dev | Lint binary | Expo CLI 57 `^9.0.0` | MOBILE-001-A |
 | `eslint-config-expo` | 57.0.2 | dev | Expo flat lint config | Expo `~57.0.2` | MOBILE-001-A |
+| `@react-native/metro-config` | 0.86.3 | dev | Required peer of `react-native-worklets` (`*`); optional peer of `@react-native/community-cli-plugin` 0.86.3 (`0.86.3`) | Matches React Native 0.86.3 and Metro 0.84 | MOBILE-001-A |
 | `expo-doctor` | 1.20.4 | dev | Pinned doctor | `latest`, published 2026-08-26 | MOBILE-001-B |
 | `jest` | 29.7.0 | dev | Test runner | Expo `~29.7.0`; `jest-expo` depends on Jest 29 packages | MOBILE-001-F |
 | `jest-expo` | 57.0.5 | dev | Expo Jest preset | Expo `~57.0.5` | MOBILE-001-F |
@@ -161,9 +166,17 @@ There are no runtime dependencies. Zod arrives with CONTRACT-001.
 | `test-renderer` | 1.3.0 | dev | Testing Library 14's required renderer peer (`^1.0.0`) | Peer `react ^19.0.0` | MOBILE-001-F |
 | `@react-native/jest-preset` | 0.86.3 | dev | Required peer of `jest-expo` 57 (`^0.86.3`) | Matches React Native 0.86.3 | MOBILE-001-F |
 
-**Required peers expected to be auto-installed, not listed directly:** `@expo/log-box` 57.0.4 and `@expo/metro-runtime` 57.0.16, both required by `expo-router`. If pnpm or `expo install --check` reports them missing or mismatched, add them at the Expo version and record why.
+**Required peers auto-installed, not listed directly:** `@expo/log-box` 57.0.4 and `@expo/metro-runtime` 57.0.16, both required by `expo-router`. They resolved at the Expo versions in MOBILE-001-A.
 
-**Optional peers intentionally not installed:** `react-dom` and `react-native-web` (no web target), `react-native-reanimated`, `react-native-gesture-handler`, and `react-server-dom-webpack`. No Babel or Metro config file is planned (Expo defaults; see [Verify later](#verify-later)).
+**Correction from MOBILE-001-A (2026-10-03):** pnpm auto-installs the *required* peers of transitive dependencies at the highest matching version. `expo-router` 57.0.24 depends on `react-native-drawer-layout` (required peer `react-native-reanimated >= 2.0.0`) and on `vaul` and Radix (required peer `react-dom`). With only the planned dependencies, pnpm chose versions that `pnpm peers check` reported as unmet:
+
+- reanimated 4.7.0, which brought worklets 0.13.0, outside `expo-modules-core`'s `^0.7.4` … `^0.10.0`.
+- `@react-native/metro-config` 0.87.1, which wanted 0.86.3 and pulled in a second Metro line, 0.87.1.
+- `react-dom` 19.3.0, which needs `react ^19.3.0`.
+
+The four rows marked MOBILE-001-A above that are not in the original plan pin these at Expo SDK 57's `bundledNativeModules.json` versions, or at React Native's version for `@react-native/metro-config`. They are declared, not overridden: no `overrides` and no `peerDependencyRules`. After a clean `pnpm install --frozen-lockfile`, `pnpm peers check` reports no issues, and the tree has one copy each of reanimated, worklets, `react-dom`, and `@react-native/metro-config`, with no Metro 0.87. Metro 0.84.5 and 0.84.6 both remain (Expo's and React Native's ranges); no failure has been reproduced, so they are left alone.
+
+**Optional peers intentionally not installed:** `react-native-web` (no web target), `react-native-gesture-handler`, and `react-server-dom-webpack`. `react-dom` and `react-native-reanimated` are installed only because transitive dependencies require them (see the correction above). The app does not import them. The Android export's source map contains neither; worklets is bundled because Expo's modules import it. No Babel or Metro config file is needed: the exports work with Expo defaults.
 
 ### Newer releases intentionally not selected
 
@@ -235,7 +248,9 @@ Package scripts:
 - MOBILE-001-F adds `"jest"` to `types` only if tests need the global Jest types, which is expected because Expo Router's matchers extend Jest's `expect`. Record the outcome.
 - `app.config.ts` is type-checked with these settings and imports the `ExpoConfig` type from `expo/config`.
 
-**Typed routes are off for this batch:** omit `experiments.typedRoutes`.
+**Implemented in MOBILE-001-A** exactly as above. The compiler file-list check printed nothing outside the repo: 605 files, of which 4 are app sources and the rest are repository `node_modules` declarations, with `@types/react` as the only `@types` package.
+
+**Typed routes are off for this batch:** omit `experiments.typedRoutes`. In MOBILE-001-A, `expo config` and both exports left `tsconfig.json` unchanged and created no `expo-env.d.ts`. `expo start` was not run in A.
 
 - When typed routes are on, Expo CLI 57's dev server writes `expo-env.d.ts`, adds `expo-env.d.ts` to the project `.gitignore`, and adds `.expo/types/**/*.ts` and `expo-env.d.ts` to the tsconfig `include`.
 - When typed routes are off, it deletes `expo-env.d.ts` and removes those `include` entries.
@@ -274,10 +289,12 @@ If a consumer fails, record the evidence and choose one format that all three lo
 - **Contracts `lint`:** `eslint .`. It runs in `packages/contracts` and finds the root config.
 - **Implemented in MONO-001-D (2026-10-03):** the root config uses `defineConfig` and `globalIgnores` from `eslint/config` (ignores `**/dist/`, `**/node_modules/`, `apps/`), with `tsconfigRootDir: import.meta.dirname`. `eslint --debug` from `packages/contracts` showed the root config file and base path loaded through ESLint 9's working-directory lookup ("LegacyConfigLoader"), with `src/index.ts` as the only linted file. Contracts' `eslint` resolves to the same `.pnpm` directory as the root's. MONO-001-D's root wrappers were `pnpm -r run typecheck` and `pnpm -r run lint` (root excluded from `-r`); MONO-001-E replaced them with `turbo run typecheck` and `turbo run lint`.
 - **Negative probes (temporary files, removed):** a `string`-to-`number` assignment failed `pnpm typecheck` with TS2322 (exit 2). An explicit `any` parameter failed `pnpm lint` with `@typescript-eslint/no-explicit-any` (exit 1) while typecheck passed. An unawaited promise failed `pnpm lint` with `@typescript-eslint/no-floating-promises` (exit 1), which shows type-aware rules are active.
-- **Mobile `eslint.config.js` (MOBILE-001-A):** CommonJS, following Expo CLI 57's template.
+- **Mobile `eslint.config.js` (MOBILE-001-A, implemented):** CommonJS, following Expo CLI 57's template.
   - `require('eslint-config-expo/flat')` through `defineConfig` from `eslint/config`.
-  - Then `{ rules: { '@typescript-eslint/no-explicit-any': 'error' } }`.
   - Ignores: `dist/*`, `.expo/*`, `android/*`, `ios/*`.
+  - Then `{ files: ['**/*.ts', '**/*.tsx', '**/*.d.ts'], rules: { '@typescript-eslint/no-explicit-any': 'error' } }`.
+  - **Correction:** `eslint-config-expo/flat` 57.0.2 registers the `@typescript-eslint` plugin only for those file globs (`flat/utils/typescript.js`). Without `files`, ESLint failed with "could not find plugin "@typescript-eslint"" while linting `eslint.config.js`.
+  - It lints `app.config.ts`, `app/_layout.tsx`, `app/index.tsx`, `src/features/map/MapPlaceholderScreen.tsx`, and `eslint.config.js`, using the mobile config with base path `apps/mobile`.
 - **Mobile `lint`:** `eslint .`. Do not use `expo lint`, which can install packages.
 - Type-aware rules for mobile, and future mock-import boundary rules (DATA-001, MOCK-001), are deferred.
 
@@ -343,6 +360,13 @@ Native, export, doctor, and test wrappers run `pnpm build:contracts` first, then
 
 Mobile `start` and `dev` are both `expo start --dev-client`. Mobile `typecheck` is `tsc --noEmit -p tsconfig.json`.
 
+**Expo CLI notes (MOBILE-001-A):**
+
+- Run Expo from `apps/mobile`. There, `expo config --type public` showed this project's `app.config.ts` values (`Ride Match`, `ride-match`, `com.ridematch.dev`, SDK 57.0.0), not the ancestor `/Users/home/app.json`. `version` defaults to the manifest's `0.0.0`.
+- `platforms` defaults to `ios`, `android`, and `web`. There is no web target, so always pass `--platform` to `expo export`.
+- Expo CLI sends anonymous telemetry unless `EXPO_NO_TELEMETRY=1` is set. Assistant commands set it, and `CI=1` for non-interactive runs, only in their own environment. Whether to disable telemetry globally is the user's choice.
+- Exports print "Expo Autolinking module resolution enabled" and write `apps/mobile/dist/` (ignored). Expo also creates `apps/mobile/.expo/` (ignored; a dot-entry that MEGAsync skips).
+
 ## Commands by task
 
 Run each from the repository root after `export NVM_DIR="$HOME/.nvm" && nvm use` unless noted. Each `pnpm --filter <pkg> add` needs that package's `package.json` to exist first.
@@ -378,6 +402,10 @@ pnpm lint
 # MOBILE-001-A
 pnpm --filter @ride-match/mobile add expo@57.0.26 react@19.2.3 react-native@0.86.3 expo-router@57.0.24 react-native-safe-area-context@5.7.0 react-native-screens@4.26.2 expo-linking@57.0.11 expo-constants@57.0.20 expo-status-bar@57.0.1 expo-dev-client@57.0.19
 pnpm --filter @ride-match/mobile add -D typescript@6.0.3 @types/react@19.2.18 eslint@9.39.5 eslint-config-expo@57.0.2
+# Peer pins added after the first install (see the correction under Mobile dependencies)
+pnpm --filter @ride-match/mobile add react-native-reanimated@4.5.1 react-native-worklets@0.10.1 react-dom@19.2.3
+pnpm --filter @ride-match/mobile add -D @react-native/metro-config@0.86.3
+pnpm peers check
 pnpm --filter @ride-match/mobile exec node -e "for (const p of ['react','react-native','expo','expo-router']) console.log(require.resolve(p))"
 pnpm --filter @ride-match/mobile exec tsc -p tsconfig.json --listFilesOnly | grep -v "^$(git rev-parse --show-toplevel)/"
 
@@ -400,7 +428,7 @@ The remaining checks for each card are listed in [FIRST_STEPS.md](FIRST_STEPS.md
   - `.kotlin/`, `*.orig.*`, `*.jks`, `*.p8`, `*.p12`, `*.key`, `*.mobileprovision`, `*.pem`
   - `.metro-health-check*`, `.env*.local`, `*.tsbuildinfo`, `npm-debug.*`
 
-  Omit the template's `example` entry.
+  Omit the template's `example` entry. Implemented in MOBILE-001-A with these entries only, grouped under comments.
 
 ### MEGAsync exclusions (user action)
 
@@ -409,7 +437,7 @@ The existing sync-root rules already exclude `node_modules`, every dot-entry (in
 | Path | Needed before |
 | --- | --- |
 | `packages/contracts/dist/` | MONO-001-C |
-| `apps/mobile/dist/` | MOBILE-001-A exports |
+| `apps/mobile/dist/` | MOBILE-001-A exports (A created it for its checks, then removed it; B's exports recreate it) |
 | `apps/mobile/android/` | MOBILE-001-G |
 | `apps/mobile/ios/` | MOBILE-001-H |
 | `*.tsbuildinfo` | Only if a later task enables incremental builds |
@@ -424,8 +452,8 @@ The user chose to keep the home-folder packages (decision 3), so the repository 
 | --- | --- | --- |
 | Corepack obeys the ancestor `yarn@4.18.0` declaration | Root `packageManager: "pnpm@11.28.2"` is written before the first pnpm command | B: `pnpm --version` prints 11.28.2 |
 | TypeScript includes ancestor `@types` (`jest` and `mocha` conflict) | Explicit `types` in every tsconfig (the TS 6 default is also `[]`) | C and MOBILE-001-A: compiler file-list check prints nothing; rerun when tsconfig or dependencies change |
-| Node, Jest, or Metro fall back to `/Users/home/node_modules` (`react` 18.2.0, `metro`, `@babel/core`) | Each package declares what it imports; pnpm isolated layout; no aliases | MOBILE-001-A, B, F: the `require.resolve` check stays inside the repo. Errors naming `/Users/home/node_modules` are resolution defects, not reasons for resolver overrides |
-| Metro hierarchical lookup reaches parent folders | Expo's automatic monorepo config watches only the workspace root. Whether Metro would bundle a file from the home `node_modules` is unverified | MOBILE-001-B: exports succeed and the resolution check passes. No Metro overrides without a reproduced failure |
+| Node, Jest, or Metro fall back to `/Users/home/node_modules` (`react` 18.2.0, `metro`, `@babel/core`) | Each package declares what it imports; pnpm isolated layout; no aliases | MOBILE-001-A, B, F: the `require.resolve` check stays inside the repo. Errors naming `/Users/home/node_modules` are resolution defects, not reasons for resolver overrides. A: passed for `react`, `react-native`, `expo`, `expo-router`, reanimated, worklets, and `react-dom` |
+| Metro hierarchical lookup reaches parent folders | Expo's automatic monorepo config watches only the workspace root. Whether Metro would bundle a file from the home `node_modules` is unverified | MOBILE-001-B: exports succeed and the resolution check passes. No Metro overrides without a reproduced failure. A: all 1,230 sources in an Android export's source map were under the repository root, and none came from `/Users/home/node_modules` |
 | `/Users/home/app.json` (`{"expo": {}}`) | Run Expo only from `apps/mobile` (`pnpm --filter @ride-match/mobile …` or `cd apps/mobile`), never from the repo root or home folder | Every Expo command |
 
 ## Native prerequisites
@@ -466,11 +494,11 @@ These are expectations recorded here, not checked results. The named task confir
   - Editing the root `eslint.config.mjs` changed the lint task hash.
   - The D type and `any` probes still fail through Turbo with exit codes 2 and 1.
   - In an interactive terminal, the `tui` interface and its key handling were not observed; MOBILE-001-B checks them with the persistent `dev` task.
-- **MOBILE-001-A:**
-  - Auto-installed peers raise no missing or invalid peer warnings, and `expo install --check` passes.
-  - The `unrs-resolver: false` decision works with mobile lint.
-  - `eslint-config-expo/flat` exposes the `@typescript-eslint` rule namespace.
-  - Typecheck passes on a clean checkout with typed routes off, and exports leave `git status` clean.
+- **MOBILE-001-A:** verified on 2026-10-03, with two corrections.
+  - **Corrected:** auto-installed peers were invalid until four Expo-version pins were added. With the pins, `pnpm peers check` reports no issues and `expo install --check` prints "Dependencies are up to date".
+  - **Confirmed:** the `unrs-resolver: false` decision works with mobile lint.
+  - **Corrected:** `eslint-config-expo/flat` exposes the `@typescript-eslint` rules only for TypeScript files, so the extra rule block needs `files`.
+  - **Confirmed:** typecheck passes with typed routes off, and exports leave `git status` showing only authored files.
 - **MOBILE-001-B:**
   - Metro resolves the contracts `default` export without aliases.
   - `expo-doctor` as a dev dependency runs cleanly; the fallback is `pnpm dlx expo-doctor@1.20.4`, with the reason recorded.
