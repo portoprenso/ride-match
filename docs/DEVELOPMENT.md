@@ -4,6 +4,8 @@ Status: planned. Last updated: 2026-10-03. **Commands below do not exist yet; th
 
 ## Workflow and proposed commands
 
+Codex and Claude Code follow the same [shared AI workflow](AI_WORKFLOW.md). Begin with the current handoff and task ownership, inspect actual files, and record attributed changes and verification before handing work to the other tool. The commands and acceptance criteria do not change with the assistant.
+
 | Root command | Intended behavior |
 | --- | --- |
 | `pnpm dev` | Build contracts once, then run contracts watch and Expo development server |
@@ -139,6 +141,6 @@ Technical completion requires:
 
 ## Documentation and code comments
 
-After each meaningful task, update the relevant spec, [ROADMAP.md](ROADMAP.md), [WORK_LOG.md](WORK_LOG.md), and [AI_CONTEXT.md](AI_CONTEXT.md). Record checks actually executed and their outcomes. Keep future work labeled planned.
+After each meaningful task, update the relevant spec, [ROADMAP.md](ROADMAP.md), [WORK_LOG.md](WORK_LOG.md), and [AI_CONTEXT.md](AI_CONTEXT.md). Use the [handoff template](AI_WORKFLOW.md#handoff-entry-template) to record actor/session, working copy, actual changes, checks/results, unfinished criteria, and next concrete step. Keep future work labeled planned and release ownership when handing off. Neither assistant should rely on the other's private chat or memory.
 
 Add useful TSDoc to public/reusable hooks, data-source operations, transformations, and native/external boundaries. Document privacy, authorization, side effects, idempotency, or lifecycle assumptions where relevant. Do not bulk-comment obvious code.

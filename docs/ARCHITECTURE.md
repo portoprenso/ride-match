@@ -52,6 +52,8 @@ The map renderer, destination search provider, and matching/routing engine are s
 
 ```text
 ride-match/
+├── AGENTS.md                        # Shared assistant instructions
+├── CLAUDE.md                        # Imports shared instructions for Claude Code
 ├── apps/mobile/
 │   ├── app/                         # Routes/layouts only; no tests here
 │   ├── src/
@@ -92,6 +94,8 @@ ride-match/
 Only `packages/contracts` is shared. Do not add UI/config/utils packages for one consumer. Its initial build should produce ordinary JavaScript and declarations with explicit exports; mobile depends on it using `workspace:*`. Prepare contracts before starting Metro, then watch both during development. Match module/export configuration to actual tool compatibility in MONO-001/MOBILE-001.
 
 The existing empty `apps/api/` directory is intentionally omitted from the planned package structure. Do not populate it during this milestone.
+
+The root instruction files and `docs/` already exist; application/packages/configuration shown above remain planned. Both Codex and Claude Code use the same [shared workflow](AI_WORKFLOW.md) and update the same state/specification files. Tool-specific private memory does not define application architecture or task completion.
 
 ## One data-source boundary
 

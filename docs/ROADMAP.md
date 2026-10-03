@@ -13,7 +13,7 @@ This roadmap covers only items 1–2. No backend implementation or real transpor
 
 ## Progress
 
-Documentation baseline **DOC-000** is complete. See [WORK_LOG.md](WORK_LOG.md) for actual changes and verification. The next implementation task is **MONO-001**, when requested.
+Documentation baseline **DOC-000** and shared Codex/Claude Code workflow **DOC-001** are complete; no implementation task has started. See [WORK_LOG.md](WORK_LOG.md) for actual changes and verification. The next implementation task is **MONO-001**, when requested.
 
 | ID | Task | Status |
 | --- | --- | --- |
@@ -45,13 +45,15 @@ Documentation baseline **DOC-000** is complete. See [WORK_LOG.md](WORK_LOG.md) f
 
 ## Task rules
 
-Each task is intended to become one bounded implementation request. Implement only requested scope and preserve completed behavior.
+Each task is intended to become one bounded implementation request for either Codex or Claude Code. Implement only requested scope and preserve completed behavior. Read the latest task handoff before resuming another assistant's work.
 
 In task file lists, `M` means `apps/mobile` and `C` means `packages/contracts`. Paths and commands are proposed and do not currently exist. Update them if implementation chooses an equivalent clearer organization.
 
 Every code task runs `pnpm typecheck` and `pnpm lint` in addition to listed checks once those scripts exist. Add meaningful tests for behavior/contract changes, not trivial snapshots. Record unavailable native checks honestly. Documentation-only tasks validate documents instead of pretending to run application checks.
 
 After meaningful work, update affected specifications, this progress table, [WORK_LOG.md](WORK_LOG.md), and [AI_CONTEXT.md](AI_CONTEXT.md). Add useful TSDoc to reusable logic and integration boundaries. Mark completion only when observable acceptance criteria are met.
+
+Use the statuses and attribution procedure in [AI_WORKFLOW.md](AI_WORKFLOW.md): `Planned`, `In progress`, `Paused`, `Blocked`, `Completed`. Active owner/session, working-copy scope, and resume point live in `AI_CONTEXT.md`; detailed attributed handoffs live in `WORK_LOG.md`. A new assistant must verify actual files and unfinished criteria instead of restarting a task based on its title alone.
 
 ## MONO-001 — Workspace foundation
 
@@ -350,4 +352,4 @@ flowchart TD
 - After GROUP-002: chat and meeting-point UI.
 - Once prerequisites hold: taxi, safety, and notifications.
 
-Sequential implementation remains the default. Parallel work is an option only when requested/appropriate; coordinate shared schemas, composition, and synchronization files to avoid conflicting edits. This graph is not authorization to spawn agents or implement future tasks.
+Sequential implementation remains the default, including when alternating Codex and Claude Code. Follow [shared ownership and handoff rules](AI_WORKFLOW.md#safe-use-of-both-tools) for concurrent work; coordinate shared schemas, composition, lockfiles, and documentation. This graph is not authorization to spawn agents or implement future tasks.

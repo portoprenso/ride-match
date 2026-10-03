@@ -8,20 +8,31 @@ Ride Match helps nearby people travelling in compatible directions form a small 
 
 - Documentation baseline is complete; application implementation has not started.
 - `apps/mobile/` and `apps/api/` already exist as empty directories. No backend package is planned for the mobile milestone.
-- No workspace, Expo app, contracts package, dependencies, tests, or build scripts have been initialized.
+- No pnpm workspace, Expo app, contracts package, dependencies, tests, or build scripts have been initialized. A Git repository is present.
 - The next planned implementation task is **MONO-001**, when implementation is requested.
 - Architecture and lifecycle choices below are proposed defaults to validate during the mock MVP, not evidence of production capabilities.
 
+## Using Codex and Claude Code
+
+Both assistants share [AGENTS.md](../AGENTS.md). [CLAUDE.md](../CLAUDE.md) imports those instructions for Claude Code. Start either tool in this project root and give it a bounded task ID or ask it to continue the latest handoff.
+
+Read [AI_WORKFLOW.md](AI_WORKFLOW.md) for the start/resume/finish procedure, ownership rules, handoff template, and copyable prompts. Each meaningful task records its actor, changed files, decisions, verification results, unfinished work, and next concrete step in the shared docs. This makes work portable between tools without copying chat histories.
+
+Use one writer at a time in a shared directory. Separate checkouts must receive both code and documentation updates before continuation; shared docs are not automatic cross-tool synchronization.
+
 ## Reading order
 
-1. [AI context](AI_CONTEXT.md): concise operational handoff for a new agent or developer.
+Read applicable root instructions first, then use this map (the workflow and relevant handoff are required before starting/resuming work):
+
+1. [AI context](AI_CONTEXT.md): concise current state and active ownership for either assistant.
 2. [Roadmap](ROADMAP.md): bounded tasks, dependencies, acceptance criteria, verification, and progress.
 3. [Architecture](ARCHITECTURE.md): stack choices, boundaries, contracts package, and planned structure.
-4. [Product](PRODUCT.md): map UX, routes, flows, privacy presentation, and edge states.
-5. [Development](DEVELOPMENT.md): proposed commands, configuration, testing, and completion criteria.
-6. [Mock scenarios](MOCK_SCENARIOS.md): simulator behavior and reproducible demonstrations.
-7. [API overview](api/overview.md): future transport conventions, errors, privacy, and authority.
-8. [Work log](WORK_LOG.md): completed work, verification results, decisions, and follow-up.
+4. [Shared AI workflow](AI_WORKFLOW.md): task ownership, resuming work, and handoff requirements.
+5. [Work log](WORK_LOG.md): attributed actions, actual verification, and unfinished work; read the latest relevant entry.
+6. [Product](PRODUCT.md): map UX, routes, flows, privacy presentation, and edge states.
+7. [Development](DEVELOPMENT.md): proposed commands, configuration, testing, and completion criteria.
+8. [Mock scenarios](MOCK_SCENARIOS.md): simulator behavior and reproducible demonstrations.
+9. [API overview](api/overview.md): future transport conventions, errors, privacy, and authority.
 
 ## Future API specification
 
@@ -50,11 +61,11 @@ The roadmap contains only mobile MVP tasks and its contract-review handoff. Do n
 
 For every meaningful task:
 
-1. Read project guidance and `AI_CONTEXT.md` before making changes.
-2. Identify the bounded roadmap task and mark it in progress when implementation begins.
+1. Read project guidance, `AI_CONTEXT.md`, the shared workflow, and the latest relevant work-log handoff before making changes.
+2. Identify the bounded task, record tool/session ownership and file scope, and mark the roadmap task in progress when implementation begins.
 3. Update the affected specification with the actual resulting behavior, including limitations.
-4. Record changed modules, checks actually run, their results, and unfinished work in `WORK_LOG.md`.
-5. Update the roadmap status and concise AI handoff. Mark a task complete only when its acceptance criteria hold.
+4. Record actor/session, working copy, changed modules, decisions, checks actually run, their results, and unfinished work in `WORK_LOG.md`.
+5. Update the roadmap status and concise AI handoff with an exact next step. Release ownership on completion or intentional handoff. Mark a task complete only when its acceptance criteria hold.
 6. Keep proposed commands and planned capabilities distinguishable from implemented ones.
 
 The work log is a history of actual work, not a replacement for current specifications. Never put secrets, tokens, phone numbers, exact rider coordinates, message content, or other sensitive personal data in documentation or verification output.

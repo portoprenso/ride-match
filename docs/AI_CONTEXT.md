@@ -5,10 +5,20 @@ Last updated: 2026-10-03
 ## Purpose and state
 
 - Ride Match: map-first discovery of nearby compatible ride intentions, groups of up to four, temporary text chat, shared meeting point, external Yandex Go handoff.
-- **Implemented:** 13-file documentation baseline only; local links, task/DAG consistency, and scenario coverage verified. No application or backend code, packages, dependencies, runnable scripts, or tests.
+- **Implemented:** Documentation baseline and shared Codex/Claude Code instructions only. No application or backend code, packages, dependencies, runnable scripts, or tests.
 - Existing `apps/mobile/` and `apps/api/` are empty. Preserve unrelated files; do not populate `apps/api/` during the mobile milestone.
 - Next planned task: **MONO-001** in [ROADMAP.md](ROADMAP.md), only when implementation is requested.
 - Sequence: mock mobile MVP -> contract review -> future backend -> future HTTP/Socket.IO adapter.
+
+## Shared handoff and active work
+
+- Entry points: [AGENTS.md](../AGENTS.md) contains shared rules; [CLAUDE.md](../CLAUDE.md) imports them for Claude Code.
+- Both assistants use [AI_WORKFLOW.md](AI_WORKFLOW.md), this file, the roadmap, relevant specs, and [WORK_LOG.md](WORK_LOG.md) as shared project memory. Private chat/memory is not a substitute.
+- Active task/owner: **None**; DOC-001 completed by **Codex / shared-ai-docs**, ownership released.
+- Latest handoff: DOC-001 in `WORK_LOG.md`; shared rules/import/workflow and related documentation are updated. Static links/import/task/DAG/scenario checks passed; live Claude Code startup was not tested.
+- Working copy: Git repository now exists; inspect current branch/status and preserve unrelated IDE files before editing. No application implementation has started.
+- Next concrete step: implement **MONO-001** when requested, or use the read-only handoff prompt in `AI_WORKFLOW.md` to verify either assistant's context.
+- Before any takeover, inspect current files and latest task handoff. Use one writer at a time in this directory; ownership notes do not synchronize separate checkouts.
 
 ## Planned stack and boundaries
 
@@ -61,10 +71,10 @@ Last updated: 2026-10-03
 
 ## Rules for future work
 
-- Read applicable `AGENTS.md`, this handoff, README, roadmap, architecture, relevant docs, and any editor/assistant rules before non-trivial changes.
+- Read applicable `AGENTS.md`, this handoff, README, roadmap, architecture, shared workflow/latest relevant work-log handoff, affected docs, and any editor/assistant rules before non-trivial changes. Claude's root entry imports the same rules.
 - Implement only the requested task; preserve existing behavior; no speculative layers or new packages.
 - No backend, database, production matching, mobile routing, payments, AI, social features, background tracking, or multiple taxi providers in this milestone.
 - Screens/components must not import mock fixtures. Select transport centrally.
 - Add useful JSDoc/TSDoc to reusable logic, lifecycle rules, and integration boundaries; avoid comments that repeat types.
-- Update affected specs, [WORK_LOG.md](WORK_LOG.md), roadmap status, and this handoff after meaningful work. Record actual verification honestly.
+- Update affected specs, [WORK_LOG.md](WORK_LOG.md), roadmap status, and this handoff after meaningful work. Attribute entries to tool/session, record changed files and actual verification, and preserve unfinished criteria plus an exact resume point.
 - Final reports: changes, intentionally excluded work, checks/results, documentation, JSDoc/TSDoc, remaining risks/next step.
