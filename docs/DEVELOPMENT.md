@@ -1,29 +1,29 @@
 # Development, testing, and analytics plan
 
-Status: planned. Last updated: 2026-10-03. **Commands below do not exist yet; they are specifications for future tasks, not checks already run.**
+Status: partly implemented. Last updated: 2026-10-03. **Only commands marked implemented exist. The others are specifications for the named tasks, not checks already run.**
 
 ## Workflow and proposed commands
 
 Codex and Claude Code follow the same [shared AI workflow](AI_WORKFLOW.md). Begin with the current handoff and task ownership, inspect actual files, and record attributed changes and verification before handing work to the other tool. The commands and acceptance criteria do not change with the assistant.
 
-| Root command | Intended behavior |
-| --- | --- |
-| `pnpm dev` | Build contracts once, then run contracts watch and Expo development server |
-| `pnpm dev:mobile` | Start mobile with contracts prepared |
-| `pnpm build:contracts` | Emit shared JavaScript and declarations |
-| `pnpm typecheck` | Type-check all workspace packages |
-| `pnpm lint` | Lint application/contracts and enforce import boundaries |
-| `pnpm test` | Run contract and mobile tests once |
-| `pnpm test:contracts` | Vitest contracts; forward file filters |
-| `pnpm test:mobile` | Jest mobile; forward `--runTestsByPath` and other test arguments |
-| `pnpm test:e2e` | Selected Maestro flows against an installed development build |
-| `pnpm doctor` | Expo dependency/configuration checks |
-| `pnpm export:android` | Export Android JavaScript bundle |
-| `pnpm export:ios` | Export iOS JavaScript bundle |
-| `pnpm mobile:android` | Build/run Android development application |
-| `pnpm mobile:ios` | Build/run iOS development application |
+| Root command | Intended behavior | Status |
+| --- | --- | --- |
+| `pnpm dev` | Build contracts once, then run contracts watch and Expo development server | Planned (MOBILE-001-B) |
+| `pnpm dev:mobile` | Start mobile with contracts prepared | Planned (MOBILE-001-B) |
+| `pnpm build:contracts` | Emit shared JavaScript and declarations | Implemented: `turbo run build --filter=@ride-match/contracts` (MONO-001-E) |
+| `pnpm typecheck` | Type-check all workspace packages | Implemented: `turbo run typecheck` (MONO-001-E) |
+| `pnpm lint` | Lint application/contracts and enforce import boundaries | Implemented for contracts: `turbo run lint` (MONO-001-E); mobile lint from MOBILE-001-A, import-boundary rules from DATA-001/MOCK-001 |
+| `pnpm test` | Run contract and mobile tests once | Planned (MOBILE-001-F; contracts from CONTRACT-001) |
+| `pnpm test:contracts` | Vitest contracts; forward file filters | Planned (CONTRACT-001) |
+| `pnpm test:mobile` | Jest mobile; forward `--runTestsByPath` and other test arguments | Planned (MOBILE-001-F) |
+| `pnpm test:e2e` | Selected Maestro flows against an installed development build | Planned (QA-001) |
+| `pnpm doctor` | Expo dependency/configuration checks | Planned (MOBILE-001-B) |
+| `pnpm export:android` | Export Android JavaScript bundle | Planned (MOBILE-001-B) |
+| `pnpm export:ios` | Export iOS JavaScript bundle | Planned (MOBILE-001-B) |
+| `pnpm mobile:android` | Build/run Android development application | Planned (MOBILE-001-B) |
+| `pnpm mobile:ios` | Build/run iOS development application | Planned (MOBILE-001-B) |
 
-Turborepo development tasks are persistent and uncached. Declare contract build outputs and task dependencies explicitly. No remote cache or release/deployment automation is needed initially. Bundle exports do not replace native build verification.
+Turborepo development tasks are persistent and uncached. Declare contract build outputs and task dependencies explicitly. The root [`turbo.json`](../turbo.json) does this: `build` caches `dist/**` after dependency builds, `typecheck` and `lint` emit nothing, and `dev` is persistent and uncached. No task depends on `dev`. No remote cache or release/deployment automation is needed initially. Bundle exports do not replace native build verification.
 
 Install only justified dependencies during an authorized implementation task. Pin compatible versions and commit the workspace lockfile. Use Expo's recommended native dependency versions and run doctor after native integration changes.
 
@@ -33,7 +33,7 @@ Each bounded task should leave runnable behavior, focused tests where useful, up
 
 Use [FIRST_STEPS.md](FIRST_STEPS.md) for the 13 small assignments under MONO-001 and MOBILE-001. Assign one child at a time. [TOOLCHAIN.md](TOOLCHAIN.md), recorded by MONO-001-A, pins Node 24.17.0, pnpm 11.28.2 through Corepack, Expo SDK 57, TypeScript 6.0.3, Turbo 2.11.6, and the lint and test packages, with exact per-task install commands and local prerequisites. Use those versions and commands; do not guess independent latest dependency versions while implementing later cards.
 
-Commands become available incrementally: `pnpm install --frozen-lockfile` from MONO-001-B (implemented; setup in the root [README](../README.md)); `build:contracts` from MONO-001-C (implemented as a direct `pnpm --filter` wrapper until Turbo routing in MONO-001-E); root lint/typecheck from MONO-001-D (implemented as direct `pnpm -r run` wrappers until Turbo routing in MONO-001-E); Turbo orchestration in MONO-001-E; development/doctor/export/native wrappers in MOBILE-001-B; mobile/root tests in MOBILE-001-F. CONTRACT-001 adds actual contract schemas/tests later. Do not create success-only placeholders for unavailable commands.
+Commands become available incrementally. Implemented so far: `pnpm install --frozen-lockfile` (MONO-001-B; setup in the root [README](../README.md)), `build:contracts` (MONO-001-C), and root lint/typecheck (MONO-001-D). MONO-001-E routed all three through Turbo. Still planned: development/doctor/export/native wrappers in MOBILE-001-B, and mobile/root tests in MOBILE-001-F. CONTRACT-001 adds actual contract schemas/tests later. Do not create success-only placeholders for unavailable commands.
 
 Review workspace setup after MONO-001-E and the shell after MOBILE-001-H. Android and iOS development-build checks are separate required assignments; missing native verification stays unresolved. The shell's auth/private/settings/scenario routes are inert navigation placeholders. Real session, membership, configuration, and scenario behavior remain in their later roadmap tasks.
 

@@ -228,3 +228,70 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - Root lint does not lint root-level config files (none are TypeScript). Revisit if root scripts are added.
 - **Resume from:** Assign MONO-001-E when requested; it ends with the MONO-001 checkpoint review.
 - **Ownership:** Released; no active task.
+
+## 2026-10-03 — MONO-001-E: Turbo wired; MONO-001 checkpoint passed
+
+- **Actor/session:** Claude Code / turbo-checkpoint.
+- **Status:** Completed; ownership released. Parent MONO-001 is now `Completed`.
+- **Working copy:** `main` at `f5a6c93` (MONO-001-D, committed at the user's request). At the user's request, MONO-001-E was committed on top of it, without pushing. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "commit and continue with MONO-001-E". Only the E card and its checkpoint review were executed.
+- **Changes:**
+  - Added root `turbo.json`:
+    - `$schema` points to `./node_modules/turbo/schema.json`.
+    - `ui: "tui"` and `agentGuidance: false`.
+    - `build`: `dependsOn: ["^build"]`, `outputs: ["dist/**"]`.
+    - `typecheck`: `dependsOn: ["^build"]`, no outputs.
+    - `lint`: `dependsOn: ["^build"]`, `inputs: ["$TURBO_DEFAULT$", "$TURBO_ROOT$/eslint.config.mjs"]`, no outputs.
+    - `dev`: `cache: false`, `persistent: true`.
+  - Root scripts: `build:contracts` = `turbo run build --filter=@ride-match/contracts`, `typecheck` = `turbo run typecheck`, `lint` = `turbo run lint`. No root `build` or `dev` script; `dev` arrives in MOBILE-001-B.
+  - Updated the root `README.md` (status, Turbo-backed commands, cache and telemetry notes) and `DEVELOPMENT.md` (Status column marking implemented and planned commands, with the owning task; the turbo.json summary). Updated `TOOLCHAIN.md` (implemented config, observed behavior, scripts table, E commands, E verification), `docs/README.md`, `ROADMAP.md` (MONO-001 `Completed`), `FIRST_STEPS.md` (E `Completed`), and `AI_CONTEXT.md`.
+- **Decisions:**
+  - `agentGuidance: false`: Turbo 2.11.6 otherwise maintains a managed block in the root `AGENTS.md` whenever it detects an AI coding agent. `AGENTS.md` is the curated shared rule file, so tools must not inject blocks into it. The block was never written: `AGENTS.md` was unchanged after every Turbo run. Turbo's version-matched docs are at `node_modules/turbo/docs/`.
+  - Lint hashes the root `eslint.config.mjs`, because contracts lint depends on a file outside the package. `globalDependencies` was not used, because it would also invalidate `build` and `typecheck`.
+  - The local schema path keeps editor validation matched to the installed Turbo version.
+  - Telemetry was left at the user's default. Assistant commands set `TURBO_TELEMETRY_DISABLED=1` in their own environment only. `README.md` and `TOOLCHAIN.md` document the opt-out.
+- **Excluded:** No Expo initialization, no root `dev`, mobile, native, test, or doctor scripts, no remote cache, no CI, and no package-level `turbo.json`.
+- **Verification** (Node 24.17.0, pnpm 11.28.2, Turbo 2.11.6; `TURBO_TELEMETRY_DISABLED=1` in assistant commands):
+  - `pnpm exec turbo run build --dry-run=json` → exit 0.
+    - `packages` is `["@ride-match/contracts"]`.
+    - There is one task, `@ride-match/contracts#build`, with outputs `dist/**`, command `tsc -p tsconfig.json`, and no dependencies.
+  - `pnpm exec turbo run build typecheck lint dev --dry-run=json` → exit 0.
+    - `monorepo: true`, `envMode: strict`.
+    - All four contracts tasks have no dependencies or dependents.
+    - `dev` is `cache: false`, `persistent: true`. No task depends on `dev`.
+    - The lint input files include `../../eslint.config.mjs`.
+    - No root (`//#`) task is present, so the root scripts cannot recurse.
+  - `pnpm install --frozen-lockfile` → "Already up to date", exit 0.
+  - `pnpm build:contracts`, `pnpm typecheck`, `pnpm lint` → each a cache miss and then success, exit 0. Without a terminal, Turbo streamed its output.
+  - **Cache restoration:**
+    - `dist/` held `index.js` and `index.d.ts`, with equal SHA-1 hashes, because both contain only the comment and `export {}`.
+    - After moving `dist/` to a scratch backup, `pnpm build:contracts` reported "cache hit, replaying logs" and `FULL TURBO`.
+    - `diff -r` between the backup and the restored `dist/` showed no differences.
+    - Importing `@ride-match/contracts` in Node from the package resolved to `dist/index.js`.
+  - Repeated `pnpm typecheck` and `pnpm lint` → cache hits.
+  - **Lint hash probe:** appending a comment to `eslint.config.mjs` changed the lint hash from `0a3568a4c3dcf735` to `f08961d7b063d19b`. Restoring the file from a byte copy returned the hash to `0a3568a4c3dcf735`, and `git diff` showed no change.
+  - **Negative probes through Turbo** (temporary files, deleted after each run; `src/` again contains only `index.ts`):
+    - Type error → `pnpm typecheck` exit 2 (TS2322, `Failed: @ride-match/contracts#typecheck`).
+    - Explicit `any` → `pnpm lint` exit 1 (`@typescript-eslint/no-explicit-any`).
+    - Afterwards, typecheck and lint were cache hits again, so the failures were not cached.
+  - `pnpm typecheck` under `script` (a pseudo-terminal, stdin from `/dev/null`) → exit 0 within 1 second. The captured output does not show whether the `tui` interface was used. Interactive TUI key handling was not verified; MOBILE-001-B checks it with the persistent `dev` task.
+  - Turbo wrote only `.turbo/cache/` and `packages/contracts/.turbo/turbo-{build,typecheck,lint}.log`, all ignored by `.turbo/`. No `~/Library/Application Support/turborepo` or `~/Library/Caches/turborepo` directory was created.
+  - **Checkpoint review:**
+    - **Real scripts:** root scripts call `turbo run`; package scripts call `tsc` and `eslint`; there are no success-only placeholders.
+    - **Exports:** `types` and `default` both exist after a build.
+    - **Narrow dependencies:** `pnpm ls -r --depth 0` shows root dev dependencies only (`@eslint/js`, `eslint`, `turbo`, `typescript`, `typescript-eslint`) and contracts dev dependencies only (`eslint`, `typescript`). Neither has runtime or peer dependencies.
+    - **Empty app directories:** `apps/mobile/` and `apps/api/` are empty and have no manifests.
+    - **No tracked artifacts:** `git ls-files` has no `dist/`, `.turbo/`, `node_modules/`, or `*.tsbuildinfo` entries.
+    - **Ancestor guard:** the compiler file-list check printed nothing outside the repo.
+    - **Docs:** a grep for pre-E wording ("until MONO-001-E", "do not exist yet", "MONO-001 is in progress") found only intentional history.
+    - **MONO-001 parent criteria:** contracts build from the root; package boundaries and script behavior are documented in `README.md`, `DEVELOPMENT.md`, and `TOOLCHAIN.md`; no mobile or API package was invented.
+  - `git diff --check` passed. Scratch doc validation passed over 19 Markdown files: 104 local links and anchors with 0 errors, 13 child rows matching 13 cards (5 `Completed`), and 25 roadmap tasks (`Completed`, `Planned`).
+  - No Git reset or restore was used.
+- **JSDoc/TSDoc:** Not applicable; configuration and documentation only. JSON cannot hold comments, so the reasons for `turbo.json` choices are recorded in `TOOLCHAIN.md`.
+- **Remaining/blockers:**
+  - The MEGAsync exclusion for `packages/contracts/dist/` is still a pending user action. On 2026-10-03, the sync-root `.megaignore` was unchanged (dated 2025-12-05) and MEGAsync was not running.
+  - Interactive TUI behavior is unverified until MOBILE-001-B.
+  - Turbo telemetry remains at the user's default.
+  - `build` does not clean stale files in `dist/`, and cache restoration does not delete extra files either. Revisit when source files are removed.
+- **Resume from:** Assign MOBILE-001-A when requested.
+- **Ownership:** Released; no active task.

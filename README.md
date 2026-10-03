@@ -2,7 +2,7 @@
 
 Ride Match helps nearby people heading in compatible directions form a small group and share a taxi. The first milestone is a React Native (Expo) mobile MVP backed by realistic mocks; there is no backend in this milestone.
 
-**Status:** workspace foundation in progress (MONO-001). The root pnpm workspace and its tools exist, and the empty `@ride-match/contracts` package compiles, type-checks, and lints. No mobile app or test command exists yet. See [docs/AI_CONTEXT.md](docs/AI_CONTEXT.md) for the current state.
+**Status:** workspace foundation complete (MONO-001). The root pnpm workspace uses Turbo to build, type-check, and lint the empty `@ride-match/contracts` package. No mobile app or test command exists yet; the Expo shell (MOBILE-001) comes next. See [docs/AI_CONTEXT.md](docs/AI_CONTEXT.md) for the current state.
 
 ## Requirements
 
@@ -28,9 +28,11 @@ pnpm install --frozen-lockfile
 | Command | Behavior |
 | --- | --- |
 | `pnpm install --frozen-lockfile` | Install the workspace exactly as locked |
-| `pnpm build:contracts` | Compile `packages/contracts/src` into `packages/contracts/dist` (JavaScript and declarations) |
-| `pnpm typecheck` | Run every package's `typecheck` script (strict TypeScript, no emit) |
-| `pnpm lint` | Run every package's `lint` script; contracts use the root [`eslint.config.mjs`](eslint.config.mjs) with type-aware TypeScript rules |
+| `pnpm build:contracts` | `turbo run build` for contracts: compile `packages/contracts/src` into `packages/contracts/dist` (JavaScript and declarations) |
+| `pnpm typecheck` | `turbo run typecheck`: strict TypeScript in every package, no emit |
+| `pnpm lint` | `turbo run lint`: every package's lint; contracts use the root [`eslint.config.mjs`](eslint.config.mjs) with type-aware TypeScript rules |
+
+[`turbo.json`](turbo.json) orders tasks after their dependencies' builds and caches results locally in `.turbo/`. A cache hit replays the earlier logs and restores `dist/` without recompiling. Failed tasks are never cached. Turbo sends anonymous usage telemetry unless you opt out with `pnpm exec turbo telemetry disable` or `TURBO_TELEMETRY_DISABLED=1`.
 
 Development, export, native, doctor, and test commands are added one task at a time. [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) describes them and when each one becomes available. Exact versions and per-task install commands are in [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md).
 

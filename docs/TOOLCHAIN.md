@@ -12,7 +12,7 @@ From MONO-001-B onward, tasks use the versions, commands, and decisions recorded
 | Package manager | pnpm 11.28.2 through Corepack; root `packageManager: "pnpm@11.28.2"` |
 | Mobile SDK | Expo SDK 57: `expo` 57.0.26, React Native 0.86.3, React 19.2.3 |
 | TypeScript | 6.0.3 in every package |
-| Task runner | Turbo 2.11.6 |
+| Task runner | Turbo 2.11.6; root `turbo.json` with `agentGuidance: false` (MONO-001-E) |
 | Lint | ESLint 9.39.5 (flat config); `typescript-eslint` 8.71.0 for contracts; `eslint-config-expo` 57.0.2 for mobile |
 | Mobile tests | Jest 29.7.0, `jest-expo` 57.0.5, React Native Testing Library 14.0.1 with `test-renderer` 1.3.0 |
 | Doctor | `expo-doctor` 1.20.4 as an exact mobile dev dependency |
@@ -272,7 +272,7 @@ If a consumer fails, record the evidence and choose one format that all three lo
 - One ESLint version, 9.39.5, with flat config. ESLint 9 looks up the config from the working directory upward, and there is no ancestor config.
 - **Root `eslint.config.mjs` (MONO-001-D):** `@eslint/js` recommended plus `typescript-eslint` `recommendedTypeChecked`, with `parserOptions.projectService: true`, for `packages/contracts/**/*.ts`. Set `@typescript-eslint/no-explicit-any` to `"error"` explicitly. Global ignores: `**/dist/**`, `**/node_modules/**`, and `apps/**`; mobile has its own config.
 - **Contracts `lint`:** `eslint .`. It runs in `packages/contracts` and finds the root config.
-- **Implemented in MONO-001-D (2026-10-03):** the root config uses `defineConfig` and `globalIgnores` from `eslint/config` (ignores `**/dist/`, `**/node_modules/`, `apps/`), with `tsconfigRootDir: import.meta.dirname`. `eslint --debug` from `packages/contracts` showed the root config file and base path loaded through ESLint 9's working-directory lookup ("LegacyConfigLoader"), with `src/index.ts` as the only linted file. Contracts' `eslint` resolves to the same `.pnpm` directory as the root's. Root wrappers until MONO-001-E: `typecheck` = `pnpm -r run typecheck`, `lint` = `pnpm -r run lint` (root excluded from `-r`).
+- **Implemented in MONO-001-D (2026-10-03):** the root config uses `defineConfig` and `globalIgnores` from `eslint/config` (ignores `**/dist/`, `**/node_modules/`, `apps/`), with `tsconfigRootDir: import.meta.dirname`. `eslint --debug` from `packages/contracts` showed the root config file and base path loaded through ESLint 9's working-directory lookup ("LegacyConfigLoader"), with `src/index.ts` as the only linted file. Contracts' `eslint` resolves to the same `.pnpm` directory as the root's. MONO-001-D's root wrappers were `pnpm -r run typecheck` and `pnpm -r run lint` (root excluded from `-r`); MONO-001-E replaced them with `turbo run typecheck` and `turbo run lint`.
 - **Negative probes (temporary files, removed):** a `string`-to-`number` assignment failed `pnpm typecheck` with TS2322 (exit 2). An explicit `any` parameter failed `pnpm lint` with `@typescript-eslint/no-explicit-any` (exit 1) while typecheck passed. An unawaited promise failed `pnpm lint` with `@typescript-eslint/no-floating-promises` (exit 1), which shows type-aware rules are active.
 - **Mobile `eslint.config.js` (MOBILE-001-A):** CommonJS, following Expo CLI 57's template.
   - `require('eslint-config-expo/flat')` through `defineConfig` from `eslint/config`.
@@ -295,13 +295,23 @@ If a consumer fails, record the evidence and choose one format that all three lo
 
 ## Turbo and development commands
 
-**`turbo.json` (MONO-001-E):**
+**`turbo.json` (MONO-001-E, implemented):**
 
+- `"$schema": "./node_modules/turbo/schema.json"`, so the schema matches the installed version.
 - `"ui": "tui"`
+- `"agentGuidance": false`: by default, Turbo 2.11.6 writes a managed block into the root `AGENTS.md` whenever it detects an AI coding agent. `AGENTS.md` holds the curated shared rules, so the block is disabled. Turbo's version-matched documentation is bundled in `node_modules/turbo/docs/`.
 - `build`: `dependsOn: ["^build"]`, `outputs: ["dist/**"]`
-- `typecheck` and `lint`: `dependsOn: ["^build"]`, no outputs. Mobile needs the contracts declarations after MOBILE-001-B.
+- `typecheck` and `lint`: `dependsOn: ["^build"]`, no outputs, so only logs are cached. Mobile needs the contracts declarations after MOBILE-001-B.
+- `lint` also has `inputs: ["$TURBO_DEFAULT$", "$TURBO_ROOT$/eslint.config.mjs"]`, because contracts lint uses the root config, which lies outside the package. A later mobile lint task gets the same extra input; that only causes an occasional unnecessary cache miss.
 - `dev`: `cache: false`, `persistent: true`
-- No remote cache.
+- No remote cache, no root (`//#`) tasks, and no `globalDependencies`. The root `package.json` and lockfile are always part of Turbo's global hash.
+
+**Turbo behavior observed in MONO-001-E:**
+
+- Without a terminal (assistant shells), Turbo falls back to streamed output.
+- Turbo writes its local cache to `.turbo/cache/` at the root and task logs to `packages/contracts/.turbo/`. The `.turbo/` ignore rule covers both, and MEGAsync skips them as dot-entries.
+- Failed tasks are not cached. Untracked, non-ignored files in a package count as inputs.
+- Turbo collects anonymous telemetry unless disabled. Opt out per user with `turbo telemetry disable`, or per shell with `TURBO_TELEMETRY_DISABLED=1`. MONO-001-E set that variable only in its own commands; no global telemetry setting was changed. Whether to disable telemetry is the user's choice.
 
 **Turbo 2.11.6 documentation facts:**
 
@@ -321,9 +331,9 @@ Native, export, doctor, and test wrappers run `pnpm build:contracts` first, then
 
 | Root script | Command | Task |
 | --- | --- | --- |
-| `build:contracts` | `pnpm --filter @ride-match/contracts build`, then from E: `turbo run build --filter=@ride-match/contracts` | C, E |
-| `typecheck` | `turbo run typecheck` (direct `pnpm -r typecheck` until E wires Turbo) | D, E |
-| `lint` | `turbo run lint` (direct `pnpm -r lint` until E) | D, E |
+| `build:contracts` | `turbo run build --filter=@ride-match/contracts` (C used a direct `pnpm --filter` call) | C, E |
+| `typecheck` | `turbo run typecheck` (D used `pnpm -r run typecheck`) | D, E |
+| `lint` | `turbo run lint` (D used `pnpm -r run lint`) | D, E |
 | `dev` | `turbo run dev --filter=@ride-match/mobile` | MOBILE-B |
 | `dev:mobile` | `pnpm build:contracts && pnpm --filter @ride-match/mobile start` | MOBILE-B |
 | `doctor` | `pnpm --filter @ride-match/mobile doctor` (mobile: `expo-doctor`) | MOBILE-B |
@@ -359,6 +369,12 @@ pnpm --filter @ride-match/contracts add -D eslint@9.39.5
 pnpm typecheck
 pnpm lint
 
+# MONO-001-E (no installs; Turbo 2.11.6 is already a root dev dependency)
+pnpm exec turbo run build typecheck lint dev --dry-run=json
+pnpm build:contracts
+pnpm typecheck
+pnpm lint
+
 # MOBILE-001-A
 pnpm --filter @ride-match/mobile add expo@57.0.26 react@19.2.3 react-native@0.86.3 expo-router@57.0.24 react-native-safe-area-context@5.7.0 react-native-screens@4.26.2 expo-linking@57.0.11 expo-constants@57.0.20 expo-status-bar@57.0.1 expo-dev-client@57.0.19
 pnpm --filter @ride-match/mobile add -D typescript@6.0.3 @types/react@19.2.18 eslint@9.39.5 eslint-config-expo@57.0.2
@@ -377,7 +393,7 @@ The remaining checks for each card are listed in [FIRST_STEPS.md](FIRST_STEPS.md
 
 ## Generated paths and ignore convention
 
-- **Root `.gitignore` (MONO-001-B):** `node_modules/`, `.turbo/`, `packages/*/dist/`, `*.tsbuildinfo`, `.env*.local`, and `.DS_Store`. Do not add IDE paths; `.idea/` stays untracked and visible.
+- **Root `.gitignore` (MONO-001-B):** `node_modules/`, `.turbo/` (the root cache and per-package Turbo logs), `packages/*/dist/`, `*.tsbuildinfo`, `.env*.local`, and `.DS_Store`. Do not add IDE paths; `.idea/` stays untracked and visible.
 - **`apps/mobile/.gitignore` (MOBILE-001-A):** taken from Expo SDK 57's default template, anchored to the mobile project:
   - `.expo/`, `dist/`, `web-build/`, `expo-env.d.ts`
   - `/android`, `/ios` (Continuous Native Generation; never hand-edit)
@@ -444,6 +460,12 @@ These are expectations recorded here, not checked results. The named task confir
 
 - **MONO-001-B:** verified on 2026-10-03; see the bootstrap result, the engines-guard correction, and the build-script table. The expected `[WARN] deprecated eslint@9.39.5` appeared on install.
 - **MONO-001-C:** verified on 2026-10-03. `dist/index.js` and `dist/index.d.ts` match `exports`. The emitted ESM imports in Node by file path and by package name through `exports` (self-reference resolves to `dist/index.js`). The compiler file-list check prints nothing: the list contains only TypeScript 6.0.3's `lib.es5`–`lib.es2022`/decorator libraries inside the repo and `src/index.ts`. The contracts manifest also has `"version": "0.0.0"`, which is not in the snippet above.
+- **MONO-001-E:** verified on 2026-10-03.
+  - The dry-run graph lists only `@ride-match/contracts`; root scripts do not recurse; no task depends on `dev`.
+  - After moving `dist/` out, `pnpm build:contracts` restored it from the local cache (`FULL TURBO`), identical to the backup.
+  - Editing the root `eslint.config.mjs` changed the lint task hash.
+  - The D type and `any` probes still fail through Turbo with exit codes 2 and 1.
+  - In an interactive terminal, the `tui` interface and its key handling were not observed; MOBILE-001-B checks them with the persistent `dev` task.
 - **MOBILE-001-A:**
   - Auto-installed peers raise no missing or invalid peer warnings, and `expo install --check` passes.
   - The `unrs-resolver: false` decision works with mobile lint.
