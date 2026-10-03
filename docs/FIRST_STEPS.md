@@ -32,7 +32,7 @@ One assistant writes to this checkout at a time. A new chat may help isolate an 
 | --- | --- | --- | --- |
 | MONO-001-A | Record compatible versions and local prerequisites | None | Completed |
 | MONO-001-B | Create the root pnpm workspace | MONO-001-A | Completed |
-| MONO-001-C | Compile an empty contracts package | MONO-001-B | Planned |
+| MONO-001-C | Compile an empty contracts package | MONO-001-B | Completed |
 | MONO-001-D | Make typecheck and lint real checks | MONO-001-C | Planned |
 | MONO-001-E | Wire Turbo and verify the workspace checkpoint | MONO-001-D | Planned |
 | MOBILE-001-A | Create the smallest Expo Router app | MONO-001-E | Planned |

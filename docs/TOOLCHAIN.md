@@ -441,7 +441,7 @@ LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pnpm mobile:ios
 These are expectations recorded here, not checked results. The named task confirms or corrects each one and updates this file.
 
 - **MONO-001-B:** verified on 2026-10-03; see the bootstrap result, the engines-guard correction, and the build-script table. The expected `[WARN] deprecated eslint@9.39.5` appeared on install.
-- **MONO-001-C:** emitted ESM imports in Node; the compiler file-list check prints nothing.
+- **MONO-001-C:** verified on 2026-10-03. `dist/index.js` and `dist/index.d.ts` match `exports`. The emitted ESM imports in Node by file path and by package name through `exports` (self-reference resolves to `dist/index.js`). The compiler file-list check prints nothing: the list contains only TypeScript 6.0.3's `lib.es5`–`lib.es2022`/decorator libraries inside the repo and `src/index.ts`. The contracts manifest also has `"version": "0.0.0"`, which is not in the snippet above.
 - **MOBILE-001-A:**
   - Auto-installed peers raise no missing or invalid peer warnings, and `expo install --check` passes.
   - The `unrs-resolver: false` decision works with mobile lint.

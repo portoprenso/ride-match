@@ -161,3 +161,37 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - Turbo has no `turbo.json` yet (MONO-001-E).
 - **Resume from:** Assign MONO-001-C when requested, using the C commands in `TOOLCHAIN.md`.
 - **Ownership:** Released; no active task.
+
+## 2026-10-03 — MONO-001-C: Empty contracts package compiles
+
+- **Actor/session:** Claude Code / contracts-shell.
+- **Status:** Completed; ownership released. Parent MONO-001 stays `In progress`.
+- **Working copy:** `main` at `87bb91c`. At the user's request, the changes were committed on top of it, without pushing. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "continue with MONO-001-C". Only the C card was executed.
+- **Changes:**
+  - Added `packages/contracts/package.json`: private `@ride-match/contracts` 0.0.0, `"type": "module"`, a single `exports["."]` with `types` → `./dist/index.d.ts` and `default` → `./dist/index.js`. Scripts: `build` (`tsc -p tsconfig.json`), `dev` (`--watch --preserveWatchOutput`), `typecheck` (`--noEmit`). The only dev dependency is `typescript` 6.0.3; there are no runtime dependencies.
+  - Added `packages/contracts/tsconfig.json`, exactly as in `TOOLCHAIN.md`: es2022 target and lib, `nodenext`, `types: []`, strict, `noUncheckedIndexedAccess`, `verbatimModuleSyntax`, `isolatedModules`, declarations, `src` → `dist`, `noEmitOnError`.
+  - Added `packages/contracts/src/index.ts` with only `export {};` and a TSDoc note that schemas arrive with CONTRACT-001.
+  - Added the root script `build:contracts` = `pnpm --filter @ride-match/contracts build`; MONO-001-E routes it through Turbo.
+  - The lockfile gained the `packages/contracts` importer, which reuses the same TypeScript 6.0.3.
+  - Updated the root `README.md` (commands table, layout), `TOOLCHAIN.md` (C results), `DEVELOPMENT.md`, `docs/README.md`, `ROADMAP.md`, `FIRST_STEPS.md` (C `Completed`), and `AI_CONTEXT.md`.
+- **Decisions:** Added `"version": "0.0.0"` to the contracts manifest so it has an explicit workspace version. Recorded in `TOOLCHAIN.md`.
+- **Excluded:** No Zod, schemas, sample data, tests, bundler, publishing setup, or mobile import. No ESLint in contracts (MONO-001-D) and no Turbo config (MONO-001-E). MEGAsync settings were not touched.
+- **Verification:**
+  - `pnpm --filter @ride-match/contracts add -D typescript@6.0.3` → exit 0.
+  - `pnpm build:contracts` → exit 0. `dist/` holds exactly `index.js` and `index.d.ts`, each containing the doc comment and `export {};`.
+  - `pnpm --filter @ride-match/contracts typecheck` → exit 0.
+  - `node --input-type=module -e "await import('./packages/contracts/dist/index.js')"` → exit 0.
+  - Importing by package name from `packages/contracts` → `import.meta.resolve('@ride-match/contracts')` is `<contracts>/dist/index.js`, and the import succeeds with 0 exports.
+  - File-list check (`pnpm --filter @ride-match/contracts exec tsc -p tsconfig.json --listFilesOnly | grep -v "^<repo>/"`) → no output, grep exit 1. The list holds only TypeScript 6.0.3 lib files under `<repo>/node_modules/.pnpm` plus `packages/contracts/src/index.ts`; there are no `@types` packages.
+  - Both `exports` targets exist; `dependencies` is none.
+  - `git check-ignore` → both `dist` files are ignored by `packages/*/dist/`.
+  - `pnpm install --frozen-lockfile` → exit 0.
+  - Scratch doc validation passed over 19 Markdown files: 101 local links and anchors with 0 errors, and 13 child rows matching 13 cards (3 `Completed`). `git diff --check` passed, and the new contracts files have no trailing whitespace.
+  - Root lint and typecheck do not exist until MONO-001-D. The `dev` watch script was not started; MOBILE-001-B verifies watch emission.
+- **JSDoc/TSDoc:** Added a module-level TSDoc comment on `src/index.ts` explaining why the entry is empty and what belongs in the package.
+- **Remaining/blockers:**
+  - `packages/contracts/dist/` now exists. On 2026-10-03, the sync-root `.megaignore` did not yet exclude it, and MEGAsync was not running. The user still needs to add the exclusion.
+  - Stale files in `dist/` are not cleaned by `build` (no source has been removed yet). Revisit if outputs drift, for example in MONO-001-E's cache-restoration check.
+- **Resume from:** Assign MONO-001-D when requested, using the D commands and lint choices in `TOOLCHAIN.md`.
+- **Ownership:** Released; no active task.

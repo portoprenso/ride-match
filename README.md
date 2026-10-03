@@ -2,7 +2,7 @@
 
 Ride Match helps nearby people heading in compatible directions form a small group and share a taxi. The first milestone is a React Native (Expo) mobile MVP backed by realistic mocks; there is no backend in this milestone.
 
-**Status:** workspace foundation in progress (MONO-001). The root pnpm workspace and its tools exist. No contracts package, mobile app, build, lint, typecheck, or test command exists yet. See [docs/AI_CONTEXT.md](docs/AI_CONTEXT.md) for the current state.
+**Status:** workspace foundation in progress (MONO-001). The root pnpm workspace and its tools exist, and the empty `@ride-match/contracts` package compiles. No mobile app or lint, typecheck, or test command exists yet. See [docs/AI_CONTEXT.md](docs/AI_CONTEXT.md) for the current state.
 
 ## Requirements
 
@@ -25,7 +25,12 @@ pnpm install --frozen-lockfile
 
 ## Commands
 
-Only `pnpm install` is available so far. Root build, typecheck, lint, development, export, native, doctor, and test commands are added one task at a time. [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) describes them and when each one becomes available. Exact versions and per-task install commands are in [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md).
+| Command | Behavior |
+| --- | --- |
+| `pnpm install --frozen-lockfile` | Install the workspace exactly as locked |
+| `pnpm build:contracts` | Compile `packages/contracts/src` into `packages/contracts/dist` (JavaScript and declarations) |
+
+Root typecheck, lint, development, export, native, doctor, and test commands are added one task at a time. [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) describes them and when each one becomes available. Exact versions and per-task install commands are in [docs/TOOLCHAIN.md](docs/TOOLCHAIN.md).
 
 ## Layout
 
@@ -33,7 +38,7 @@ Only `pnpm install` is available so far. Root build, typecheck, lint, developmen
 | --- | --- |
 | `apps/mobile/` | Planned Expo app; currently empty |
 | `apps/api/` | Intentionally empty; not a workspace package and not populated during the mobile milestone |
-| `packages/` | Planned `@ride-match/contracts` package |
+| `packages/contracts/` | `@ride-match/contracts`: shared transport contracts (ESM, `exports` to `dist/`); currently empty until CONTRACT-001 |
 | `docs/` | Product, architecture, roadmap, toolchain, and handoff documentation |
 
 ## Documentation and contributing
