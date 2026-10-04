@@ -1,0 +1,498 @@
+{
+  "fileKey": "y6N9BYkaqf4gOZlBUiJfvA",
+  "currentPhase": "Importer 1.0.1 repaired and regression-checked after user-reported native failure; user will retest. Native visual/prototype acceptance remains pending.",
+  "components": {
+    "buttonPrimary": "3:4",
+    "buttonSecondary": "3:6",
+    "buttonGhost": "3:8",
+    "buttonDanger": "3:10",
+    "buttonDisabled": "3:12",
+    "badgeNeutral": "3:15",
+    "badgeSuccess": "3:17",
+    "badgeWarning": "3:19",
+    "badgeDanger": "3:21",
+    "markerDefault": "3:24",
+    "markerCompatible": "3:28",
+    "markerExcellent": "3:32",
+    "markerGroup": "3:36",
+    "markerOwn": "3:41",
+    "markerMeeting": "3:47",
+    "map": "3:53",
+    "logo": "3:110"
+  },
+  "journey": {
+    "screens": {
+      "10": "5:552",
+      "11": "5:647",
+      "12": "5:754",
+      "13": "5:791",
+      "14": "5:851",
+      "15": "5:886",
+      "16": "5:982",
+      "17": "5:1033",
+      "18": "5:1071",
+      "19": "5:1103",
+      "20": "5:1190",
+      "01": "5:7",
+      "02": "5:37",
+      "03": "5:139",
+      "04": "5:192",
+      "05": "5:297",
+      "06": "5:392",
+      "07": "5:437",
+      "08": "5:466",
+      "09": "5:505"
+    },
+    "boards": [
+      "5:4",
+      "5:389",
+      "5:644",
+      "5:979"
+    ],
+    "links": [
+      {
+        "id": "5:33",
+        "target": "02"
+      },
+      {
+        "id": "5:35",
+        "target": "21"
+      },
+      {
+        "id": "5:100",
+        "target": "05"
+      },
+      {
+        "id": "5:104",
+        "target": "19"
+      },
+      {
+        "id": "5:109",
+        "target": "05"
+      },
+      {
+        "id": "5:118",
+        "target": "03"
+      },
+      {
+        "id": "5:123",
+        "target": "40"
+      },
+      {
+        "id": "5:126",
+        "target": "02"
+      },
+      {
+        "id": "5:135",
+        "target": "03"
+      },
+      {
+        "id": "5:137",
+        "target": "20"
+      },
+      {
+        "id": "5:146",
+        "target": "02"
+      },
+      {
+        "id": "5:157",
+        "target": "04"
+      },
+      {
+        "id": "5:165",
+        "target": "04"
+      },
+      {
+        "id": "5:174",
+        "target": "04"
+      },
+      {
+        "id": "5:182",
+        "target": "04"
+      },
+      {
+        "id": "5:255",
+        "target": "05"
+      },
+      {
+        "id": "5:259",
+        "target": "19"
+      },
+      {
+        "id": "5:264",
+        "target": "05"
+      },
+      {
+        "id": "5:279",
+        "target": "03"
+      },
+      {
+        "id": "5:284",
+        "target": "40"
+      },
+      {
+        "id": "5:293",
+        "target": "06"
+      },
+      {
+        "id": "5:295",
+        "target": "05"
+      },
+      {
+        "id": "5:361",
+        "target": "04"
+      },
+      {
+        "id": "5:385",
+        "target": "06"
+      },
+      {
+        "id": "5:387",
+        "target": "04"
+      },
+      {
+        "id": "5:399",
+        "target": "04"
+      },
+      {
+        "id": "5:414",
+        "target": "22"
+      },
+      {
+        "id": "5:424",
+        "target": "07"
+      },
+      {
+        "id": "5:426",
+        "target": "07"
+      },
+      {
+        "id": "5:428",
+        "target": "07"
+      },
+      {
+        "id": "5:433",
+        "target": "07"
+      },
+      {
+        "id": "5:435",
+        "target": "04"
+      },
+      {
+        "id": "5:444",
+        "target": "06"
+      },
+      {
+        "id": "5:462",
+        "target": "08"
+      },
+      {
+        "id": "5:464",
+        "target": "04"
+      },
+      {
+        "id": "5:473",
+        "target": "07"
+      },
+      {
+        "id": "5:496",
+        "target": "08"
+      },
+      {
+        "id": "5:501",
+        "target": "09"
+      },
+      {
+        "id": "5:503",
+        "target": "04"
+      },
+      {
+        "id": "5:512",
+        "target": "06"
+      },
+      {
+        "id": "5:548",
+        "target": "10"
+      },
+      {
+        "id": "5:550",
+        "target": "06"
+      },
+      {
+        "id": "5:620",
+        "target": "03"
+      },
+      {
+        "id": "5:625",
+        "target": "40"
+      },
+      {
+        "id": "5:640",
+        "target": "11"
+      },
+      {
+        "id": "5:642",
+        "target": "28"
+      },
+      {
+        "id": "5:710",
+        "target": "05"
+      },
+      {
+        "id": "5:714",
+        "target": "19"
+      },
+      {
+        "id": "5:719",
+        "target": "05"
+      },
+      {
+        "id": "5:734",
+        "target": "03"
+      },
+      {
+        "id": "5:739",
+        "target": "40"
+      },
+      {
+        "id": "5:750",
+        "target": "12"
+      },
+      {
+        "id": "5:752",
+        "target": "10"
+      },
+      {
+        "id": "5:761",
+        "target": "11"
+      },
+      {
+        "id": "5:787",
+        "target": "13"
+      },
+      {
+        "id": "5:789",
+        "target": "10"
+      },
+      {
+        "id": "5:798",
+        "target": "02"
+      },
+      {
+        "id": "5:802",
+        "target": "43"
+      },
+      {
+        "id": "5:836",
+        "target": "15"
+      },
+      {
+        "id": "5:847",
+        "target": "14"
+      },
+      {
+        "id": "5:849",
+        "target": "15"
+      },
+      {
+        "id": "5:858",
+        "target": "13"
+      },
+      {
+        "id": "5:862",
+        "target": "43"
+      },
+      {
+        "id": "5:879",
+        "target": "15"
+      },
+      {
+        "id": "5:883",
+        "target": "14"
+      },
+      {
+        "id": "5:950",
+        "target": "13"
+      },
+      {
+        "id": "5:975",
+        "target": "14"
+      },
+      {
+        "id": "5:977",
+        "target": "16"
+      },
+      {
+        "id": "5:989",
+        "target": "02"
+      },
+      {
+        "id": "5:993",
+        "target": "43"
+      },
+      {
+        "id": "5:1003",
+        "target": "15"
+      },
+      {
+        "id": "5:1018",
+        "target": "14"
+      },
+      {
+        "id": "5:1029",
+        "target": "17"
+      },
+      {
+        "id": "5:1031",
+        "target": "14"
+      },
+      {
+        "id": "5:1040",
+        "target": "16"
+      },
+      {
+        "id": "5:1067",
+        "target": "38"
+      },
+      {
+        "id": "5:1069",
+        "target": "16"
+      },
+      {
+        "id": "5:1078",
+        "target": "02"
+      },
+      {
+        "id": "5:1098",
+        "target": "36"
+      },
+      {
+        "id": "5:1101",
+        "target": "02"
+      },
+      {
+        "id": "5:1167",
+        "target": "02"
+      },
+      {
+        "id": "5:1186",
+        "target": "06"
+      },
+      {
+        "id": "5:1188",
+        "target": "02"
+      },
+      {
+        "id": "5:1197",
+        "target": "02"
+      },
+      {
+        "id": "5:1206",
+        "target": "05"
+      },
+      {
+        "id": "5:1213",
+        "target": "19"
+      },
+      {
+        "id": "5:1221",
+        "target": "05"
+      },
+      {
+        "id": "5:1231",
+        "target": "02"
+      }
+    ]
+  },
+  "createdNodeIds": [
+    "2:2",
+    "2:3",
+    "2:55",
+    "2:56"
+  ],
+  "mutatedNodeIds": [
+    "0:1"
+  ],
+  "pages": {
+    "kit": "0:1",
+    "journey": "2:2",
+    "states": "2:3"
+  },
+  "frames": {
+    "cover": "2:55",
+    "kit": "2:56"
+  },
+  "vars": {
+    "ink": "VariableID:2:7",
+    "muted": "VariableID:2:9",
+    "teal": "VariableID:2:11",
+    "lime": "VariableID:2:13",
+    "paper": "VariableID:2:15",
+    "white": "VariableID:2:17",
+    "line": "VariableID:2:19",
+    "soft": "VariableID:2:21",
+    "danger": "VariableID:2:23",
+    "dangerSoft": "VariableID:2:25",
+    "amber": "VariableID:2:27",
+    "amberSoft": "VariableID:2:29",
+    "map": "VariableID:2:31",
+    "park": "VariableID:2:33",
+    "water": "VariableID:2:35",
+    "space4": "VariableID:2:36",
+    "space8": "VariableID:2:37",
+    "space12": "VariableID:2:38",
+    "space16": "VariableID:2:39",
+    "space24": "VariableID:2:40",
+    "space32": "VariableID:2:41",
+    "radius12": "VariableID:2:42",
+    "radius16": "VariableID:2:43",
+    "radius24": "VariableID:2:44",
+    "radius32": "VariableID:2:45"
+  },
+  "styles": {
+    "display": "S:1389f5f50b2d31ce33c3c626f8e581142d4e46da,",
+    "h1": "S:3e40f6958c447e257133235f2d144414954ccb00,",
+    "h2": "S:54a8a11b915f00c4a6bd9d21441ffcaa3419d7b0,",
+    "h3": "S:caf4cc084e61646c4e5703243f51ce8f1cace461,",
+    "body": "S:ae81d4d1ccd71dd425d20d8dc09fb0e0e499d94f,",
+    "label": "S:a8087ed64f20cbf199512ea864e9a89149e7b503,",
+    "small": "S:075ba04e8b44a466801cba7fe3649e66e1ac70dc,",
+    "micro": "S:7f70d4dc6a62c9a295bc0c9df9f8ce90acb4e93b,"
+  },
+  "collections": [
+    "VariableCollectionId:2:4",
+    "VariableCollectionId:2:5"
+  ],
+  "shadow": "S:64e224f7a1d56f96d0232906b73517efe0355e91,",
+  "counts": {
+    "colors": 15,
+    "variables": 40,
+    "textStyles": 8,
+    "pages": 3
+  },
+  "font": "Manrope",
+  "discovery": {
+    "codeConnect": "none",
+    "existingScreens": "empty",
+    "libraries": "Material 3 reviewed; remote ownership and platform tokens differ from the new cross-platform brand; local editable families selected"
+  },
+  "localSourceStatus": "Source scripts include local corrections not yet applied to Figma. Do not rerun creation scripts over existing pages.",
+  "pendingValidations": [
+    "Native Figma post-layout screenshots",
+    "Native states page creation",
+    "Native prototype behavior"
+  ],
+  "localImporter": {
+    "path": "../plugin/manifest.json",
+    "package": "../along-figma-importer.zip",
+    "status": "repaired; user native retest pending",
+    "screens": 55,
+    "components": 17,
+    "declaredNavigationLinks": 192,
+    "localChecks": "API-double regressions pass, including auto flows, parent cleanup, stale pruning IDs and late failure rollback; not native layout evidence",
+    "nextStep": "User chose to test package: reopen build 1.0.1, run/review sample, remove sample, then import/review full design and save report.",
+    "remoteChangesThisTurn": false,
+    "buildVersion": "1.0.1",
+    "lastNativeResult": "User reported duplicate flowStartingPoints node IDs and cleanup errors in previous build. Repaired build not yet executed natively."
+  }
+}

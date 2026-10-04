@@ -24,6 +24,8 @@ Use one writer at a time in a shared directory. Separate checkouts must receive 
 
 ## Reading order
 
+Visual proposal: [Along mobile MVP design and delivery status](design/along/README.md). This is separate from application implementation progress.
+
 Read applicable root instructions first, then use this map (the workflow and relevant handoff are required before starting/resuming work):
 
 1. [AI context](AI_CONTEXT.md): concise current state and active ownership for either assistant.

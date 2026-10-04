@@ -2,6 +2,8 @@
 
 Status: planned. Last updated: 2026-10-03.
 
+Design reference: [Along mobile MVP concept](design/along/README.md) (DESIGN-001). Along is provisional branding only. The saved Figma draft has the brand kit and 20 journey screens; the local package covers 55 illustrative screens. Offline importer 1.0.1 repairs the user's failed native import; the user will retest it, and native visual/prototype verification remains pending. This does not change implemented app capabilities or the lifecycle rules below.
+
 ## Product principle
 
 The central experience is: “Someone physically close to me wants to travel in my direction.” The map stays the primary interaction, with sheets supporting discovery and decisions. Do not turn the home screen into a conventional search-results list.

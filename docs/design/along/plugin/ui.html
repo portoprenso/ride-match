@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box}body{margin:0;padding:24px;font:13px/1.5 Inter,Arial,sans-serif;color:#123c38;background:#f7f8f2}h1{font-size:25px;line-height:1.1;margin:8px 0 12px}p{margin:0 0 16px}.tag{font-size:11px;letter-spacing:1px;color:#586d68}button,select{font:inherit;border:1px solid #dce4dc;border-radius:10px;padding:11px 14px}button{cursor:pointer;background:white;color:#123c38}button.primary{background:#123c38;color:white;border-color:#123c38}button:disabled{opacity:.45;cursor:default}.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}#status{white-space:pre-wrap;background:#eaf2e9;border-radius:12px;padding:14px;margin-bottom:14px;max-height:150px;overflow:auto}#status.error{background:#fff0ec;color:#ad3e36}#review{display:none}#review .actions{margin:10px 0}small{display:block;color:#586d68}select{width:100%;background:white}#download{width:100%;margin-top:10px}
+</style>
+<div class="tag">LOCAL FIGMA IMPORTER · 1.0.1</div><h1>Along, ready to edit.</h1>
+<p>Native text, components and connected screens. Adds a copy beside the content on your current page. Existing designs stay intact.</p>
+<div class="actions"><button data-action="sample">1. Import 6-screen sample</button><button class="primary" data-action="full">2. Import all 55 screens</button></div>
+<div id="status" role="status" aria-live="polite">Open the intended Design file, then start with the sample. No MCP, network access or conversion credits.</div>
+<div id="review"><select id="screen" aria-label="Screen to inspect"></select><div class="actions"><button data-action="focus">Show screen</button><button data-action="audit">Check layout again</button></div><button id="download">Save import report</button><button id="remove" data-action="remove-sample" style="margin-top:10px">Remove this sample</button></div>
+<small>Requires Manrope. The importer checks fonts and geometry; review the result visually before treating it as final. Prototype buttons illustrate states; they do not run app services.</small>
+<script>
+let report=null;
+const status=document.getElementById('status');
+function send(type){document.querySelectorAll('button[data-action]').forEach(b=>b.disabled=true);parent.postMessage({pluginMessage:{type,key:document.getElementById('screen').value}},'*');}
+document.querySelectorAll('[data-action]').forEach(button=>button.onclick=()=>send(button.dataset.action));
+window.onmessage=event=>{
+ const message=event.data.pluginMessage;if(!message)return;
+ if(message.type==='progress'||message.type==='error'){status.className=message.type==='error'?'error':'';status.textContent=message.message;}
+ if(message.type==='idle')document.querySelectorAll('button[data-action]').forEach(b=>b.disabled=false);
+ if(message.type==='removed'){report=null;document.getElementById('review').style.display='none';status.textContent='Sample removed. You can now import all 55 screens.';}
+ if(message.type==='complete'){
+  report=message.report;status.className=report.warnings.length?'error':'';
+  status.textContent=report.screenCount+' screens · '+report.components+' components · '+report.linkedActions+' links\n'+(report.warnings.length?report.warnings.join('\n'):'Structural checks passed. Please review the native design visually.');
+  const select=document.getElementById('screen');select.replaceChildren();for(const screen of report.screens){const option=document.createElement('option');option.value=screen.key;option.textContent=screen.name;select.appendChild(option);}
+  document.getElementById('review').style.display='block';document.getElementById('remove').style.display=message.canRemoveSample?'block':'none';
+ }
+};
+document.getElementById('download').onclick=()=>{if(!report)return;const url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='along-import-'+report.mode+'-report.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+</script></html>

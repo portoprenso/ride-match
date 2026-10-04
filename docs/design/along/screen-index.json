@@ -1,0 +1,222 @@
+[
+  {
+    "key": "01",
+    "name": "01 · A little introduction"
+  },
+  {
+    "key": "02",
+    "name": "02 · Explore anonymously"
+  },
+  {
+    "key": "03",
+    "name": "03 · Choose destination"
+  },
+  {
+    "key": "04",
+    "name": "04 · Compatible directions"
+  },
+  {
+    "key": "05",
+    "name": "05 · Public ride preview"
+  },
+  {
+    "key": "06",
+    "name": "06 · Choose departure"
+  },
+  {
+    "key": "07",
+    "name": "07 · Demo sign-in"
+  },
+  {
+    "key": "08",
+    "name": "08 · Verify demo code"
+  },
+  {
+    "key": "09",
+    "name": "09 · Confirm your request"
+  },
+  {
+    "key": "10",
+    "name": "10 · Searching nearby"
+  },
+  {
+    "key": "11",
+    "name": "11 · A match comes in"
+  },
+  {
+    "key": "12",
+    "name": "12 · Confirm joining"
+  },
+  {
+    "key": "13",
+    "name": "13 · Group forming"
+  },
+  {
+    "key": "14",
+    "name": "14 · Temporary chat"
+  },
+  {
+    "key": "15",
+    "name": "15 · Shared meeting point"
+  },
+  {
+    "key": "16",
+    "name": "16 · Group ready"
+  },
+  {
+    "key": "17",
+    "name": "17 · Review taxi handoff"
+  },
+  {
+    "key": "18",
+    "name": "18 · Group completed"
+  },
+  {
+    "key": "19",
+    "name": "19 · Public group preview"
+  },
+  {
+    "key": "20",
+    "name": "20 · Nearby accessible view"
+  },
+  {
+    "key": "21",
+    "name": "21 · Location denied"
+  },
+  {
+    "key": "22",
+    "name": "22 · Confirm manual pickup"
+  },
+  {
+    "key": "23",
+    "name": "23 · Nobody nearby"
+  },
+  {
+    "key": "24",
+    "name": "24 · Initial discovery failure"
+  },
+  {
+    "key": "25",
+    "name": "25 · Offline and stale"
+  },
+  {
+    "key": "26",
+    "name": "26 · Basemap unavailable"
+  },
+  {
+    "key": "27",
+    "name": "27 · Request expired"
+  },
+  {
+    "key": "28",
+    "name": "28 · Cancel request"
+  },
+  {
+    "key": "29",
+    "name": "29 · Last-seat conflict"
+  },
+  {
+    "key": "30",
+    "name": "30 · Unknown outcome"
+  },
+  {
+    "key": "31",
+    "name": "31 · Session expired"
+  },
+  {
+    "key": "32",
+    "name": "32 · Full forming · coordinator"
+  },
+  {
+    "key": "33",
+    "name": "33 · Waiting for meeting point"
+  },
+  {
+    "key": "34",
+    "name": "34 · Leave group"
+  },
+  {
+    "key": "35",
+    "name": "35 · Member left · coordinator"
+  },
+  {
+    "key": "36",
+    "name": "36 · Closed group chat"
+  },
+  {
+    "key": "37",
+    "name": "37 · Access unavailable"
+  },
+  {
+    "key": "38",
+    "name": "38 · Taxi opening failed"
+  },
+  {
+    "key": "39",
+    "name": "39 · Notifications permission"
+  },
+  {
+    "key": "40",
+    "name": "40 · Settings"
+  },
+  {
+    "key": "41",
+    "name": "41 · Report a rider"
+  },
+  {
+    "key": "42",
+    "name": "42 · Demo report received"
+  },
+  {
+    "key": "43",
+    "name": "43 · Block and leave"
+  },
+  {
+    "key": "44",
+    "name": "44 · Blocked riders"
+  },
+  {
+    "key": "45",
+    "name": "45 · Message failed"
+  },
+  {
+    "key": "46",
+    "name": "46 · Old notification"
+  },
+  {
+    "key": "47",
+    "name": "47 · Invalid demo code"
+  },
+  {
+    "key": "48",
+    "name": "48 · Sign out"
+  },
+  {
+    "key": "49",
+    "name": "49 · Ready · coordinator"
+  },
+  {
+    "key": "50",
+    "name": "50 · Demo scenarios"
+  },
+  {
+    "key": "51",
+    "name": "51 · Cancel entire group"
+  },
+  {
+    "key": "52",
+    "name": "52 · Report failed"
+  },
+  {
+    "key": "53",
+    "name": "53 · Discovery clusters"
+  },
+  {
+    "key": "54",
+    "name": "54 · Loading nearby plans"
+  },
+  {
+    "key": "55",
+    "name": "55 · Selected target gone"
+  }
+]
