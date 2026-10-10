@@ -1,6 +1,6 @@
 # First steps: small assignments for Terra
 
-Last updated: 2026-10-03. Current child statuses are in [Execution order and progress](#execution-order-and-progress); this plan does not authorize implementation by itself.
+Last updated: 2026-10-10. Current child statuses are in [Execution order and progress](#execution-order-and-progress); this plan does not authorize implementation by itself.
 
 ## Target and limits
 
@@ -41,7 +41,7 @@ One assistant writes to this checkout at a time. A new chat may help isolate an 
 | MOBILE-001-D | Add dismissible auth placeholder navigation | MOBILE-001-C | Completed |
 | MOBILE-001-E | Add inert shells for other planned routes | MOBILE-001-D | Completed |
 | MOBILE-001-F | Verify behavior with the mobile test harness | MOBILE-001-E | Completed |
-| MOBILE-001-G | Build and verify Android | MOBILE-001-F | Planned |
+| MOBILE-001-G | Build and verify Android | MOBILE-001-F | Completed |
 | MOBILE-001-H | Build and verify iOS and the final checkpoint | MOBILE-001-G | Planned |
 
 This is the recommended serial order. If one native platform is unavailable, record its blocker; the user may assign the other platform check independently after MOBILE-001-F. Do not infer that permission or mark the blocked check passed.
@@ -276,7 +276,7 @@ Implement root `dev`, `dev:mobile`, `doctor:mobile`, `export:android`, `export:i
 
 **Checkpoint review:** Commands match docs; compatible pinned dependencies/one lockfile; route/test boundaries; no fake product functionality/backend; native evidence covers both platforms. Mark MOBILE-001 complete only after all checks/review pass.
 
-**Stop/defer:** End this batch. Next suggested planning step: split CONTRACT-001 into common/errors, location/privacy, user projections, and auth DTO assignments against existing API specs before Terra implements them. LOCATION-001/MAP-001 can be planned separately once MOBILE-001 passes. Do not start them automatically.
+**Stop/defer:** End this batch. [MOBILE_IMPLEMENTATION_PLAN.md](MOBILE_IMPLEMENTATION_PLAN.md) now provides later bounded assignments, including common/errors, location/privacy/user projections, auth DTOs, UI foundations and native map work. Assign one eligible child separately; do not start it automatically. This file continues to own MOBILE-001-H status.
 
 ## Copyable assignment prompt
 

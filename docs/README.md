@@ -1,15 +1,16 @@
 # Ride Match documentation
 
-Last updated: 2026-10-03
+Last updated: 2026-10-10
 
 Ride Match helps nearby people travelling in compatible directions form a small group and share a taxi. The first milestone is a complete React Native mobile MVP using realistic mocks. Taxi booking and payment happen outside the application.
 
 ## Current state
 
-- Documentation baseline and workspace foundation (MONO-001) are complete. [TOOLCHAIN.md](TOOLCHAIN.md) records the selected versions, commands, and local prerequisites. The root pnpm workspace runs `pnpm build:contracts`, `pnpm typecheck`, and `pnpm lint` through Turbo (root `turbo.json`, local cache only) for the empty `@ride-match/contracts` package, and type-checks and lints `@ride-match/mobile` too. MOBILE-001 is in progress: `apps/mobile` is a minimal Expo SDK 57 / Expo Router shell with one anonymous home route showing “Ride Match” and “Map coming soon” (MOBILE-001-A). MOBILE-001-B connected the shared package and added `pnpm dev`, `dev:mobile`, `doctor:mobile`, and the export and native wrappers. MOBILE-001-C added two UI primitives, `Screen` (safe-area container) and `Button`. MOBILE-001-D added a temporary “Sign in” entry that opens inert phone and code placeholders in a modal; nothing is collected. MOBILE-001-E added inert “not available yet” pages for the group, group chat, settings, and `/dev/scenarios` routes; the scenario page is offered only in development builds. MOBILE-001-F added the Jest behavior-test harness (`pnpm test:mobile`, `pnpm test`), with 16 navigation and `Button` tests. Native builds are unverified until MOBILE-001-G/H.
+- Documentation baseline and workspace foundation (MONO-001) are complete. [TOOLCHAIN.md](TOOLCHAIN.md) records the selected versions, commands, and local prerequisites. The root pnpm workspace runs `pnpm build:contracts`, `pnpm typecheck`, and `pnpm lint` through Turbo (root `turbo.json`, local cache only) for the empty `@ride-match/contracts` package, and type-checks and lints `@ride-match/mobile` too. MOBILE-001 is in progress: `apps/mobile` is a minimal Expo SDK 57 / Expo Router shell with one anonymous home route showing “Ride Match” and “Map coming soon” (MOBILE-001-A). MOBILE-001-B connected the shared package and added `pnpm dev`, `dev:mobile`, `doctor:mobile`, and the export and native wrappers. MOBILE-001-C added two UI primitives, `Screen` (safe-area container) and `Button`. MOBILE-001-D added a temporary “Sign in” entry that opens inert phone and code placeholders in a modal; nothing is collected. MOBILE-001-E added inert “not available yet” pages for the group, group chat, settings, and `/dev/scenarios` routes; the scenario page is offered only in development builds. MOBILE-001-F added the Jest behavior-test harness (`pnpm test:mobile`, `pnpm test`), with 16 navigation and `Button` tests. MOBILE-001-G verified the Android development build on an emulator and made the status bar use dark icons; iOS is unverified until MOBILE-001-H.
 - `apps/api/` stays an empty directory; no backend package is planned for the mobile milestone.
 - No contract schemas or contract tests exist yet. Root setup is in the repository [README](../README.md). A Git repository is present.
-- The next planned assignment is **MOBILE-001-G**, building and verifying Android, when requested. [First steps](FIRST_STEPS.md) splits workspace and Expo shell work into 13 small assignments for Terra or either assistant.
+- The next planned assignment is **MOBILE-001-H**, building and verifying iOS and the final shell checkpoint, when requested. [First steps](FIRST_STEPS.md) splits workspace and Expo shell work into 13 small assignments for Terra or either assistant.
+- [Mobile implementation plan](MOBILE_IMPLEMENTATION_PLAN.md) saves the complete Along review: 55-screen coverage, UI/state rules, 65 bounded assignments including the existing H checkpoint, verification, decisions, and copyable prompts. Saving the plan (DOC-003) did not start implementation.
 - Architecture and lifecycle choices below are proposed defaults to validate during the mock MVP, not evidence of production capabilities.
 
 ## Using Codex and Claude Code
@@ -20,6 +21,10 @@ Read [AI_WORKFLOW.md](AI_WORKFLOW.md) for the start/resume/finish procedure, own
 
 For the first implementation batch, assign one child from [FIRST_STEPS.md](FIRST_STEPS.md) per request. It defines file scope, fixed decisions, checks, exclusions, and two review checkpoints. Its child statuses complement the parent statuses in the roadmap.
 
+For the later Along implementation, assign one child from [MOBILE_IMPLEMENTATION_PLAN.md](MOBILE_IMPLEMENTATION_PLAN.md#e-dependency-ordered-implementation-cards). That document owns later child statuses; FIRST_STEPS still owns MOBILE-001-H. Read prerequisites and pending decisions before execution.
+
+Use the [reusable one-task session prompt](MOBILE_IMPLEMENTATION_PLAN.md#prompt-for-later-child-cards) in either assistant. TASK: NEXT resumes/selects one child in plan order; an explicit child ID selects that task. Each invocation ends after that child or its documented blocker.
+
 Use one writer at a time in a shared directory. Separate checkouts must receive both code and documentation updates before continuation; shared docs are not automatic cross-tool synchronization.
 
 ## Reading order
@@ -29,7 +34,7 @@ Visual proposal: [Along mobile MVP design and delivery status](design/along/READ
 Read applicable root instructions first, then use this map (the workflow and relevant handoff are required before starting/resuming work):
 
 1. [AI context](AI_CONTEXT.md): concise current state and active ownership for either assistant.
-2. [Roadmap](ROADMAP.md): bounded tasks, dependencies, acceptance criteria, verification, and progress.
+2. [Roadmap](ROADMAP.md): parent tasks and progress; [mobile implementation plan](MOBILE_IMPLEMENTATION_PLAN.md): full design analysis, screen matrix, later child cards, and checks.
 3. [Architecture](ARCHITECTURE.md): stack choices, boundaries, contracts package, and planned structure.
 4. [Shared AI workflow](AI_WORKFLOW.md): task ownership, resuming work, and handoff requirements.
 5. [Work log](WORK_LOG.md): attributed actions, actual verification, and unfinished work; read the latest relevant entry.
@@ -77,3 +82,5 @@ The work log is a history of actual work, not a replacement for current specific
 ## Plan coverage
 
 The original planning request is preserved across these documents: architecture/monorepo/features/contracts in `ARCHITECTURE.md`; REST and realtime in `api/`; simulation in `MOCK_SCENARIOS.md`; navigation/map/location/flows/errors in `PRODUCT.md`; analytics/testing/workflow/completion in `DEVELOPMENT.md`; all 25 implementation tasks and the DAG in `ROADMAP.md`; backend readiness in `api/overview.md`. `FIRST_STEPS.md` provides a more detailed execution breakdown for the first two parent tasks without changing the DAG.
+
+The Along design analysis and full frontend execution breakdown are in [MOBILE_IMPLEMENTATION_PLAN.md](MOBILE_IMPLEMENTATION_PLAN.md). TOOLCHAIN-001 and UI-001 are explicit proposed extensions; original parent statuses and completed work are preserved.

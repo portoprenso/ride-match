@@ -1,6 +1,6 @@
 # Shared workflow for Codex and Claude Code
 
-Last updated: 2026-10-03. Applies to either assistant and to human contributors.
+Last updated: 2026-10-10. Applies to either assistant and to human contributors.
 
 ## Purpose and entry points
 
@@ -22,6 +22,7 @@ Both tools then read current state and task-specific docs. Shared project memory
 | `docs/AI_CONTEXT.md` | Current implemented capabilities, active task/owner, limitations, exact next continuation |
 | `docs/ROADMAP.md` | Planned scope, dependencies, acceptance criteria, task status |
 | `docs/FIRST_STEPS.md` | Small assignments and child statuses for MONO-001/MOBILE-001; parent criteria remain in the roadmap |
+| `docs/MOBILE_IMPLEMENTATION_PLAN.md` | Along screen coverage, UI/state plan, later child cards/statuses, checks and prompts; H still belongs to FIRST_STEPS |
 | `docs/WORK_LOG.md` | Dated and attributed history/handoffs with files, decisions, verification, unfinished work |
 | Product/architecture/API/development docs | Current intended behavior and operational specifications |
 | Actual code and checks | Evidence of what is implemented and verified |
@@ -112,6 +113,8 @@ Start a bounded task:
 > Read AGENTS.md, docs/AI_CONTEXT.md, docs/AI_WORKFLOW.md, the latest relevant WORK_LOG.md entry, the MONO-001 parent in docs/ROADMAP.md, and docs/FIRST_STEPS.md. Execute only MONO-001-A, respecting its file scope, checks, and exclusions. Update the shared documentation and child/parent statuses, then stop. Do not implement the other children or commit automatically.
 
 For Terra (a model used through Codex) and other assistants, the first batch uses one child per assignment. [FIRST_STEPS.md](FIRST_STEPS.md) has full task cards, completion rules, and copyable implementation/review prompts. This changes assignment size, not the shared handoff or ownership requirements. Do not use a parent title as permission to implement all its children.
+
+Assignments can use the [one-task session prompt](MOBILE_IMPLEMENTATION_PLAN.md#prompt-for-later-child-cards), including H through its FIRST_STEPS card. Give either assistant an exact child ID, or invoke TASK: NEXT to authorize selection and execution of one child in plan order. Verify prerequisites and pending decisions; stop after that child or its documented blocker. Update that card, parent progress and shared handoff. Merely saving the prompt/plan does not authorize executing it.
 
 Continue another assistant's work:
 

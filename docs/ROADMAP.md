@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-10-03. **MONO-001 is completed; MOBILE-001 is in progress (MOBILE-001-A to F completed); all other implementation tasks are planned.**
+Last updated: 2026-10-10. **MONO-001 is completed; MOBILE-001 is in progress (MOBILE-001-A to G completed); all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -13,9 +13,13 @@ This roadmap covers only items 1–2. No backend implementation or real transpor
 
 ## Progress
 
+**DOC-004 — Reusable one-task execution prompt: Completed.** [Saved prompt](MOBILE_IMPLEMENTATION_PLAN.md#prompt-for-later-child-cards) supports NEXT or an explicit child ID, prerequisite/ownership checks, required verification and shared handoff, then a hard stop. No implementation task was started or marked complete.
+
+**DOC-003 — Save the complete Along implementation plan: Completed.** [MOBILE_IMPLEMENTATION_PLAN.md](MOBILE_IMPLEMENTATION_PLAN.md) contains the 55-screen matrix, corrections, UI/navigation/state rules, 65 bounded assignments (including existing MOBILE-001-H), verification and prompts. No application/design implementation or dependency decision was executed by saving this plan. Next remains MOBILE-001-H when assigned.
+
 **DESIGN-001 — Full mobile MVP design concept: Paused (user testing repaired importer).** Build 1.0.1 fixes duplicate flow registration, parent-container cleanup and stale sample-pruning IDs; regression checks and the rebuilt 55-screen/17-component/192-link package pass locally. The previous build failed in native Figma. The user chose to test the repaired package after automated manifest-picker input failed; native sample/full visual and prototype acceptance remains unfinished. See [design handoff](design/along/README.md). Implementation task statuses and the DAG are unchanged.
 
-Documentation baseline **DOC-000**, shared Codex/Claude Code workflow **DOC-001**, and small first-step task plan **DOC-002** are complete. MONO-001 is completed: **MONO-001-A** recorded the toolchain in [TOOLCHAIN.md](TOOLCHAIN.md), **MONO-001-B** created the root pnpm workspace, **MONO-001-C** added the empty `@ride-match/contracts` package with a working `pnpm build:contracts`, **MONO-001-D** made `pnpm typecheck` and `pnpm lint` real checks (negative probes fail as expected), and **MONO-001-E** routed all three through Turbo with cached build outputs. It also passed the workspace checkpoint review. MOBILE-001 is in progress: **MOBILE-001-A** created the minimal Expo Router app, with one anonymous home route showing a map placeholder; mobile typecheck and lint pass, and the Android and iOS JavaScript exports succeed. **MOBILE-001-B** connected the app to `@ride-match/contracts` through its public `dist` entry. It also added `pnpm dev` (contracts watch alongside Expo in Turbo's UI), `dev:mobile`, `doctor:mobile`, and the export and native wrappers. **MOBILE-001-C** added the `Screen` (safe-area container) and `Button` UI primitives. **MOBILE-001-D** added inert, dismissible sign-in placeholders: home → modal `/auth/phone` → `/auth/otp`, with Back and Close. **MOBILE-001-E** added inert “not available yet” pages for `/groups/[groupId]`, its chat, `/settings`, and `/dev/scenarios`, which is offered only in development builds. **MOBILE-001-F** added the Jest behavior-test harness: `pnpm test:mobile` and `pnpm test` run 16 tests against the real routes and `Button`. See [WORK_LOG.md](WORK_LOG.md) for actual changes and verification. The next assignment is **MOBILE-001-G**, when requested.
+Documentation baseline **DOC-000**, shared Codex/Claude Code workflow **DOC-001**, and small first-step task plan **DOC-002** are complete. MONO-001 is completed: **MONO-001-A** recorded the toolchain in [TOOLCHAIN.md](TOOLCHAIN.md), **MONO-001-B** created the root pnpm workspace, **MONO-001-C** added the empty `@ride-match/contracts` package with a working `pnpm build:contracts`, **MONO-001-D** made `pnpm typecheck` and `pnpm lint` real checks (negative probes fail as expected), and **MONO-001-E** routed all three through Turbo with cached build outputs. It also passed the workspace checkpoint review. MOBILE-001 is in progress: **MOBILE-001-A** created the minimal Expo Router app, with one anonymous home route showing a map placeholder; mobile typecheck and lint pass, and the Android and iOS JavaScript exports succeed. **MOBILE-001-B** connected the app to `@ride-match/contracts` through its public `dist` entry. It also added `pnpm dev` (contracts watch alongside Expo in Turbo's UI), `dev:mobile`, `doctor:mobile`, and the export and native wrappers. **MOBILE-001-C** added the `Screen` (safe-area container) and `Button` UI primitives. **MOBILE-001-D** added inert, dismissible sign-in placeholders: home → modal `/auth/phone` → `/auth/otp`, with Back and Close. **MOBILE-001-E** added inert “not available yet” pages for `/groups/[groupId]`, its chat, `/settings`, and `/dev/scenarios`, which is offered only in development builds. **MOBILE-001-F** added the Jest behavior-test harness: `pnpm test:mobile` and `pnpm test` run 16 tests against the real routes and `Button`. **MOBILE-001-G** verified the Android development build on an Android 16 (API 36) emulator: `pnpm mobile:android` builds, installs, and launches the app; home, sign-in navigation, Android back, Close, and direct-entry fallback work, and no runtime permission is requested. It also configured dark status-bar icons through the `expo-status-bar` config plugin. See [WORK_LOG.md](WORK_LOG.md) for actual changes and verification. The next assignment is **MOBILE-001-H**, when requested.
 
 Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bounded child assignments, one per request. It owns child statuses; this table owns parent statuses. Complete a parent only after all required children and parent criteria pass. The proposed order is workspace -> Expo shell -> separately planned contract work, which preserves the existing dependencies. The 25 parent tasks and their DAG are unchanged.
 
@@ -47,11 +51,20 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | QA-001 | Integrated MVP verification | Planned |
 | HANDOFF-001 | Contract review and backend readiness | Planned |
 
+### Proposed plan extensions
+
+These additions are recorded separately from the original 25-parent graph. They do not reopen completed work or authorize automatic implementation. Child prerequisites in the implementation plan refine execution order; their criteria are the parent completion criteria for these additions.
+
+| ID | Task | Prerequisites / execution | Status |
+| --- | --- | --- | --- |
+| TOOLCHAIN-001 | Resolve recorded gesture-handler compatibility decision | MOBILE-001-H; TOOLCHAIN-001-A in the implementation plan. Changes require its explicit assignment. | Planned |
+| UI-001 | Along tokens, controls, inputs and layouts | MOBILE-001-H; gesture-dependent UI-001-D also requires TOOLCHAIN-001-A. Execute UI-001-A through D individually. | Planned |
+
 ## Task rules
 
-Each parent task defines a bounded capability for either Codex or Claude Code. It can require several smaller assignments. For Terra, use the explicit child cards in [FIRST_STEPS.md](FIRST_STEPS.md) for the first batch; split later parents similarly before implementation. Implement only requested scope and preserve completed behavior. Read the latest task handoff before resuming another assistant's work.
+Each parent task defines a bounded capability for either Codex or Claude Code. It can require several smaller assignments. For Terra, use [FIRST_STEPS.md](FIRST_STEPS.md) for the first batch and [MOBILE_IMPLEMENTATION_PLAN.md](MOBILE_IMPLEMENTATION_PLAN.md#e-dependency-ordered-implementation-cards) for later children. FIRST_STEPS owns MONO-001/MOBILE-001 child statuses; the implementation plan owns later child statuses; this roadmap owns parent statuses. Implement only requested scope and preserve completed behavior. Read the latest task handoff before resuming another assistant's work.
 
-In task file lists, `M` means `apps/mobile` and `C` means `packages/contracts`. Paths and commands are proposed and do not currently exist. Update them if implementation chooses an equivalent clearer organization.
+In task file lists, `M` means `apps/mobile` and `C` means `packages/contracts`. Later feature modules/commands are proposed; inspect manifests and DEVELOPMENT.md for tooling already implemented. Mobile tests are discovered under `M/tests/`: older parent examples below using `src/...test.ts` must be mapped to actual `tests/...` files, as specified in the implementation plan.
 
 Every code task runs `pnpm typecheck` and `pnpm lint` in addition to listed checks once those scripts exist. Add meaningful tests for behavior/contract changes, not trivial snapshots. Record unavailable native checks honestly. Documentation-only tasks validate documents instead of pretending to run application checks.
 

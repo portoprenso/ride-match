@@ -182,7 +182,9 @@ There are no runtime dependencies. Zod arrives with CONTRACT-001.
 
 The four rows marked MOBILE-001-A above that are not in the original plan pin these at Expo SDK 57's `bundledNativeModules.json` versions, or at React Native's version for `@react-native/metro-config`. They are declared, not overridden: no `overrides` and no `peerDependencyRules`. After a clean `pnpm install --frozen-lockfile`, `pnpm peers check` reports no issues, and the tree has one copy each of reanimated, worklets, `react-dom`, and `@react-native/metro-config`, with no Metro 0.87. Metro 0.84.5 and 0.84.6 both remain (Expo's and React Native's ranges); no failure has been reproduced, so they are left alone.
 
-**Optional peers intentionally not installed:** `react-native-web` (no web target), `react-native-gesture-handler`, and `react-server-dom-webpack`. `react-dom` and `react-native-reanimated` are installed only because transitive dependencies require them (see the correction above). The app does not import them. The Android export's source map contains neither; worklets is bundled because Expo's modules import it. No Babel or Metro config file is needed: the exports work with Expo defaults.
+**Optional peers intentionally not installed:** `react-native-web` (no web target) and `react-server-dom-webpack`. `react-dom` and `react-native-reanimated` are installed only because transitive dependencies require them (see the correction above). The app does not import them. The Android export's source map contains neither; worklets is bundled because Expo's modules import it. No Babel or Metro config file is needed: the exports work with Expo defaults.
+
+**Correction from MOBILE-001-G (2026-10-03):** `react-native-gesture-handler` *is* installed, at **3.3.0**, and has been in the lockfile since MOBILE-001-A. It is optional for `expo-router`, but `react-native-drawer-layout` 4.2.11 (an `expo-router` dependency) declares it as a required peer (`>= 2.0.0`), so pnpm auto-installed the newest matching version. Expo SDK 57's `bundledNativeModules.json` expects `~2.32.0`. `pnpm peers check` and `expo-doctor` do not flag it, because the declared ranges are satisfied and it is not a direct dependency. The app imports none of its JavaScript (an Android export's source map has no gesture-handler or drawer-layout source), but Expo's autolinking finds it, so the native Android build compiles and links it (`libgesturehandler.so` is in the debug APK). The Android build, launch, and checked interactions worked with it. It was left unchanged, because pinning it (for example to `2.32.x`, like the four MOBILE-001-A pins) changes dependencies and the lockfile, which is outside MOBILE-001-G's scope. That decision is pending. `@react-native-masked-view/masked-view` 0.3.2 is also autolinked; it is an `expo-router` dependency and matches Expo's version.
 
 ### Newer releases intentionally not selected
 
@@ -388,6 +390,7 @@ Mobile `start` and `dev` are both `expo start --dev-client`. Mobile `typecheck` 
 - `platforms` defaults to `ios`, `android`, and `web`. There is no web target, so always pass `--platform` to `expo export`.
 - Expo CLI sends anonymous telemetry unless `EXPO_NO_TELEMETRY=1` is set. Assistant commands set it, and `CI=1` for non-interactive runs, only in their own environment. Whether to disable telemetry globally is the user's choice.
 - Exports print "Expo Autolinking module resolution enabled" and write `apps/mobile/dist/` (ignored). Expo also creates `apps/mobile/.expo/` (ignored; a dot-entry that MEGAsync skips).
+- **Status bar (MOBILE-001-G):** `app.config.ts` lists `['expo-status-bar', { style: 'dark' }]` in `plugins`. Prebuild then sets `android:windowLightStatusBar` to `true` in the Android theme and `UIStatusBarStyle` to `UIStatusBarStyleDarkContent` on iOS (with Expo's default `UIUserInterfaceStyle` `Light`). The older `androidStatusBar` field is deprecated in SDK 57 and prebuild ignores it.
 
 ## Commands by task
 
@@ -468,7 +471,7 @@ The existing sync-root rules already exclude `node_modules`, every dot-entry (in
 | --- | --- |
 | `packages/contracts/dist/` | MONO-001-C |
 | `apps/mobile/dist/` | MOBILE-001-A exports (A created it for its checks, then removed it; B's exports recreate it) |
-| `apps/mobile/android/` | MOBILE-001-G |
+| `apps/mobile/android/` | MOBILE-001-G. Generated there on 2026-10-03: 1.3 GB, almost all already excluded by the rules above (`app/build` 1.1 GB, `.cxx` 142 MB, `.gradle`). Only 38 files (about 624 KB: generated sources, the Gradle wrapper, the template's debug keystore, and `android/build`) fall outside them |
 | `apps/mobile/ios/` | MOBILE-001-H |
 | `*.tsbuildinfo` | Only if a later task enables incremental builds |
 
@@ -500,6 +503,9 @@ Run:
 ```bash
 ANDROID_HOME="$HOME/Library/Android/sdk" JAVA_HOME="$(/usr/libexec/java_home -v 17)" PATH="$HOME/Library/Android/sdk/platform-tools:$HOME/Library/Android/sdk/emulator:$PATH" pnpm mobile:android
 ```
+
+- **Result (MOBILE-001-G):** the command worked as written, with the `Pixel_9_Pro_XL` emulator (Android 16, API 36, arm64-v8a) already booted, using the SDK's adb 36.0.2 and Zulu 17. Expo generated `apps/mobile/android/` (Gradle 9.3.1 wrapper, `newArchEnabled=true`, `hermesEnabled=true`, `edgeToEdgeEnabled=true`), built a debug APK whose native libraries are arm64-v8a only (the emulator's ABI), installed it, started Metro, and opened the app. The first build took 1 m 31 s with existing `~/.gradle` caches; a rebuild after deleting `android/` took 25 s. With `CI=1`, Metro runs in CI mode, without reloads. Stop it with `Ctrl+C` (or `SIGINT` to the `expo run:android` process). Afterwards, run `./gradlew --stop` in `apps/mobile/android` so no Gradle daemon is left running.
+- **Development-build behavior:** opening the app from its icon, or through a `ride-match://` link, while no bundle is loaded shows the development-client launcher with a "Recently opened" server. Choosing it loads the app, and a pending link is delivered after loading. The first launch after installation also shows the developer-menu introduction once.
 
 **iOS (MOBILE-001-H).**
 
@@ -538,7 +544,8 @@ These are expectations recorded here, not checked results. The named task confir
   - Jest resolves `@ride-match/contracts` to `packages/contracts/dist/index.js` (a logging wrapper around React Native's Jest resolver); with `dist/` removed, the suite fails with "Cannot find module '@ride-match/contracts' from 'src/bootstrap/checkContractsPackage.ts'". No alias or mock.
   - No `babel.config.js` is needed; `"jest"` belongs in `types` (see above); `pnpm test:mobile --runTestsByPath tests/navigation.test.tsx` runs `jest --runTestsByPath tests/navigation.test.tsx`.
   - **Corrected:** `test-renderer` 1.2.0 instead of 1.3.0, `@babel/runtime` declared, and no `transformIgnorePatterns` override.
-- **MOBILE-001-G/H:** native builds on the recorded emulator and simulator.
+- **MOBILE-001-G:** verified on 2026-10-03; see the Android result above and the gesture-handler correction. One app-config fix: the `expo-status-bar` plugin with `style: 'dark'`, because Android's edge-to-edge status bar otherwise kept white icons on the white screens.
+- **MOBILE-001-H:** the native iOS build on the recorded simulator.
 
 ## Sources (checked 2026-10-03)
 

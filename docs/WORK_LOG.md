@@ -635,6 +635,78 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **Resume from:** Assign MOBILE-001-G when requested.
 - **Ownership:** Released; no active task.
 
+## 2026-10-03 — MOBILE-001-G: Android development build verified
+
+- **Actor/session:** Claude Code / android-verify.
+- **Status:** Completed; ownership released. Parent MOBILE-001 stays `In progress` until MOBILE-001-H (iOS and the final checkpoint) passes.
+- **Working copy:** `main` at `85f38aa` (MOBILE-001-F, committed at the user's request). MOBILE-001-G changes are uncommitted, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "commit and continue with MOBILE-001-G". MOBILE-001-F was committed first; only the G card was executed.
+- **Changes:**
+  - **`apps/mobile/app.config.ts`:** `plugins: [['expo-status-bar', { style: 'dark' }]]`, with a comment. This is the only source change. It is a narrow app-config fix that the card allows: on the first build, the emulator's status bar was visible, but `dumpsys window` reported only `LIGHT_NAVIGATION_BARS`, because the generated `AppTheme` set no `android:windowLightStatusBar`. The clock and icons were therefore white on the white home screen. SDK 57 marks `androidStatusBar` deprecated with no effect and points to the `expo-status-bar` plugin, which is already a dependency. Prebuild now writes `android:windowLightStatusBar` = `true`. On iOS, `expo config --type introspect` shows `UIStatusBarStyle` = `UIStatusBarStyleDarkContent`, next to Expo's default `UIUserInterfaceStyle` `Light`; MOBILE-001-H checks it on the simulator.
+  - **Generated, untracked:** `apps/mobile/android/` (ignored by `apps/mobile/.gitignore`, 1.3 GB after the build). `git status` shows no generated file. It was kept as the card's generated-native project.
+  - **Docs:** `TOOLCHAIN.md` (gesture-handler correction, Android result and development-build behavior, MEGAsync measurement, status-bar note, verify-later entry), `DEVELOPMENT.md` (command status and the Android check procedure), the root `README.md`, `docs/README.md`, `ARCHITECTURE.md`, `ROADMAP.md`, `FIRST_STEPS.md` (G `Completed`), and `AI_CONTEXT.md`.
+- **Decisions:**
+  - **Fix through app config, not a `<StatusBar>` component,** because the card limits fixes to narrow app-config changes. The app's screens are all light, and the app has no dark theme.
+  - **`react-native-gesture-handler` 3.3.0 left unchanged.** pnpm auto-installed it in MOBILE-001-A as a required peer of `react-native-drawer-layout` (an `expo-router` dependency). Expo SDK 57 expects `~2.32.0`. The Android build autolinks it: `autolinking.json` lists it, and the APK has `libgesturehandler.so`. The build and every checked interaction worked. An Android export's source map has no gesture-handler or drawer-layout source. Pinning it would change dependencies and the lockfile, so that decision belongs to the user or a dependency task. The A-era note that it was "not installed" is corrected in `TOOLCHAIN.md`.
+  - **Manifest permissions left at Expo's template defaults,** because none is a runtime prompt (see Verification). Blocking unused template permissions is a release-configuration question for later tasks.
+- **Excluded:** No JavaScript or route changes, dependency or lockfile changes, cloud or EAS build, release signing, device reconfiguration, iOS build (MOBILE-001-H), or machine-level environment changes. The Android variables were set per command only.
+- **Verification:**
+  - **Environment:** `Pixel_9_Pro_XL` emulator, Android 16 (API 36), arm64-v8a, started with `emulator -avd Pixel_9_Pro_XL -no-snapshot-save -no-boot-anim` so its saved Quick Boot state was not overwritten. adb came from the SDK's platform-tools (36.0.2), and the JDK was Zulu 17. Before the run, no emulator, adb server, or Gradle daemon was running, and MEGAsync was not running.
+  - **First build:** `ANDROID_HOME=… JAVA_HOME="$(/usr/libexec/java_home -v 17)" PATH="<sdk>/platform-tools:<sdk>/emulator:$PATH" TURBO_TELEMETRY_DISABLED=1 EXPO_NO_TELEMETRY=1 CI=1 pnpm mobile:android`.
+    - Contracts came from the Turbo cache. Expo created `./android`, printed "Updated package.json | no changes", and ran prebuild. The Gradle 9.3.1 wrapper reported `BUILD SUCCESSFUL in 1m 31s` (455 actionable tasks: 389 executed, 66 from cache, using existing `~/.gradle` caches). Expo then installed the APK and opened the app through the development client; Metro bundled the entry.
+    - Home rendered, but with the white status-bar icons described above. Expo was stopped with `SIGINT`.
+  - **Clean rebuild after the fix:** `adb uninstall com.ridematch.dev`, deleted `apps/mobile/android/`, and the same command again.
+    - The rebuild recreated `android/` and reported `BUILD SUCCESSFUL in 25s` (202 executed, 221 from cache, 32 up-to-date). It installed and opened the app.
+    - The generated `styles.xml` has `android:windowLightStatusBar` = `true`, and `dumpsys window` reports `LIGHT_STATUS_BARS`. In the screenshots, the clock, signal, and battery icons are dark and readable.
+    - The debug APK is 89 MB, with arm64-v8a native libraries only.
+  - **First launch after installation:** the development client showed its developer-menu introduction once ("Continue"), then the menu; both were closed. This is development-build tooling, not app UI. A "Tools" floating button from the development client stays on screen in development builds.
+  - **Interactions,** scripted through `adb shell input` and `uiautomator dump` in the session scratch directory. Each step waited for the expected labels and for the previous screen's labels to disappear.
+    - **App running, 13/13:**
+      - Home shows "Ride Match", "Map coming soon", and "Sign in", with no auth screen.
+      - Sign in → phone step → "Preview code step" → code step → "Back to phone step" → phone step.
+      - Android back on the code step → phone step; Android back on the phone step closes sign-in and returns home.
+      - Close on the phone step → home; Close on the code step → home.
+      - Android back on home then leaves the app, so no auth screen or second home was stacked.
+    - **Links while the app is open (`adb shell am start -a android.intent.action.VIEW -d ride-match://…`), 16/16:**
+      - `/auth/otp`: the code step; Close → home; Back → phone step, then Android back → home.
+      - `/auth/otp`: Android back → phone step → home.
+      - `/groups/abc-123`, `/groups/abc-123/chat`, `/settings`, and `/dev/scenarios` (development build: the "Mock scenarios" message) each show the unavailable message, never "abc-123", and "Go to map" → home.
+    - **Cold start:**
+      - After `am force-stop`, launching the activity (`LaunchState: COLD`) shows the development client's server list. Choosing the recent server loads the app on anonymous home.
+      - A cold `ride-match://auth/otp` link also shows the server list first. After the server is chosen, the pending link opens the code step. Close falls back to home, and Android back on that home leaves the app.
+      - A second cold link: Android back → phone step → home → leaves the app.
+      - A warm relaunch after back (`LaunchState: WARM`) returned to home.
+    - **Layout:** each screen's last button ends 144 px above the bottom edge. That is the 72 px gesture-bar inset plus `Screen`'s 24 dp (72 px at this density) padding, so the bottom inset is applied once under edge-to-edge. Content is vertically centered, so these screens cannot show whether the top inset is applied. On Android, the auth modal is a full-screen card.
+  - **Permissions:** no permission dialog appeared; every UI dump showed only the app's own package.
+    - `dumpsys package` lists `runtime permissions:` as empty.
+    - The installed permissions are `INTERNET`, `ACCESS_NETWORK_STATE`, `VIBRATE`, `CHANGE_WIFI_MULTICAST_STATE`, and the app-private `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`. `SYSTEM_ALERT_WINDOW` is requested but not granted (it is a special access, used by development overlays).
+    - The template's `READ_EXTERNAL_STORAGE` and `WRITE_EXTERNAL_STORAGE` are capped at `maxSdkVersion` 32, so API 36 does not request them.
+    - `appops get` shows location, notifications, camera, contacts, and the other runtime operations as `ignore`.
+  - **Device logs:**
+    - Crashes: the crash buffer is empty, with 0 `FATAL EXCEPTION` and 0 ANR for the app.
+    - JavaScript: one `ReactNativeJS` warning, "Cannot connect to Expo CLI", from the development-server connection after Android back had finished the activity and it was relaunched warm. There were no JavaScript errors.
+    - Other error-level lines: the app's own are hidden-API accessibility notes caused by `uiautomator` and the development websocket closing when the app stopped. The repeated `android.xr` feature-flag errors came from the `uiautomator` processes.
+    - The development server's LAN address appears in local logs only and is not recorded.
+  - **After the config change:**
+    - `pnpm doctor:mobile` → "21/21 checks passed. No issues detected!" (with `android/` present).
+    - `pnpm typecheck` → 3 tasks, exit 0. `pnpm lint` → 3 tasks, exit 0. `pnpm test:mobile` → 2 suites, 16 tests passed.
+    - `pnpm export:android` → exit 0, 2.7 MB, 1251 modules. `pnpm export:ios` → exit 0, 2.4 MB, 1116 modules (unchanged). `apps/mobile/dist/` was deleted afterwards.
+    - A scratch Android export with source maps had 1243 sources: none from gesture-handler, drawer-layout, reanimated, or `/Users/home/node_modules`, and two from `@react-native-masked-view/masked-view`, which `expo-router` imports.
+  - **Cleanup:**
+    - Metro: stopped with `SIGINT`; port 8081 is free.
+    - Gradle: `./gradlew --stop` → "1 Daemon stopped", and the Kotlin daemon exited with it.
+    - Emulator and adb: `adb emu kill` stopped the emulator, and `adb kill-server` stopped the adb server that this task started.
+    - No `expo`, Metro, Gradle, or Kotlin process remains. The development app stays installed on the emulator.
+  - **Final passes after the doc updates:** scratch doc validation found 0 errors in 108 local links across 20 Markdown files, and 13 child rows matching 13 cards (12 `Completed`). `git diff --check` reported no problems. No LAN address or device serial appears in the docs, and `apps/mobile/dist/` is absent.
+  - **Not run:** a physical Android device, an Android release build, and iOS (MOBILE-001-H). `pnpm install` was not rerun, because dependencies are unchanged.
+- **JSDoc/TSDoc:** not applicable; no function changed. The new plugin entry has a comment explaining why the status bar needs dark icons.
+- **Remaining/blockers:**
+  - MOBILE-001-H must build and check iOS, including the dark status-bar content from this change, and run the final checkpoint.
+  - The user decides whether to pin `react-native-gesture-handler` to Expo's `~2.32.0`.
+  - MEGAsync exclusions are still pending for `packages/contracts/dist/`, `apps/mobile/dist/`, and now `apps/mobile/android/`. Existing rules already skip all but about 624 KB of `android/` (38 files).
+- **Resume from:** Assign MOBILE-001-H when requested.
+- **Ownership:** Released; no active task.
+
 ## 2026-10-03 — DESIGN-001: Along full-MVP concept; native Figma delivery blocked
 
 - Actor/session: Codex / along-mvp-design.
@@ -681,3 +753,25 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - Documentation/JSDoc: Updated plugin recovery instructions, design README, source ledger, PRODUCT, ROADMAP, AI_CONTEXT and this log. Added useful comments for deduplicated flow registration, parent-container cleanup and pruning-ledger lifecycle.
 - Excluded: No app/backend, dependencies, product lifecycle rules or original design source artwork changes; no original Figma nodes deliberately edited/deleted by this repair session. No application tests/builds because app code is unchanged. Preserved MOBILE-001-G and unrelated changes; no commit.
 - Resume from: Close/reopen the updated development plugin (or replace the extracted ZIP folder), verify header 1.0.1, run/review the six-screen sample and remove it, then run/review all 55 screens and save native report. If an earlier import remains, inspect it first; do not erase a page or name-matched foundations. Only use Undo when the import is the latest document action with no later work to lose.
+
+## 2026-10-10 — DOC-003: Save the Along implementation plan
+
+- Actor/session: Codex / save-along-plan. Status: Completed; ownership released.
+- Working copy: Shared main at fd32dda. Preserved pre-existing MOBILE-001-G/application/configuration/documentation edits and unrelated IDE files; no commit.
+- Request/scope: Save the preceding complete read-only design analysis and frontend plan into the project for Codex/Terra/Claude Code. Documentation only; no task execution.
+- Changes: Added [MOBILE_IMPLEMENTATION_PLAN.md](MOBILE_IMPLEMENTATION_PLAN.md), covering current-state evidence, design corrections, all screens 01–55, reusable UI/accessibility, navigation/data/lifecycle boundaries, 65 bounded assignments, verification, pending decisions and copyable prompts. Linked it from docs/README.md, ROADMAP.md, FIRST_STEPS.md and AI_WORKFLOW.md; updated AI_CONTEXT.md and this log.
+- Decisions: FIRST_STEPS retains H and the original child statuses; the new plan owns 64 later Planned cards. Original 25-parent statuses/graph are preserved; proposed TOOLCHAIN-001/UI-001 extensions are separate. Recorded exact prerequisite IDs and clarified minimal place reads in MOCK-001-B plus LOCATION-001-B's dependency, avoiding a future destination/map cycle or fixture import. Ready-point transition remains a pending recommendation, not an adopted contract change.
+- Verification: git diff --check passed. Inline Python validator (python3 -) confirmed exactly 55 ordered unique screen IDs with defined owners, 65 unique cards (H externally owned; 64 Planned), valid prerequisite references and acyclic dependency order, and local Markdown targets/heading anchors across all seven touched documents. SHA-256 comparison against a pre-edit tracked-file baseline confirmed files outside this documentation scope were unchanged. No application tests/builds were run because no application code changed.
+- Documentation/TSDoc: Seven Markdown documents changed, including the new plan. TSDoc not applicable to documentation-only work. Prior visual/SVG review and historical native/test evidence are explicitly distinguished from this save's checks.
+- Excluded: No implementation, package/lockfile edits, generated design changes, native/Figma operation, credential handling, Git staging/commit or backend work.
+- Remaining/next: Execute only MOBILE-001-H when assigned, using its existing card and saved prompt. iOS/native integrations, Figma verification, gesture-handler alignment and ready-point policy remain unresolved as recorded; saving the plan is not authorization to execute it.
+
+## 2026-10-10 — DOC-004: One child per implementation session
+
+- Actor/session: Codex / one-task-prompt; shared main at fd32dda. Status: Completed; ownership released.
+- Request: Create a reusable prompt to implement the saved plan step by step, with no more than one child task in a session.
+- Changes: Replaced the generic later-child prompt in MOBILE_IMPLEMENTATION_PLAN.md with a reusable NEXT/explicit-ID selector, context/prerequisite/ownership checks, bounded implementation, verification, shared documentation and mandatory stop. H still uses its original FIRST_STEPS card. Added discovery links in docs/README.md and AI_WORKFLOW.md; recorded DOC-004 in ROADMAP.md and AI_CONTEXT.md.
+- Rules: A user invocation selects one child; the stored prompt alone authorizes nothing. No silent skipping of blockers, concurrent-owner overwrites, parent-sized implementation, follow-on task, automatic commit/push or automatic new session. Explicit completed task IDs report completion and stop. Unfinished work gets a precise same-task continuation.
+- Verification: git diff --check passed. Inline Python checks (python3 -) validated local Markdown targets/anchors across the six touched documents, compared all implementation-plan table rows against the pre-edit baseline (unchanged), and checked file hashes outside this documentation scope (unchanged). Application tests/builds were not run because no application code changed.
+- Documentation/TSDoc: Updated implementation plan, docs index, workflow, roadmap, AI context and this log. TSDoc not applicable to prose/prompt-only work.
+- Excluded/remaining: No implementation task executed or status advanced, no dependency/design edits or commit; preserved existing work. Current first step remains MOBILE-001-H when the user invokes the prompt. Existing native/product decisions remain as documented.
