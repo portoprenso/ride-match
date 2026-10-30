@@ -13,6 +13,11 @@ This roadmap covers only items 1–2. No backend implementation or real transpor
 
 ## Progress
 
+**TOOLCHAIN-001-A — Paused (2026-10-30).**
+
+- **Done:** `react-native-gesture-handler` is pinned at 2.32.0 (Expo SDK 57's `~2.32.0`), replacing the auto-installed 3.3.0. Peers, online doctor at 21/21, `expo install --check`, resolution, and autolinking on both platforms pass.
+- **Deferred at the user's request:** `pnpm test:mobile`, both exports, and Android and iOS rebuilds from clean native directories, rechecking the shell flows. They are needed before TOOLCHAIN-001 can be `Completed`.
+
 **MOBILE-001-H — Completed (2026-10-30); MOBILE-001 — Completed.**
 
 - **Native builds:** the iOS development build runs on an iOS 26.5 simulator and the Android build on an Android 16 emulator. Both were rebuilt from clean native directories on the final files.
@@ -67,7 +72,7 @@ These additions are recorded separately from the original 25-parent graph. They 
 
 | ID | Task | Prerequisites / execution | Status |
 | --- | --- | --- | --- |
-| TOOLCHAIN-001 | Resolve recorded gesture-handler compatibility decision | MOBILE-001-H; TOOLCHAIN-001-A in the implementation plan. Changes require its explicit assignment. | Planned |
+| TOOLCHAIN-001 | Resolve recorded gesture-handler compatibility decision | MOBILE-001-H; TOOLCHAIN-001-A in the implementation plan. Changes require its explicit assignment. | Paused |
 | UI-001 | Along tokens, controls, inputs and layouts | MOBILE-001-H; gesture-dependent UI-001-D also requires TOOLCHAIN-001-A. Execute UI-001-A through D individually. | Planned |
 
 ## Task rules

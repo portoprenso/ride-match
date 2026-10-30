@@ -150,6 +150,7 @@ There are no runtime dependencies. Zod arrives with CONTRACT-001.
 | `expo-status-bar` | 57.0.1 | runtime | Listed in Expo Router's install command | Expo `~57.0.1` | MOBILE-001-A |
 | `expo-dev-client` | 57.0.20 | runtime | Development builds | Expo `~57.0.20` | MOBILE-001-A; realigned in MOBILE-001-H |
 | `react-native-reanimated` | 4.5.1 | runtime | Required peer of `react-native-drawer-layout`, an `expo-router` dependency; pinned so pnpm does not pick a newer release | Expo `4.5.1`; peer `react-native` `0.83 - 0.86` | MOBILE-001-A |
+| `react-native-gesture-handler` | 2.32.0 | runtime | Required peer of `react-native-drawer-layout`, an `expo-router` dependency; pinned so pnpm does not auto-install 3.x | Expo `~2.32.0` | TOOLCHAIN-001-A |
 | `react-native-worklets` | 0.10.1 | runtime | Required peer of reanimated 4.5.1 (`0.10.x`); optional peer of `expo-modules-core` (`^0.7.4` … `^0.10.0`) | Expo `0.10.1` | MOBILE-001-A |
 | `react-dom` | 19.2.3 | runtime | Required peer of `expo-router`'s web dependencies (`vaul`, Radix); must match `react` | Expo `19.2.3`; peer `react ^19.2.3` | MOBILE-001-A |
 | `@ride-match/contracts` | `workspace:*` | runtime | Shared package | Fixed decision | MOBILE-001-B |
@@ -192,7 +193,18 @@ The four rows marked MOBILE-001-A above that are not in the original plan pin th
   - `react-native-gesture-handler` stays at 3.3.0 (TOOLCHAIN-001-A).
 - Every native and checkpoint result in MOBILE-001-H was rerun after the last alignment.
 
-**Correction from MOBILE-001-G (2026-10-03):** `react-native-gesture-handler` *is* installed, at **3.3.0**, and has been in the lockfile since MOBILE-001-A. It is optional for `expo-router`, but `react-native-drawer-layout` 4.2.11 (an `expo-router` dependency) declares it as a required peer (`>= 2.0.0`), so pnpm auto-installed the newest matching version. Expo SDK 57's `bundledNativeModules.json` expects `~2.32.0`. `pnpm peers check` and `expo-doctor` do not flag it, because the declared ranges are satisfied and it is not a direct dependency. The app imports none of its JavaScript (an Android export's source map has no gesture-handler or drawer-layout source), but Expo's autolinking finds it, so the native Android build compiles and links it (`libgesturehandler.so` is in the debug APK). The Android build, launch, and checked interactions worked with it. It was left unchanged, because pinning it (for example to `2.32.x`, like the four MOBILE-001-A pins) changes dependencies and the lockfile, which is outside MOBILE-001-G's scope. That decision is pending. `@react-native-masked-view/masked-view` 0.3.2 is also autolinked; it is an `expo-router` dependency and matches Expo's version.
+**Correction from MOBILE-001-G (2026-10-03):** `react-native-gesture-handler` *is* installed, at **3.3.0**, and has been in the lockfile since MOBILE-001-A. It is optional for `expo-router`, but `react-native-drawer-layout` 4.2.11 (an `expo-router` dependency) declares it as a required peer (`>= 2.0.0`), so pnpm auto-installed the newest matching version. Expo SDK 57's `bundledNativeModules.json` expects `~2.32.0`. `pnpm peers check` and `expo-doctor` do not flag it, because the declared ranges are satisfied and it is not a direct dependency. The app imports none of its JavaScript (an Android export's source map has no gesture-handler or drawer-layout source), but Expo's autolinking finds it, so the native Android build compiles and links it (`libgesturehandler.so` is in the debug APK). The Android build, launch, and checked interactions worked with it. It was left unchanged, because pinning it (for example to `2.32.x`, like the four MOBILE-001-A pins) changes dependencies and the lockfile, which is outside MOBILE-001-G's scope. `@react-native-masked-view/masked-view` 0.3.2 is also autolinked; it is an `expo-router` dependency and matches Expo's version.
+
+**Decision (TOOLCHAIN-001-A, 2026-10-30):** `react-native-gesture-handler` is pinned at **2.32.0** as a direct mobile dependency. That is Expo SDK 57's `~2.32.0`, the version `bundledNativeModules.json` in `expo` 57.0.31 still lists, and 2.32.0 is the only release in that range.
+- **Why direct:** pnpm then resolves `react-native-drawer-layout`'s required peer from the app instead of auto-installing the newest 3.x, the same mechanism as the MOBILE-001-A pins. Doctor and `expo install --check` now validate the version too.
+- **Why 2.x:** 3.x is a major line that Expo SDK 57 does not list. The app still imports no gesture-handler JavaScript, so there is no app code to migrate.
+- **Lockfile:** `react-native-gesture-handler` 3.3.0 is removed. Added: 2.32.0 and its dependencies `@egjs/hammerjs` 2.0.17, `@types/hammerjs` 2.0.46, and `hoist-non-react-statics` 3.3.2. The mobile tsconfig's explicit `types` keeps `@types/hammerjs` out of the compilation.
+- **Quick checks:**
+  - `pnpm peers check`: no issues.
+  - Online doctor: 21/21. `expo install --check`: up to date.
+  - The app, `expo-router`, and `react-native-drawer-layout` all resolve 2.32.0 inside the repository.
+  - `expo-modules-autolinking react-native-config` links 2.32.0 on Android and iOS.
+- **Deferred at the user's request:** tests, exports, and both native rebuilds, which the card requires before it is `Completed`.
 
 ### Newer releases intentionally not selected
 
@@ -462,6 +474,11 @@ pnpm --filter @ride-match/mobile add --save-exact expo@57.0.31 expo-constants@57
 pnpm --filter @ride-match/mobile add --save-exact -D jest-expo@57.0.6
 pnpm peers check
 pnpm doctor:mobile
+
+# TOOLCHAIN-001-A
+pnpm --filter @ride-match/mobile add --save-exact react-native-gesture-handler@2.32.0
+pnpm peers check
+pnpm doctor:mobile
 ```
 
 The remaining checks for each card are listed in [FIRST_STEPS.md](FIRST_STEPS.md). The file-list checks pass when they print nothing, because `grep` then exits 1. The `require.resolve` check passes when every printed path is inside the repository.
@@ -579,6 +596,7 @@ These are expectations recorded here, not checked results. The named task confir
   - **Corrected:** `test-renderer` 1.2.0 instead of 1.3.0, `@babel/runtime` declared, and no `transformIgnorePatterns` override.
 - **MOBILE-001-G:** verified on 2026-10-03; see the Android result above and the gesture-handler correction. One app-config fix: the `expo-status-bar` plugin with `style: 'dark'`, because Android's edge-to-edge status bar otherwise kept white icons on the white screens.
 - **MOBILE-001-H:** verified on 2026-10-30. See the iOS result, the patch-alignment correction, and the `Screen` safe-area section above. The Android checks were rerun on the final files.
+- **TOOLCHAIN-001-A:** the gesture-handler pin passed the quick dependency checks on 2026-10-30. Tests, exports, and the Android and iOS rebuilds are deferred to one later verification pass.
 
 ## Sources (checked 2026-10-03)
 

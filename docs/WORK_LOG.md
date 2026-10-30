@@ -900,3 +900,36 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - The Android development-client link-after-back limitation is recorded in DEVELOPMENT.
 - **Resume from:** assign TOOLCHAIN-001-A with the one-task prompt, only when requested.
 - **Ownership:** Released; no active task.
+
+## 2026-10-30 — TOOLCHAIN-001-A: Pin gesture-handler to Expo SDK 57's version
+
+- **Actor/session:** Claude Code / gesture-align.
+- **Status:** `Paused`; ownership released. TOOLCHAIN-001 is also `Paused`. The pin is done, and the card's required verification is deferred at the user's request.
+- **Working copy:** `main` at `475e662` (MOBILE-001-G/H, committed at the user's request just before this card). At the user's request, TOOLCHAIN-001-A was committed on top of it, without pushing. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "commit and continue with TOOLCHAIN-001-A". The user also asked not to retest everything after each step; heavy verification happens later.
+- **Changes:**
+  - **`apps/mobile/package.json`:** `react-native-gesture-handler` 2.32.0 (exact, runtime).
+  - **`pnpm-lock.yaml`:** removes `react-native-gesture-handler` 3.3.0 and adds 2.32.0 with `@egjs/hammerjs` 2.0.17, `@types/hammerjs` 2.0.46, and `hoist-non-react-statics` 3.3.2. No other package changed.
+  - **Docs:**
+    - `TOOLCHAIN.md`: decision, dependency row, commands, and verify-later entry.
+    - Status updates in `MOBILE_IMPLEMENTATION_PLAN.md` (card row), `ROADMAP.md` (TOOLCHAIN-001 row and progress), and `docs/README.md`.
+    - `AI_CONTEXT.md`.
+  - No application code changed.
+- **Decision:**
+  - **What:** pin 2.32.0, Expo SDK 57's `~2.32.0` (from `bundledNativeModules.json` in `expo` 57.0.31) and the only release in that range. The direct dependency makes pnpm resolve `react-native-drawer-layout`'s required peer (`>= 2.0.0`) from the app instead of auto-installing the newest 3.x, and it brings the version under doctor and `expo install --check`.
+  - **Rejected:** keeping 3.3.0, which Expo SDK 57 does not list. The app imports no gesture-handler code, so nothing needed migrating.
+- **Verification (quick checks only):**
+  - `pnpm --filter @ride-match/mobile add --save-exact react-native-gesture-handler@2.32.0` → exit 0.
+  - `pnpm peers check` → "No peer dependency issues found". `expo-doctor` (online) → "21/21 checks passed". `npx expo install --check` → "Dependencies are up to date".
+  - `require.resolve` from the app, `expo-router`, and `react-native-drawer-layout` → 2.32.0, inside the repository.
+  - `npx expo-modules-autolinking react-native-config --platform android|ios --json` → gesture-handler 2.32.0 on both platforms.
+  - **Deferred (required before `Completed`):**
+    - `pnpm test:mobile`, typecheck and lint.
+    - Both exports.
+    - Android and iOS rebuilds from clean native directories, rechecking the MOBILE-001-G/H flows.
+- **JSDoc/TSDoc:** not applicable; no code changed.
+- **Remaining/blockers:**
+  - The deferred verification above.
+  - MEGAsync exclusions for the generated `dist/`, `android/`, and `ios/` paths.
+- **Resume from:** when the user asks, run the deferred verification in one pass. If it passes, mark TOOLCHAIN-001-A and TOOLCHAIN-001 `Completed`; UI-001-A follows only when requested.
+- **Ownership:** Released; no active task.
