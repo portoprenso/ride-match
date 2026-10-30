@@ -337,6 +337,7 @@ If a consumer fails, record the evidence and choose one format that all three lo
   - `preset: 'jest-expo'`
   - `testMatch` limited to `<rootDir>/tests/**/*.test.ts?(x)`
   - **Correction (MOBILE-001-F):** no `transformIgnorePatterns` override. `jest-expo` 57.0.5's preset already starts with `/node_modules/(?!(.pnpm|react-native|@react-native|…|expo|@expo|…))`, which transforms Expo and React Native packages inside the `.pnpm` store. It also excludes `react-native-reanimated/plugin/` and `@react-native/babel-preset/`, which the pattern planned here would have dropped.
+  - `clearMocks: true` (UI-001-D). React Native's preset already mocks APIs such as `AccessibilityInfo` with shared `jest.fn`s. `jest.spyOn` returns that same mock, and `restoreAllMocks` does not reset it, so a spy saw calls from earlier tests.
   - No `babel.config.js`: without one, `jest-expo` resolves `expo/internal/babel-preset` from `process.cwd()`, so Jest must run in `apps/mobile` (the `test` script does).
 - Route tests use `renderRouter` from `expo-router/testing-library` against the real `app/` directory, through `tests/helpers/renderApp.ts`. Tests stay outside `app/`.
   - Testing Library 14's `render` is async. `renderRouter` attaches `getPathname()` and `getRouterState()` to the returned promise, so the helper awaits it and keeps those functions.

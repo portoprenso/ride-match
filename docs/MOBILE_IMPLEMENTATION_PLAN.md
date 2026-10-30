@@ -147,7 +147,7 @@ Additional variants stay inside these screens: empty search, throttled resend, p
 | Colors | Ink #123C38; teal #146B59; lime #DDF5A0; paper #F7F8F2; muted #586D68; line #DCE4DC; soft #EAF2E9; danger #AD3E36; warning #8A5B14. |
 | Layout | Separate map, scrolling content, modal form, and chat layouts; shared footer/spacing rules. |
 | Icons | Consistent small vector set: back, close, search, location, members, chat, shield, clock, settings, external opening. Hide decorative icons from accessibility. UI-001-B's `IconButton` hides whatever icon it receives. No icon renderer is installed yet. The first card that draws real icons decides: Expo SDK 57 lists `react-native-svg` 15.15.4, which can draw the design's own stroke paths, and `@expo/vector-icons`. |
-| Sheets | One coordinated host per flow; content-driven sizing, keyboard handling, focus restoration, explicit dismissal. |
+| Sheets | One coordinated host per flow; content-driven sizing, keyboard handling, focus restoration, explicit dismissal. UI-001-D builds `SheetHost` on React Native's `Modal`; see the sheet-library decision below. |
 
 For SDK 57, use static Manrope font assets. Expo's guidance supports native embedding through expo-font, avoiding startup font swapping; verify platform font-family/weight names and preserve the license. [Expo font guidance](https://docs.expo.dev/develop/user-interface/fonts/)
 
@@ -156,13 +156,19 @@ Component inventory:
 - Extend Screen, Button, UnavailableScreen.
 - Core: AppText (UI-001-A, `src/ui/AppText.tsx`, with tokens in `src/ui/tokens.ts`), and, from UI-001-B, `Button` variants (primary, secondary, ghost, danger; `busy`), IconButton, Badge (neutral, success, warning, danger), and Notice (neutral, warning, danger). LoadingState and EmptyState are still to come.
 - Inputs (UI-001-C): `TextField` and `SearchField` (`src/ui/TextField.tsx`); `OtpField`, one transparent input over decorative digit cells; and `SegmentedControl`, a radio group that RIDE-001-B fills with the Now, +5, and +10 departure options. Errors are announced through `FieldMessage`'s `useAnnouncement`.
-- Layout: ScreenHeader, scrolling form, sticky action footer, ConfirmAction, map overlay layout, sheet host.
+- Layout (UI-001-D): `Screen`'s `scroll` and `footer` form layout, `ActionFooter`, `SheetHost` with `SheetContent` (`src/ui/SheetHost.tsx`), and `ConfirmAction`. ScreenHeader is still to come: its back button needs the icon decision. The map overlay layout comes with MAP-001-A.
 - Discovery: destination row/chip, public ride/group card, nearby row, ride/group/own/meeting markers, cluster marker.
 - Groups: member row, capacity display, status header, meeting summary, role-aware action menu.
 - Chat: message bubble, composer, failed-send action, closure banner, history-loading controls.
 - Safety/settings: reason row, permission row, blocked-user row.
 
-Do not add a broad UI framework. A sheet library is justified only after a bounded compatibility check for gestures, scrolling, keyboard, and accessibility. @gorhom/bottom-sheet is a candidate, not an installed/verified decision. [Official documentation](https://gorhom.dev/react-native-bottom-sheet/)
+Do not add a broad UI framework. A sheet library is justified only after a bounded compatibility check for gestures, scrolling, keyboard, and accessibility. [Official documentation](https://gorhom.dev/react-native-bottom-sheet/)
+
+**Sheet-library decision (UI-001-D, 2026-10-31): no library for now.**
+
+- **Checked:** `@gorhom/bottom-sheet` 5.2.14, the latest release (2026-05-09). It is plain JavaScript, and its peers (gesture-handler ≥ 2.16.1, Reanimated ≥ 3.16 or 4) are met by the installed 2.32.0 and 4.5.1, so it would not need a native rebuild. Expo SDK 57 does not list it.
+- **Why not now:** the modal sheets need what React Native's `Modal` already provides. The sheet is its own window, so screen readers stay inside it, and Android back arrives through `onRequestClose`. Gorhom's modal renders inside the app's own view tree, so it would need its own back handling and a way to hide the screen behind it from screen readers. Its keyboard handling also relies on its own `BottomSheetTextInput` rather than `TextField`.
+- **Still open:** the draggable discovery sheet that stays over the map (02, 03, 20) is the case a gesture library serves. MAP-002-A decides it, with native checks of gestures, scrolling, keyboard, and accessibility.
 
 Accessibility and responsiveness:
 
@@ -266,7 +272,7 @@ Documentation: shared handoff/progress plus TOOLCHAIN.md and DEVELOPMENT.md as a
 | UI-001-A | MOBILE-001-H | New UI tokens/AppText and M/assets static Manrope/license/Along mark; reuse existing art. All screens. | Correct native weights; no clipped sample headings/startup font failure; static checks and both-platform inspection. | S / font naming/assets | Paused: assets, tokens and AppText done (2026-10-30); tests, exports and native font inspection deferred |
 | UI-001-B | UI-001-A | Extend Button; add UI IconButton/Badge/Notice. All screens. | Variants, busy/disabled states, names, touch targets; blocked controls cannot submit again. Focused behavior tests. | S / low | Completed (2026-10-30) |
 | UI-001-C | UI-001-B | New UI fields, accessible OTP and departure selector. 03, 06–09, 41, 47. | Error/focus/paste/selection behavior; native keyboard and enlarged text. | M / native input behavior | Paused: fields, code input and selector done with tests (2026-10-30); native keyboard and enlarged-text checks deferred |
-| UI-001-D | UI-001-B, TOOLCHAIN-001-A | Extend Screen; new form/footer, ConfirmAction and sheet host. Verify candidate library before adoption. | One sheet at a time; Android back/iOS dismissal; keyboard-safe actions and restored focus; native checks. | M / gestures/keyboard | Planned |
+| UI-001-D | UI-001-B, TOOLCHAIN-001-A | Extend Screen; new form/footer, ConfirmAction and sheet host. Verify candidate library before adoption. | One sheet at a time; Android back/iOS dismissal; keyboard-safe actions and restored focus; native checks. | M / gestures/keyboard | Paused: sheet host, sheet content, ConfirmAction, ActionFooter and Screen form layout done with tests (2026-10-31); no sheet library adopted; native back, dismissal, keyboard and focus checks deferred |
 
 ### Contracts
 

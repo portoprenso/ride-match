@@ -1055,3 +1055,73 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - MEGAsync exclusions.
 - **Resume from:** UI-001-D when requested (it also requires TOOLCHAIN-001-A), or the combined deferred verification.
 - **Ownership:** Released; no active task.
+
+## 2026-10-31 — UI-001-D: Sheet host, confirmation sheet and form layout
+
+- **Actor/session:** Claude Code / ui-layouts.
+- **Status:** `Paused`; ownership released. The components and focused tests are done. Native checks for back, dismissal, keyboard and focus are deferred at the user's request.
+- **Working copy:** `main` at `71aeec4` (UI-001-C, committed at the user's request just before this card). UI-001-D's changes are uncommitted, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "commit UI-001-C and continue with UI-001-D"; keep per-step verification light.
+- **Prerequisites:** UI-001-B is `Completed`. TOOLCHAIN-001-A is `Paused`: its gesture-handler pin is in place, and only its verification is deferred. The user asked for this card explicitly. The sheet host does not use gesture-handler (see Decisions), so nothing here depends on that pending verification.
+- **Design reference:**
+  - The design source's `sheet()` helper: white, radius 32, 24-point padding, 16-point gap.
+  - Its `footer()` helper ("Bottom actions"): a primary button over a ghost one.
+  - Its `title()` helper: the 24/30 bold `section` style over muted body text.
+  - Confirmation screens 28 and 34, with their danger actions and ways back.
+- **Changes:**
+  - **`src/ui/SheetHost.tsx`:**
+    - **`SheetHost`:**
+      - **Presentation:** a transparent, fading React Native `Modal` (translucent status and navigation bars), with a dimmed background.
+      - **Size:** the sheet is as tall as its content, up to the top inset plus 24 points, and a `KeyboardAvoidingView` keeps it above the keyboard.
+      - **Closing:** a background tap, Android back (`onRequestClose`) and the VoiceOver escape gesture (`onAccessibilityEscape` on an `accessibilityViewIsModal` sheet) call `onDismiss`; `dismissible={false}` ignores all three.
+      - **Focus:** `returnFocusRef` sends screen-reader focus back to the opener with `AccessibilityInfo.sendAccessibilityEvent`. On iOS that happens from `Modal`'s `onDismiss`, after the closing animation; Android has no `onDismiss`, so it happens when `open` turns false.
+    - **`SheetContent`:** content in a non-growing `ScrollView` with `keyboardShouldPersistTaps="handled"`, plus an optional footer. The bottom inset goes to whichever of the two is last.
+  - **`src/ui/ConfirmAction.tsx`:**
+    - **Content:** a `section` heading (`header` role), a muted message, optional children, and an error `Notice` that is announced through `useAnnouncement`.
+    - **Actions:** a confirm `Button` (primary or danger, `busy`) and a ghost cancel button, disabled while busy.
+  - **`src/ui/ActionFooter.tsx`:** the 8-point stack for final actions, main action first.
+  - **`src/ui/Screen.tsx`:**
+    - **Form layout:** new `scroll` and `footer` props. A `KeyboardAvoidingView` holds the content (a `ScrollView` when `scroll` is set) above a pinned footer, and the footer takes the bottom inset.
+    - **Unchanged:** without these props, the plain padded view and its tests stay the same.
+    - **Background:** now uses the `white` token.
+  - **`Button` and `IconButton`:** an optional `ref`, passed to `Pressable`, so a sheet can return focus to the button that opened it.
+  - **`jest.config.js`:** `clearMocks: true`.
+    - **Why:** React Native's preset already mocks `AccessibilityInfo`'s functions as shared `jest.fn`s. `jest.spyOn` returns that same mock, and `restoreAllMocks` does not reset it, so calls leaked into later tests.
+    - **How it showed up:** a focus call from the iOS focus test leaked into the Android one. The UI-001-C announcement tests had the same latent leak.
+  - **`tests/layout.test.tsx`** (8 tests):
+    - **Form layout:** the footer stays outside the scroll view and gets the bottom inset (58).
+    - **`SheetHost`:** content shows only while open. The three close requests call `onDismiss`, and none of them do when the sheet is not dismissible. Focus returns on iOS (through the dismissal callback) and on Android (on close).
+    - **`ConfirmAction`:** the heading leads and both choices are reported. While busy, both actions are blocked. An error is shown and announced while the actions stay available.
+  - **Docs:**
+    - `MOBILE_IMPLEMENTATION_PLAN.md`: the card status, the sheets row, the layout inventory, and the sheet-library decision.
+    - Also updated: `ROADMAP.md` (progress entry and header), `ARCHITECTURE.md`, `DEVELOPMENT.md`, `TOOLCHAIN.md` (test configuration), `docs/README.md`, and `AI_CONTEXT.md`.
+- **Decisions:**
+  - **No sheet library.** `@gorhom/bottom-sheet` 5.2.14 passed the registry check, and its peers are met with no native rebuild. It was still not adopted, because React Native's `Modal` already provides what modal sheets need:
+    - A separate window, so screen readers stay inside the sheet.
+    - Android back through `onRequestClose`.
+
+    Gorhom's modal renders in the app's own tree and would need both added by hand, and its keyboard handling relies on its own `BottomSheetTextInput`. The draggable discovery sheet over the map is left to MAP-002-A, with native checks.
+  - **No drag handle and no swipe-to-dismiss.** The design draws a handle only on map sheets, and a handle that cannot be dragged would mislead. Modal sheets close through their own actions, the background, Android back, or the escape gesture.
+  - **The sheet fades instead of sliding.** A slide on a transparent `Modal` moves the dimmed background too. A fade also suits reduced-motion settings.
+  - **One host per flow, switching content.** Moving from one sheet to the next never presents a second modal, which iOS cannot do while one is closing. Flows close the sheet before navigating to another route.
+  - **`ConfirmAction` is sheet content, not its own modal.** It shares the flow's single host. Its `busy` state documents pairing with `dismissible={false}`.
+  - **ScreenHeader is not part of this card.** Its back button needs the pending icon renderer decision.
+- **Verification:**
+  - Mobile typecheck → exit 0. The first run failed on a `toHaveAccessibilityState` matcher that Testing Library 14 lacks; the test now uses `toBeBusy()`.
+  - Mobile lint → exit 0.
+  - `npx jest` in `apps/mobile` → 4 suites, 41 tests passed; contracts `dist/` was already built.
+    - The first run of the new file had 3 failures, all in the tests: the matcher above, a scroll-content lookup that assumed the wrong parent (now finds the enclosing `RCTScrollView`), and the leaked mock calls (now `clearMocks`).
+    - A two-test probe confirmed the leak: a fresh spy in the second test still held the first test's call.
+  - **Deferred (required before `Completed`):** on both platforms, with a temporary development-only sample:
+    - **Opening:** one sheet at a time, sized to its content.
+    - **Closing:** background tap, Android back, VoiceOver escape, and no close while not dismissible.
+    - **Keyboard:** the actions stay above the keyboard for a field in a sheet, and in a `scroll`/`footer` `Screen`. This includes the inset inside the iOS sign-in sheet.
+    - **Focus:** screen-reader focus returns to the opener on both platforms.
+- **JSDoc/TSDoc:** all new components and the new `Screen` and `ref` props. They cover the one-host-per-flow rule, closing before navigating, why `Modal` is used, dismissal sources and `dismissible`, focus-return timing per platform, sizing and keyboard behavior, footer insets, the action order, and `ConfirmAction`'s busy and error contract.
+- **Remaining/blockers:**
+  - The deferred native verification for TOOLCHAIN-001-A, UI-001-A, UI-001-C, and UI-001-D.
+  - The icon renderer decision, which ScreenHeader also waits for.
+  - The draggable map-sheet decision, in MAP-002-A.
+  - MEGAsync exclusions.
+- **Resume from:** CONTRACT-001-A when requested, or the combined deferred verification.
+- **Ownership:** Released; no active task.

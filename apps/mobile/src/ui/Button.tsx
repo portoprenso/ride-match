@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import type { Ref } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, type View } from 'react-native';
 
 import { AppText } from './AppText';
 import { colors, radii, spacing, type ColorName } from './tokens';
@@ -36,6 +37,8 @@ type ButtonProps = {
    * lacks context on its own, for example "Close sign-in" for a button labeled "Close".
    */
   accessibilityLabel?: string;
+  /** For returning screen-reader focus here, for example after a sheet this button opened closes. */
+  ref?: Ref<View>;
 };
 
 /**
@@ -49,6 +52,7 @@ export function Button({
   disabled = false,
   busy = false,
   accessibilityLabel,
+  ref,
 }: ButtonProps) {
   const look: Look = disabled
     ? { background: variant === 'ghost' ? undefined : 'line', text: 'muted' }
@@ -56,6 +60,7 @@ export function Button({
 
   return (
     <Pressable
+      ref={ref}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ busy }}

@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-10-30. **MONO-001 and MOBILE-001 are completed; all other implementation tasks are planned.**
+Last updated: 2026-10-31. **MONO-001 and MOBILE-001 are completed; TOOLCHAIN-001 and UI-001 are paused for deferred native checks; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,16 @@ Last updated: 2026-10-30. **MONO-001 and MOBILE-001 are completed; all other imp
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**UI-001-D — Paused (2026-10-31).**
+
+- **Done:**
+  - `SheetHost`: one bottom sheet per flow on React Native's `Modal`, over a dimmed screen. Only the flow closes it, after a background tap, Android back, or the VoiceOver escape gesture. It can refuse to close while an operation runs, and returns screen-reader focus to the control that opened it.
+  - `SheetContent`, and a `scroll`/`footer` form layout for `Screen`: content that scrolls, with actions pinned above the keyboard and the bottom inset.
+  - `ConfirmAction` and `ActionFooter`: a confirmation with a heading, consequence text, a confirm action (primary or danger) and a way back, plus busy and announced-error states.
+  - No sheet library: `@gorhom/bottom-sheet` was checked and not adopted (see the implementation plan).
+  - 41 mobile tests, typecheck, and lint pass.
+- **Deferred at the user's request:** native checks on both platforms for Android back, iOS dismissal and escape, keyboard-safe actions, and restored focus.
 
 **UI-001-C — Paused (2026-10-30).**
 

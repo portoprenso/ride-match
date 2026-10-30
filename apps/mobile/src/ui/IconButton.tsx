@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { colors, radii } from './tokens';
@@ -20,6 +20,8 @@ type IconButtonProps = {
   disabled?: boolean;
   /** Shows a spinner instead of the icon and ignores presses, like `Button`'s `busy`. */
   busy?: boolean;
+  /** For returning screen-reader focus here, for example after a sheet this button opened closes. */
+  ref?: Ref<View>;
 };
 
 /**
@@ -35,9 +37,11 @@ export function IconButton({
   tone = 'soft',
   disabled = false,
   busy = false,
+  ref,
 }: IconButtonProps) {
   return (
     <Pressable
+      ref={ref}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ busy }}
