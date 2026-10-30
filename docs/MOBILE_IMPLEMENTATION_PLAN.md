@@ -155,7 +155,7 @@ Component inventory:
 
 - Extend Screen, Button, UnavailableScreen.
 - Core: AppText (UI-001-A, `src/ui/AppText.tsx`, with tokens in `src/ui/tokens.ts`), and, from UI-001-B, `Button` variants (primary, secondary, ghost, danger; `busy`), IconButton, Badge (neutral, success, warning, danger), and Notice (neutral, warning, danger). LoadingState and EmptyState are still to come.
-- Inputs: TextField, SearchField, a single accessible OTP input with optional visual cells, departure selector.
+- Inputs (UI-001-C): `TextField` and `SearchField` (`src/ui/TextField.tsx`); `OtpField`, one transparent input over decorative digit cells; and `SegmentedControl`, a radio group that RIDE-001-B fills with the Now, +5, and +10 departure options. Errors are announced through `FieldMessage`'s `useAnnouncement`.
 - Layout: ScreenHeader, scrolling form, sticky action footer, ConfirmAction, map overlay layout, sheet host.
 - Discovery: destination row/chip, public ride/group card, nearby row, ride/group/own/meeting markers, cluster marker.
 - Groups: member row, capacity display, status header, meeting summary, role-aware action menu.
@@ -265,7 +265,7 @@ Documentation: shared handoff/progress plus TOOLCHAIN.md and DEVELOPMENT.md as a
 | TOOLCHAIN-001-A | MOBILE-001-H | Resolve gesture-handler alignment in M/package.json and root lockfile; record decision. New bounded compatibility work. | Intended version resolves/autolinks; doctor, tests, exports and both native builds pass. Doctor alone is insufficient. | S / native compatibility | Paused: 2.32.0 pinned (2026-10-30); tests, exports and native rebuilds deferred at the user's request |
 | UI-001-A | MOBILE-001-H | New UI tokens/AppText and M/assets static Manrope/license/Along mark; reuse existing art. All screens. | Correct native weights; no clipped sample headings/startup font failure; static checks and both-platform inspection. | S / font naming/assets | Paused: assets, tokens and AppText done (2026-10-30); tests, exports and native font inspection deferred |
 | UI-001-B | UI-001-A | Extend Button; add UI IconButton/Badge/Notice. All screens. | Variants, busy/disabled states, names, touch targets; blocked controls cannot submit again. Focused behavior tests. | S / low | Completed (2026-10-30) |
-| UI-001-C | UI-001-B | New UI fields, accessible OTP and departure selector. 03, 06–09, 41, 47. | Error/focus/paste/selection behavior; native keyboard and enlarged text. | M / native input behavior | Planned |
+| UI-001-C | UI-001-B | New UI fields, accessible OTP and departure selector. 03, 06–09, 41, 47. | Error/focus/paste/selection behavior; native keyboard and enlarged text. | M / native input behavior | Paused: fields, code input and selector done with tests (2026-10-30); native keyboard and enlarged-text checks deferred |
 | UI-001-D | UI-001-B, TOOLCHAIN-001-A | Extend Screen; new form/footer, ConfirmAction and sheet host. Verify candidate library before adoption. | One sheet at a time; Android back/iOS dismissal; keyboard-safe actions and restored focus; native checks. | M / gestures/keyboard | Planned |
 
 ### Contracts

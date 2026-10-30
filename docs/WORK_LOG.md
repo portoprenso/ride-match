@@ -1012,3 +1012,46 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - MEGAsync exclusions.
 - **Resume from:** UI-001-C when requested, or the combined deferred verification.
 - **Ownership:** Released; no active task.
+
+## 2026-10-30 — UI-001-C: Text fields, accessible code input and segmented selector
+
+- **Actor/session:** Claude Code / ui-inputs.
+- **Status:** `Paused`; ownership released. The components and focused tests are done; native keyboard and enlarged-text checks are deferred at the user's request.
+- **Working copy:** `main` at `8fe8ac0` (UI-001-B, committed at the user's request just before this card). At the user's request, UI-001-C was committed on top of it, without pushing. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "commit and continue with UI-001-C"; keep per-step verification light.
+- **Design reference:** the design source's `field()` helper (small muted label over a white, line-bordered, radius-16, padding-16 box), screen 08's six 49.5×60 radius-12 code cells with section-size digits, and screen 06's three equal departure options (selected primary, others secondary).
+- **Changes:**
+  - **`src/ui/TextField.tsx`:**
+    - **`TextField`:**
+      - Labels: the visible label is hidden from screen readers and becomes the input's `accessibilityLabel`.
+      - Borders: teal on focus, danger on error.
+      - Errors: replace the hint, are passed as `accessibilityHint`, and are announced when they appear or change.
+      - `maxLength` shows a "used/max" counter.
+      - `disabled` blocks editing; `onClear` adds a "Clear" button named "Clear <label>".
+      - Other `TextInput` props pass through, and multiline fields start four lines tall.
+    - **`SearchField`:** search return key, no autocorrect or capitalization, the `search` role, and a required `onClear`.
+  - **`src/ui/OtpField.tsx`:**
+    - One transparent `TextInput` (`caretHidden`, number pad, `textContentType="oneTimeCode"`, `autoComplete="one-time-code"`) covers digit cells that are hidden from screen readers.
+    - `onChangeText` receives digits only, cut to `length` (default 6). There is no `maxLength`, because it would cut pasted text before the digits are extracted.
+    - The active cell is highlighted while focused, and errors are read and announced like `TextField`'s.
+  - **`src/ui/SegmentedControl.tsx`:** a generic `options`/`value`/`onChange` group (`radiogroup` with `radio` options and `checked` state), equal widths, 52-point minimum height, and wrapping labels. It holds no domain values; RIDE-001-B supplies the departure options.
+  - **`src/ui/FieldMessage.tsx`:** the shared hint/error/counter line and `useAnnouncement` (`AccessibilityInfo.announceForAccessibility` when a message appears or changes).
+  - **`tests/fields.test.tsx`** (9 tests): label as the only name, change reporting, error hint and announcement de-duplication, counter, Clear visibility and press, the single code field with hidden cells, digit-only paste ("Code: 12 34-56 789" → "123456"), code error, radio group checked state and choice, and disabled.
+  - **Docs:** `MOBILE_IMPLEMENTATION_PLAN.md` (card status, input inventory), `ROADMAP.md`, `ARCHITECTURE.md`, `DEVELOPMENT.md`, `docs/README.md`, and `AI_CONTEXT.md`.
+- **Decisions:**
+  - **One input for the code**, not six chained inputs. That matches the plan's single-field rule and keeps paste, autofill, and screen-reader behavior native.
+  - **Errors as the field's accessibility hint plus an announcement** instead of a second readable error element, so they are not read twice. React Native has no field "invalid" state.
+  - **A generic selector instead of a departure-specific component**, keeping domain values out of `src/ui`.
+  - **Clear as a text action**, because no icon renderer is installed (see UI-001-B).
+- **Verification:**
+  - Mobile typecheck → exit 0. The first run failed: `StyleSheet.absoluteFillObject` no longer exists in React Native 0.86's types, and the tests used a `toHaveAccessibilityHint` matcher that Testing Library 14 lacks. Both were fixed.
+  - Mobile lint → exit 0.
+  - `pnpm test:mobile` → 3 suites, 32 tests passed. The first field-test run had 3 failures from those two issues and a role query on the non-focusable group `View`, now checked through its label and role prop.
+  - **Deferred (required before `Completed`):** on both platforms, check the native keyboards (phone, number pad, search action), code paste and SMS-style autofill, visible focus, and enlarged text for the fields, code cells, and selector.
+- **JSDoc/TSDoc:** all new components and `useAnnouncement`. They cover naming, error reading and announcing, pass-through props, single-field code semantics and digit extraction, and why there is no `maxLength`, radio semantics, and the absence of domain values.
+- **Remaining/blockers:**
+  - The deferred native verification for UI-001-A, UI-001-C, and TOOLCHAIN-001-A.
+  - The icon renderer decision.
+  - MEGAsync exclusions.
+- **Resume from:** UI-001-D when requested (it also requires TOOLCHAIN-001-A), or the combined deferred verification.
+- **Ownership:** Released; no active task.

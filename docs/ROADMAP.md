@@ -13,6 +13,15 @@ This roadmap covers only items 1–2. No backend implementation or real transpor
 
 ## Progress
 
+**UI-001-C — Paused (2026-10-30).**
+
+- **Done:**
+  - `TextField` and `SearchField`: the label is the field's spoken name; they show focus and error borders, read and announce errors, offer a counter for bounded text, and add Clear for search.
+  - `OtpField`: one transparent input over digit cells. Paste and autofill keep digits only, and screen readers get a single field.
+  - `SegmentedControl`: a radio group, used for the departure choice.
+  - 32 mobile tests, typecheck, and lint pass.
+- **Deferred at the user's request:** native keyboard and enlarged-text checks on both platforms.
+
 **UI-001-B — Completed (2026-10-30).**
 
 - **`Button`:** primary, secondary, ghost, and danger variants, a `busy` state that blocks repeat presses and reports busy, 52-point height, and Manrope labels.
