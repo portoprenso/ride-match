@@ -51,6 +51,8 @@ Use Node 24.17.0 and the native commands in [TOOLCHAIN.md](TOOLCHAIN.md#native-p
 - **Measuring the bottom inset:** content is vertically centered, so screenshots can't show the top inset. The bottom inset can be measured: read the simulator screenshot (`xcrun simctl io <device> screenshot`) and take the gap between the lowest full-width button and the screen edge. It should be 58 points (34 inset + 24 padding) on every screen, including a freshly opened sheet.
 - **Android (Pixel 9 Pro XL emulator, Android 16):** the MOBILE-001-G procedure below was rerun on the final files, and every check passed.
 
+Fonts are embedded at build time (UI-001-A), so rebuild both development clients after changing `assets/fonts` or the `expo-font` plugin list. An older build silently shows the system font.
+
 Online `pnpm doctor:mobile` depends on Expo's current patch list, so it can start failing without any repository change (see TOOLCHAIN). Align the reported patches only when authorized, rerun both native builds afterwards, and never exclude packages or treat exports as native evidence.
 
 ## Configuration

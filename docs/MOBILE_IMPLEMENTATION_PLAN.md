@@ -140,7 +140,7 @@ Additional variants stay inside these screens: empty search, throttled resend, p
 | Foundation | Implementation direction |
 | --- | --- |
 | Branding | Along remains provisional. Reuse the merging-path mark; keep development identifiers/scheme unless separately requested. |
-| Typography | Bundle static Manrope weights 400/500/600/700/800 with license; named text variants. No font files were bundled at review time. |
+| Typography | UI-001-A bundles static Manrope weights 400/500/600/700/800 with the OFL license, embedded through `expo-font`. `AppText` variants: display 48/54 ExtraBold, heading 30/36 ExtraBold, section 24/30 Bold, subheading 18/24 Bold, body 15/22 Regular, label 15/20 Bold, and small 12/18 Medium, from the design source's style table. Micro is deferred. |
 | Type scale | Reference size/line height: display 48/54, heading 30/36, section 24/30, subheading 18/24, body 15/22, label 15/20, small 12/18. Micro 10/14 is not for essential information. |
 | Spacing | 4, 8, 12, 16, 24, 32; reference side padding 24, adapted to insets and width. |
 | Shape | Radii 12/16/24/32; reference buttons 52 high with radius 16; allow growth with text. |
@@ -154,7 +154,7 @@ For SDK 57, use static Manrope font assets. Expo's guidance supports native embe
 Component inventory:
 
 - Extend Screen, Button, UnavailableScreen.
-- Core: AppText, IconButton, Badge, Notice, LoadingState, EmptyState.
+- Core: AppText (UI-001-A, `src/ui/AppText.tsx`, with tokens in `src/ui/tokens.ts`), IconButton, Badge, Notice, LoadingState, EmptyState.
 - Inputs: TextField, SearchField, a single accessible OTP input with optional visual cells, departure selector.
 - Layout: ScreenHeader, scrolling form, sticky action footer, ConfirmAction, map overlay layout, sheet host.
 - Discovery: destination row/chip, public ride/group card, nearby row, ride/group/own/meeting markers, cluster marker.
@@ -263,7 +263,7 @@ Documentation: shared handoff/progress plus TOOLCHAIN.md and DEVELOPMENT.md as a
 | --- | --- | --- | --- | --- | --- |
 | MOBILE-001-H | MOBILE-001-G | Existing iOS shell checkpoint; reuse current app; normally docs and narrow config fixes. No design implementation. | Native launch/navigation/dismissal/safe areas and existing final checkpoint pass; recheck Android for shared changes. | S / iOS environment | See FIRST_STEPS.md |
 | TOOLCHAIN-001-A | MOBILE-001-H | Resolve gesture-handler alignment in M/package.json and root lockfile; record decision. New bounded compatibility work. | Intended version resolves/autolinks; doctor, tests, exports and both native builds pass. Doctor alone is insufficient. | S / native compatibility | Paused: 2.32.0 pinned (2026-10-30); tests, exports and native rebuilds deferred at the user's request |
-| UI-001-A | MOBILE-001-H | New UI tokens/AppText and M/assets static Manrope/license/Along mark; reuse existing art. All screens. | Correct native weights; no clipped sample headings/startup font failure; static checks and both-platform inspection. | S / font naming/assets | Planned |
+| UI-001-A | MOBILE-001-H | New UI tokens/AppText and M/assets static Manrope/license/Along mark; reuse existing art. All screens. | Correct native weights; no clipped sample headings/startup font failure; static checks and both-platform inspection. | S / font naming/assets | Paused: assets, tokens and AppText done (2026-10-30); tests, exports and native font inspection deferred |
 | UI-001-B | UI-001-A | Extend Button; add UI IconButton/Badge/Notice. All screens. | Variants, busy/disabled states, names, touch targets; blocked controls cannot submit again. Focused behavior tests. | S / low | Planned |
 | UI-001-C | UI-001-B | New UI fields, accessible OTP and departure selector. 03, 06–09, 41, 47. | Error/focus/paste/selection behavior; native keyboard and enlarged text. | M / native input behavior | Planned |
 | UI-001-D | UI-001-B, TOOLCHAIN-001-A | Extend Screen; new form/footer, ConfirmAction and sheet host. Verify candidate library before adoption. | One sheet at a time; Android back/iOS dismissal; keyboard-safe actions and restored focus; native checks. | M / gestures/keyboard | Planned |

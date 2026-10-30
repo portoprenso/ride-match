@@ -1,5 +1,6 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { AppText } from './AppText';
 import { Button } from './Button';
 import { Screen } from './Screen';
 
@@ -23,10 +24,10 @@ export function UnavailableScreen({ title, message, onGoHome }: UnavailableScree
   return (
     <Screen>
       <View style={styles.content}>
-        <Text accessibilityRole="header" style={styles.title}>
+        <AppText variant="section" accessibilityRole="header">
           {title}
-        </Text>
-        <Text style={styles.message}>{message}</Text>
+        </AppText>
+        <AppText color="muted">{message}</AppText>
       </View>
       <Button label="Go to map" onPress={onGoHome} />
     </Screen>
@@ -38,15 +39,5 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     gap: 12,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#111111',
-  },
-  message: {
-    fontSize: 16,
-    lineHeight: 22,
-    color: '#555555',
   },
 });

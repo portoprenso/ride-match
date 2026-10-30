@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import type { Edge } from 'react-native-safe-area-context';
 
+import { AppText } from '../../ui/AppText';
 import { Button } from '../../ui/Button';
 import { Screen } from '../../ui/Screen';
 
@@ -14,13 +15,13 @@ function AuthPlaceholderLayout({ title, children }: { title: string; children: R
   return (
     <Screen edges={AUTH_EDGES}>
       <View style={styles.content}>
-        <Text accessibilityRole="header" style={styles.title}>
+        <AppText variant="section" accessibilityRole="header">
           {title}
-        </Text>
-        <Text style={styles.notice}>
+        </AppText>
+        <AppText color="muted">
           Sign-in is not available yet. This preview only shows navigation; no phone number or
           code is collected.
-        </Text>
+        </AppText>
       </View>
       <View style={styles.actions}>{children}</View>
     </Screen>
@@ -73,16 +74,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     gap: 12,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#111111',
-  },
-  notice: {
-    fontSize: 16,
-    lineHeight: 22,
-    color: '#555555',
   },
   actions: {
     gap: 12,

@@ -13,6 +13,11 @@ This roadmap covers only items 1–2. No backend implementation or real transpor
 
 ## Progress
 
+**UI-001-A — Paused (2026-10-30).**
+
+- **Done:** design tokens (`src/ui/tokens.ts`) and `AppText` were added, and the map, sign-in, and unavailable screens now use `AppText`. Static Manrope 400–800 with its OFL license is embedded through `expo-font`, and the Along mark (SVG plus PNGs) is in `apps/mobile/assets`. Typecheck, lint, and doctor (21/21) pass.
+- **Deferred at the user's request:** tests, exports, and native font inspection after rebuilding both development clients. They are needed before UI-001-A is `Completed`.
+
 **TOOLCHAIN-001-A — Paused (2026-10-30).**
 
 - **Done:** `react-native-gesture-handler` is pinned at 2.32.0 (Expo SDK 57's `~2.32.0`), replacing the auto-installed 3.3.0. Peers, online doctor at 21/21, `expo install --check`, resolution, and autolinking on both platforms pass.
@@ -73,7 +78,7 @@ These additions are recorded separately from the original 25-parent graph. They 
 | ID | Task | Prerequisites / execution | Status |
 | --- | --- | --- | --- |
 | TOOLCHAIN-001 | Resolve recorded gesture-handler compatibility decision | MOBILE-001-H; TOOLCHAIN-001-A in the implementation plan. Changes require its explicit assignment. | Paused |
-| UI-001 | Along tokens, controls, inputs and layouts | MOBILE-001-H; gesture-dependent UI-001-D also requires TOOLCHAIN-001-A. Execute UI-001-A through D individually. | Planned |
+| UI-001 | Along tokens, controls, inputs and layouts | MOBILE-001-H; gesture-dependent UI-001-D also requires TOOLCHAIN-001-A. Execute UI-001-A through D individually. | Paused |
 
 ## Task rules
 

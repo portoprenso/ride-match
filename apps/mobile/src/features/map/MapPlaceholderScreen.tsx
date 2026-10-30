@@ -1,5 +1,6 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { AppText } from '../../ui/AppText';
 import { Button } from '../../ui/Button';
 import { Screen } from '../../ui/Screen';
 
@@ -18,10 +19,10 @@ export function MapPlaceholderScreen({ onSignIn }: { onSignIn: () => void }) {
   return (
     <Screen>
       <View style={styles.content}>
-        <Text accessibilityRole="header" style={styles.title}>
+        <AppText variant="heading" accessibilityRole="header">
           Ride Match
-        </Text>
-        <Text style={styles.subtitle}>Map coming soon</Text>
+        </AppText>
+        <AppText color="muted">Map coming soon</AppText>
       </View>
       <Button label="Sign in" onPress={onSignIn} />
     </Screen>
@@ -34,14 +35,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '600',
-    color: '#111111',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#555555',
   },
 });

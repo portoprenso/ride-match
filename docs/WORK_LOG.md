@@ -933,3 +933,46 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - MEGAsync exclusions for the generated `dist/`, `android/`, and `ios/` paths.
 - **Resume from:** when the user asks, run the deferred verification in one pass. If it passes, mark TOOLCHAIN-001-A and TOOLCHAIN-001 `Completed`; UI-001-A follows only when requested.
 - **Ownership:** Released; no active task.
+
+## 2026-10-30 — UI-001-A: Tokens, AppText, Manrope fonts and the Along mark
+
+- **Actor/session:** Claude Code / ui-foundation.
+- **Status:** `Paused`; ownership released. UI-001 is `Paused`. The implementation is done; the card's tests, exports, and native inspection are deferred at the user's request.
+- **Working copy:** `main` at `b4bb17f` (TOOLCHAIN-001-A, committed at the user's request just before this card). At the user's request, UI-001-A was committed on top of it, without pushing. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "commit and continue with UI-001-A", keeping per-step verification light.
+- **Changes:**
+  - **`src/ui/tokens.ts`:** the plan's palette (ink, teal, lime, paper, white, muted, line, soft, danger, warning), spacing 4–32, radii 12–32, `MANROPE` face names, and `typography`.
+    - The variants come from the design source's style table (`docs/design/along/source/render.cjs`): display 48/54 ExtraBold, heading 30/36 ExtraBold, section 24/30 Bold, subheading 18/24 Bold, body 15/22 Regular, label 15/20 Bold, and small 12/18 Medium.
+    - Micro is deferred.
+  - **`src/ui/AppText.tsx`:** `variant` (default `body`) and `color` (default `ink`). It uses the face name for weight and never `fontWeight`, keeps font scaling on, and implies no accessibility role.
+  - **Screens:** `MapPlaceholderScreen` (heading and muted body), `UnavailableScreen`, and `AuthPlaceholderScreens` (section and muted body) now use `AppText`. Their old text styles were removed. The text, header roles, and layout containers are unchanged, and `Button` is unchanged (UI-001-B).
+  - **Fonts:** `assets/fonts/Manrope-{Regular,Medium,SemiBold,Bold,ExtraBold}.ttf` and `OFL.txt`, copied from `@expo-google-fonts/manrope` 0.4.3 (`npm pack`; tarball SHA-256 `9e9f425e…0906`).
+    - A scratch `name`/`OS/2` table read confirmed static faces with weight classes 400–800 and PostScript names that match the file names.
+  - **`app.config.ts`:** an `expo-font` plugin entry lists the five files, with a comment on the naming rule.
+  - **Along mark:** `assets/brand/along-mark.svg` reproduces the kit's "Brand / Along symbol" (`docs/design/along/source/kit.js`). PNG renders are at 72, 144, and 216 px from `rsvg-convert`. It is not displayed yet.
+  - **Dependencies:** `expo-font` 57.0.4 (exact). The lockfile gains only that importer entry; the package was already installed through `expo`.
+  - **Docs:**
+    - `TOOLCHAIN.md`: dependency row, commands, an "App fonts" section, and verify-later.
+    - `MOBILE_IMPLEMENTATION_PLAN.md`: Typography row, component inventory, and card status.
+    - `ROADMAP.md`: UI-001 `Paused` and a progress entry.
+    - `ARCHITECTURE.md`, `DEVELOPMENT.md` (rebuild clients after font changes), `docs/README.md`, and `AI_CONTEXT.md`.
+- **Decisions:**
+  - **One face per weight, by PostScript name.** iOS resolves `fontFamily` by PostScript name and Android by file name, so naming each file after its PostScript name gives one portable name per weight without `fontWeight`, which could select or synthesize a different weight.
+  - **Native embedding (config plugin) over runtime `useFonts`.** The fonts need no loading state and cause no startup swap.
+  - **PNG renders of the mark** instead of adding `react-native-svg`.
+  - **Muted body text on white** stays within the plan's contrast note (muted on paper is about 5.17:1). The `Screen` background is unchanged.
+- **Verification (quick checks only):**
+  - `pnpm --filter @ride-match/mobile typecheck` → exit 0. `pnpm --filter @ride-match/mobile lint` → exit 0.
+  - `expo-doctor` (online) → 21/21. `expo config --type prebuild` lists the `expo-status-bar` and `expo-font` plugins with the five font paths.
+  - The 3x mark PNG was inspected visually against the brand sheet.
+  - React Native 0.86's `RCTFont.mm` logs unknown families with `RCTLogInfo`, which confirms the fallback behavior described in `AppText`'s TSDoc.
+  - **Deferred (required before `Completed`):**
+    - `pnpm test:mobile` and both exports.
+    - Rebuilding both development clients, then checking that each weight renders as real Manrope, that no heading clips at default and enlarged text, and that there is no startup font error.
+    - Rechecking the shell flows.
+- **JSDoc/TSDoc:** `AppText` (usage, no weight or family overrides, scaling, roles, older builds), `MANROPE` (the naming rule linked to `app.config.ts`), and `typography` (weight from the face; micro deferred). The tokens file has a header comment.
+- **Remaining/blockers:**
+  - The deferred verification for UI-001-A and TOOLCHAIN-001-A.
+  - MEGAsync exclusions for the generated `dist/`, `android/`, and `ios/` paths.
+- **Resume from:** when asked, run the combined deferred verification. UI-001-B is next only when requested.
+- **Ownership:** Released; no active task.

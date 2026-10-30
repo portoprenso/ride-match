@@ -147,6 +147,7 @@ There are no runtime dependencies. Zod arrives with CONTRACT-001.
 | `react-native-screens` | 4.26.2 | runtime | Router peer | Expo `~4.26.0` | MOBILE-001-A |
 | `expo-linking` | 57.0.13 | runtime | Router peer | Expo `~57.0.13` | MOBILE-001-A; realigned in MOBILE-001-H |
 | `expo-constants` | 57.0.22 | runtime | Router peer | Expo `~57.0.22` | MOBILE-001-A; realigned in MOBILE-001-H |
+| `expo-font` | 57.0.4 | runtime | Config plugin that embeds the Manrope files in native builds | Expo `~57.0.4` | UI-001-A |
 | `expo-status-bar` | 57.0.1 | runtime | Listed in Expo Router's install command | Expo `~57.0.1` | MOBILE-001-A |
 | `expo-dev-client` | 57.0.20 | runtime | Development builds | Expo `~57.0.20` | MOBILE-001-A; realigned in MOBILE-001-H |
 | `react-native-reanimated` | 4.5.1 | runtime | Required peer of `react-native-drawer-layout`, an `expo-router` dependency; pinned so pnpm does not pick a newer release | Expo `4.5.1`; peer `react-native` `0.83 - 0.86` | MOBILE-001-A |
@@ -479,7 +480,22 @@ pnpm doctor:mobile
 pnpm --filter @ride-match/mobile add --save-exact react-native-gesture-handler@2.32.0
 pnpm peers check
 pnpm doctor:mobile
+
+# UI-001-A (font files: see "App fonts" below)
+pnpm --filter @ride-match/mobile add --save-exact expo-font@57.0.4
+pnpm doctor:mobile
 ```
+
+### App fonts (UI-001-A)
+
+- **Source:** static Manrope 400, 500, 600, 700, and 800 from the npm package `@expo-google-fonts/manrope` 0.4.3 (`npm pack`; tarball SHA-256 `9e9f425e5f7cae303296c7d5078abeb8adef56e69cbb7fbc660acb6acae00906`).
+- **Files:** copied into `apps/mobile/assets/fonts/` as `Manrope-Regular.ttf`, `Manrope-Medium.ttf`, `Manrope-SemiBold.ttf`, `Manrope-Bold.ttf`, and `Manrope-ExtraBold.ttf`, with the package's SIL Open Font License 1.1 text as `OFL.txt`. The package itself is not a dependency.
+- **Verified on the files:** each is static (no `fvar` table) with OS/2 weight classes 400–800. The PostScript names (`name` ID 6) match the new file names.
+- **Embedding:** the `expo-font` config plugin in `app.config.ts` embeds the files at prebuild, so there is no runtime loading and no fallback-font flash.
+- **Font names:** iOS matches `fontFamily` against the PostScript name and Android against the file name, so one name per face works on both. `src/ui/tokens.ts` (`MANROPE`) uses those names.
+- **Weights:** text never sets `fontWeight`, which could synthesize a weight.
+- **Older builds:** a development build made before UI-001-A lacks the faces. React Native 0.86 then falls back to the system font, and iOS only logs "Unrecognized font family" at info level. Rebuild the development clients to see Manrope.
+- **Along mark:** `apps/mobile/assets/brand/along-mark.svg` reproduces the design kit's "Brand / Along symbol" (an ink rounded square with the lime merging-path stroke). `along-mark.png`, `@2x`, and `@3x` (72, 144, and 216 px, transparent outside the square) were rendered with `rsvg-convert`, because React Native cannot draw SVG without another dependency. Nothing displays the mark yet.
 
 The remaining checks for each card are listed in [FIRST_STEPS.md](FIRST_STEPS.md). The file-list checks pass when they print nothing, because `grep` then exits 1. The `require.resolve` check passes when every printed path is inside the repository.
 
@@ -597,6 +613,7 @@ These are expectations recorded here, not checked results. The named task confir
 - **MOBILE-001-G:** verified on 2026-10-03; see the Android result above and the gesture-handler correction. One app-config fix: the `expo-status-bar` plugin with `style: 'dark'`, because Android's edge-to-edge status bar otherwise kept white icons on the white screens.
 - **MOBILE-001-H:** verified on 2026-10-30. See the iOS result, the patch-alignment correction, and the `Screen` safe-area section above. The Android checks were rerun on the final files.
 - **TOOLCHAIN-001-A:** the gesture-handler pin passed the quick dependency checks on 2026-10-30. Tests, exports, and the Android and iOS rebuilds are deferred to one later verification pass.
+- **UI-001-A:** typecheck, lint, doctor (21/21), and the resolved config (both plugins) passed on 2026-10-30. Deferred to the same pass: tests and exports, plus a native inspection after rebuilding both development clients. That inspection checks each Manrope weight, that no sample heading is clipped at default and enlarged text, and that there is no startup font error.
 
 ## Sources (checked 2026-10-03)
 
