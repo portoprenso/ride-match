@@ -4,7 +4,7 @@ Saved: 2026-10-10. Planning record: **DOC-003 — Completed**. Implementation ca
 
 This saves the complete design review and proposed execution plan from the preceding conversation. Saving it authorizes documentation work only: no implementation, dependency installation, commit, or Figma modification has started. Before execution, assign one child explicitly or invoke the one-task NEXT prompt below to select exactly one. This document and the shared handoff let Codex, Codex (Terra), and Claude Code continue without the original chat.
 
-The local design is detailed enough to implement the MVP, including failure and recovery states. It describes **55 visual states across the existing navigation structure**, not 55 separate routes. The recommended next assignment remains **MOBILE-001-H**, the existing iOS shell checkpoint.
+The local design is detailed enough to implement the MVP, including failure and recovery states. It describes **55 visual states across the existing navigation structure**, not 55 separate routes. MOBILE-001-H, the existing iOS shell checkpoint, was completed on 2026-10-30. By section E's order, the next card is **TOOLCHAIN-001-A**, only when requested.
 
 ## Authority and status ownership
 
@@ -36,7 +36,7 @@ The importer adjusts drawing geometry and checks some body/footer bounds. Its ge
 | Workspace | pnpm/Turbo/TypeScript workspace exists; MONO-001 complete. | Preserve it; no new scaffold. |
 | Mobile | Expo 57.0.26, React Native 0.86.3, React 19.2.3, Expo Router. | Use recorded compatible pins, not independent latest versions. |
 | Navigation | Home, phone/OTP, group, chat, settings, and development routes exist. | Replace placeholder contents incrementally. |
-| UI | Screen, Button, UnavailableScreen exist. | Extend them; add an edge-to-edge map layout. |
+| UI | Screen, Button, UnavailableScreen exist. Since MOBILE-001-H, Screen pads from the safe-area provider's insets rather than a native `SafeAreaView`, which missed the bottom inset in a newly opened iOS sheet. | Extend them; add an edge-to-edge map layout. |
 | Contracts | Public package/build/export boundary exists; source is effectively empty. | Runtime schemas and domain contracts remain to be written. |
 | Product behavior | No native map, real location flow, auth/session, requests, groups, chat, or simulator. | Design assets do not establish implemented functionality. |
 | Tests | Jest/Testing Library harness has 16 shell/UI tests. | Reuse it; contract testing remains to be introduced. |
@@ -438,7 +438,7 @@ For DOC-003, validate local Markdown links/anchors, all screen IDs 01–55, task
 
 | Dependency/decision | Blocks | Handling |
 | --- | --- | --- |
-| Working iOS environment/native evidence | MOBILE-001 completion | Execute existing H card first. |
+| Working iOS environment/native evidence | MOBILE-001 completion | Resolved: MOBILE-001-H completed on 2026-10-30 with iOS and Android evidence. |
 | Gesture-handler compatibility decision | New sheet/gesture integration | Resolve TOOLCHAIN-001-A when assigned; no silent dependency changes in H. |
 | Android map provider configuration/restricted credential | Native Android map verification | MAP-001-A; no credentials in docs/logs. |
 | Point changes while group is ready | Final group/meeting semantics | CONTRACT-003-A records a reviewed policy. Recommendation: a changed point invalidates readiness and requires coordinator confirmation again. This recommendation is not yet an adopted product transition. |
@@ -455,11 +455,11 @@ For DOC-003, validate local Markdown links/anchors, all screen IDs 01–55, task
 - No dark theme/localization system, real SMS, remote push, booking service or backend is added.
 - Figma verification is not a blocker for local mobile implementation.
 
-Unverified: remote Figma fidelity, final native typography/accessibility, native map coverage, notification/taxi integration behavior and the unfinished iOS shell checkpoint. No plan can guarantee zero bugs; narrow assignments, explicit acceptance and behavioral checks reduce ambiguity and catch regressions.
+Unverified: remote Figma fidelity, final native typography/accessibility, native map coverage, notification/taxi integration behavior and the native checks of later cards. No plan can guarantee zero bugs; narrow assignments, explicit acceptance and behavioral checks reduce ambiguity and catch regressions.
 
 ### Smallest next assignment
 
-Execute only [MOBILE-001-H](FIRST_STEPS.md#mobile-001-h--verify-ios-and-finish-the-shell-checkpoint) when assigned. The existing card owns its full acceptance and final checkpoint. Completing H does not authorize the next card.
+MOBILE-001-H was completed on 2026-10-30. The next card in section E's order is TOOLCHAIN-001-A, which settles the recorded `react-native-gesture-handler` version (3.3.0 installed; Expo SDK 57 expects `~2.32.0`). Execute it only when assigned, with the one-task prompt below. Completing H did not authorize it. The copyable H prompt below is kept for reference.
 
 Copyable prompt:
 

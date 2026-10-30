@@ -2,7 +2,7 @@
 
 Ride Match helps nearby people heading in compatible directions form a small group and share a taxi. The first milestone is a React Native (Expo) mobile MVP backed by realistic mocks; there is no backend in this milestone.
 
-**Status:** workspace foundation complete (MONO-001); Expo shell in progress (MOBILE-001). The root pnpm workspace uses Turbo to build the empty `@ride-match/contracts` package and to type-check and lint it together with `@ride-match/mobile`. The mobile app is a minimal Expo Router shell that imports the shared package: a home route with a map placeholder and a temporary “Sign in” entry to inert phone and code placeholders. The group, chat, settings, and development-scenario routes open inert “not available yet” pages. Development, doctor, export, and native commands exist. Mobile behavior tests run with `pnpm test:mobile`. The Android development build is verified on an emulator (MOBILE-001-G); iOS is not yet verified (MOBILE-001-H). See [docs/AI_CONTEXT.md](docs/AI_CONTEXT.md) for the current state.
+**Status:** workspace foundation (MONO-001) and Expo shell (MOBILE-001) complete. The root pnpm workspace uses Turbo to build the empty `@ride-match/contracts` package and to type-check and lint it together with `@ride-match/mobile`. The mobile app is a minimal Expo Router shell that imports the shared package: a home route with a map placeholder and a temporary “Sign in” entry to inert phone and code placeholders. The group, chat, settings, and development-scenario routes open inert “not available yet” pages. Development, doctor, export, and native commands exist. Mobile behavior tests run with `pnpm test:mobile`. The development builds are verified on an Android 16 emulator and an iOS 26.5 simulator (MOBILE-001-G/H). See [docs/AI_CONTEXT.md](docs/AI_CONTEXT.md) for the current state.
 
 ## Requirements
 
@@ -35,7 +35,7 @@ pnpm install --frozen-lockfile
 | `pnpm dev:mobile` | Build contracts once, then start Expo without Turbo or a watcher. Use it, plus `pnpm --filter @ride-match/contracts dev` in a second terminal, if the terminal UI gets in the way |
 | `pnpm doctor:mobile` | Run `expo-doctor` 1.20.4 on the app. Plain `pnpm doctor` is pnpm's own built-in diagnostic and does not check the app |
 | `pnpm export:android` / `pnpm export:ios` | Build contracts, then export the JavaScript bundle to `apps/mobile/dist/` (ignored by Git) |
-| `pnpm mobile:android` / `pnpm mobile:ios` | Build contracts, then `expo run:android` / `expo run:ios` (local development build into the untracked `apps/mobile/android/` / `ios/`). Android is verified (MOBILE-001-G); iOS is not yet. Set the variables in the [native prerequisites](docs/TOOLCHAIN.md#native-prerequisites) |
+| `pnpm mobile:android` / `pnpm mobile:ios` | Build contracts, then `expo run:android` / `expo run:ios` (local development build into the untracked `apps/mobile/android/` / `ios/`). Both are verified (MOBILE-001-G/H). Set the variables in the [native prerequisites](docs/TOOLCHAIN.md#native-prerequisites) |
 | `pnpm test:mobile` | Build contracts, then run the mobile Jest suites once. Extra arguments reach Jest, with paths relative to `apps/mobile`, for example `pnpm test:mobile --runTestsByPath tests/navigation.test.tsx` |
 | `pnpm test` | `turbo run test`: every package's tests once, after dependency builds (currently mobile only) |
 

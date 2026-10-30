@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
-import { StyleSheet } from 'react-native';
-import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
+import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets, type Edge } from 'react-native-safe-area-context';
 
 const ALL_EDGES: readonly Edge[] = ['top', 'right', 'bottom', 'left'];
+const PADDING = 24;
 
 type ScreenProps = {
   children: ReactNode;
@@ -12,8 +13,8 @@ type ScreenProps = {
    *
    * Leave out an edge that something else already protects, so each inset is applied once.
    * For example, omit `'top'` under a visible native header or inside an iOS modal sheet.
-   * On iOS the insets come from the app-level provider and are not reduced for the screen's
-   * position, so a header plus a top inset would double the gap.
+   * The insets are the window's, not reduced for the screen's position, so a header plus a
+   * top inset would double the gap.
    */
   edges?: readonly Edge[];
 };
@@ -21,21 +22,36 @@ type ScreenProps = {
 /**
  * Full-screen container that owns safe-area insets and the shared content spacing.
  *
- * Insets for the requested `edges` are added on top of a fixed 24-point padding. Expo Router
- * already supplies the `SafeAreaProvider` this relies on, so no extra provider is needed.
+ * Insets for the requested `edges` are added on top of a fixed 24-point padding. They come
+ * from the `SafeAreaProvider` that Expo Router already supplies, not from a native
+ * `SafeAreaView`: that view measures its own position, and inside an iOS sheet it measured
+ * while the sheet was still sliding in, so the first screen lost its bottom inset until a
+ * later layout (seen in MOBILE-001-H).
  */
 export function Screen({ children, edges = ALL_EDGES }: ScreenProps) {
+  const insets = useSafeAreaInsets();
+  const inset = (edge: Edge) => (edges.includes(edge) ? insets[edge] : 0);
+
   return (
-    <SafeAreaView edges={edges} style={styles.screen}>
+    <View
+      style={[
+        styles.screen,
+        {
+          paddingTop: PADDING + inset('top'),
+          paddingRight: PADDING + inset('right'),
+          paddingBottom: PADDING + inset('bottom'),
+          paddingLeft: PADDING + inset('left'),
+        },
+      ]}
+    >
       {children}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    padding: 24,
     backgroundColor: '#ffffff',
   },
 });

@@ -775,3 +775,128 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - Verification: git diff --check passed. Inline Python checks (python3 -) validated local Markdown targets/anchors across the six touched documents, compared all implementation-plan table rows against the pre-edit baseline (unchanged), and checked file hashes outside this documentation scope (unchanged). Application tests/builds were not run because no application code changed.
 - Documentation/TSDoc: Updated implementation plan, docs index, workflow, roadmap, AI context and this log. TSDoc not applicable to prose/prompt-only work.
 - Excluded/remaining: No implementation task executed or status advanced, no dependency/design edits or commit; preserved existing work. Current first step remains MOBILE-001-H when the user invokes the prompt. Existing native/product decisions remain as documented.
+
+## 2026-10-10 — MOBILE-001-H: iOS build verified; final checkpoint blocked
+
+- Actor/session: Codex / ios-shell-checkpoint. Status: **Blocked**; ownership released. Shared `main` at `19e345c`.
+- Selection/scope: NEXT selected H from the released handoff; A–G completed and G's existing config/evidence inspected. Only H executed. Preserved the pre-existing `app.config.ts` status-bar plugin and five untracked IDE files. No app source, dependency, lockfile, backend, design or later child changes; no commit/push.
+- Native result: `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pnpm mobile:ios` with Node 24.17.0, `TURBO_TELEMETRY_DISABLED=1 EXPO_NO_TELEMETRY=1 CI=1` succeeded through prebuild, CocoaPods (105 pods), Xcode build (0 errors, 2 warnings), install and launch on iPhone 17 Pro / iOS 26.5 (Xcode 26.6). Warnings: duplicate `-lc++` and ambiguous dev-launcher build-script dependencies. Generated `apps/mobile/ios/` stays ignored, without handwritten patches. The generated Info.plist contains `UIStatusBarStyleDarkContent`.
+- Native observations through Simulator UI: first launch reached anonymous home after dismissing the development-menu introduction; Sign in → phone → code → Back returned to phone; Close from phone and code returned home. `xcrun simctl openurl booted ride-match://auth/otp` opened code warm. After `xcrun simctl terminate booted com.ridematch.dev` and the same openurl, the development-client server picker appeared; selecting its recent server opened code, with Back returning to phone. Text/buttons were unclipped and clear of screen edges, with dark status-bar content on home and modal. No product permission prompt was observed. Centered content limits precise top-inset verification. Two automated downward drags did not produce dismissal: **native swipe dismissal remains unverified**, not diagnosed as broken.
+- Interruption recovery: tool process handles expired during the user interruption. Metro was no longer listening on 8081, so `pnpm dev:mobile` was restarted with the same environment. One server-selection attempt before startup completed showed connection refused; retry after startup loaded the requested code screen. The earlier iOS export's terminal result was unavailable, so it was rerun to obtain a confirmed result.
+- Final checkpoint (same pinned Node and telemetry/CI environment):
+  - `pnpm install --frozen-lockfile` → exit 0, already up to date, pnpm 11.28.2.
+  - `pnpm build:contracts` → exit 0, 1 cached task; `pnpm typecheck` and `pnpm lint` → exit 0, 3 cached tasks each. These are valid cache results, not fresh compilation/lint execution.
+  - `pnpm test:mobile` → initial sandbox Watchman permission failure; approved unsandboxed retry passed 2 suites / 16 tests.
+  - `pnpm doctor:mobile` → initial sandbox network failure (19/21); approved online retry reached 20/21 but exited 1 for patch mismatches: expo 57.0.26 → expected ~57.0.27; expo-constants 57.0.20 → ~57.0.21; expo-linking 57.0.11 → ~57.0.12; expo-router 57.0.24 → ~57.0.25. No checks disabled and no package changes made.
+  - `pnpm export:android` → exit 0, 1251 modules / 2.7 MB; confirmed `pnpm export:ios` rerun → exit 0, 1116 modules / 2.4 MB.
+  - `git check-ignore apps/mobile/ios/Podfile apps/mobile/dist/metadata.json` confirms generated files are ignored. `git ls-files apps/api` is empty. Final whitespace/local-document checks recorded below.
+- Checkpoint review: manifests/commands still match the documented shell; one unchanged workspace lockfile; inert routes/test separation and empty shared contract entry preserved. Android G evidence applies to unchanged app/config/dependency files. No Android rerun or physical-device/release build performed. Native evidence and Doctor are not sufficient to mark H or MOBILE-001 complete.
+- Blocker/resume: explicit scope is needed to align the four patch pins outside H's recorded docs/narrow-config scope. Resume **MOBILE-001-H**, authorize that bounded dependency remediation, rerun Doctor/final checkpoint and affected Android/iOS builds, and manually verify swipe dismissal. Do not skip to TOOLCHAIN-001-A or another child. Gesture-handler alignment remains its separate decision.
+- Documentation: FIRST_STEPS child status, ROADMAP parent status, AI_CONTEXT handoff, root README, TOOLCHAIN and DEVELOPMENT evidence updated with this log. No public behavior changed; JSDoc/TSDoc not applicable.
+- Generated native/export directories remain ignored; MEGAsync exclusions are still needed. The app remains installed on the simulator. No machine configuration or simulator content was deleted.
+- Final documentation/cleanup checks: `git diff --check` passed; inline `python3 -` validated 65 local Markdown file targets (not heading anchors), H/parent Blocked statuses, and the unchanged five-line pre-existing app-config diff. Metro stopped with Ctrl+C; `lsof -nP -iTCP:8081 -sTCP:LISTEN` found no listener. Simulator remains open; no claim of shutdown.
+
+## 2026-10-10 — MOBILE-001-H continuation: Expo patch alignment
+
+- Actor/session: Codex / ios-shell-remediation; shared `main` at `19e345c`. User said continue after the scoped remediation handoff; resumed H only, with the four recorded patch updates authorized. Existing app-config/docs/IDE changes preserved; no commit/push.
+- Changes: `pnpm --filter @ride-match/mobile add --save-exact expo@57.0.27 expo-constants@57.0.21 expo-linking@57.0.12 expo-router@57.0.25` updated the mobile manifest and root lockfile. Changed transitive package entries are Expo packages. Gesture-handler remains 3.3.0; its separate task is untouched. No application logic or new feature was added.
+- Recovery: the initial sandbox add could not use the original pnpm store; approved retry succeeded. A later sandbox frozen install recreated node_modules using a fallback store and failed on network access, disrupting concurrently started checks and iOS pod resolution. Running installation beside those checks was an orchestration error. The approved command restored all 976 packages from the original store, then a separate approved `pnpm install --frozen-lockfile` passed (already up to date). Affected checks/builds were rerun only after restoration. No global pnpm configuration changed.
+- Confirmed checkpoint so far, with Node 24.17.0 and `TURBO_TELEMETRY_DISABLED=1 EXPO_NO_TELEMETRY=1 CI=1`: contracts build passed (cache); typecheck/lint passed (mobile executed afresh, contracts cached); mobile tests passed 2 suites / 16 tests (Watchman recrawl warning); online Doctor passed **21/21**. Sequential Android and iOS exports passed, 1251 and 1116 modules respectively (2.7 MB / 2.4 MB). Native rebuild results and final status follow below.
+
+## 2026-10-30 — MOBILE-001-H: iOS verified, Android rechecked, shell checkpoint completed
+
+- **Actor/session:** Claude Code / h-finish.
+- **Status:** Completed; ownership released. Parent MOBILE-001 is `Completed`.
+- **Working copy:** `main` at `19e345c`, with G's uncommitted `app.config.ts` plus the H changes below. At the user's request, all of them were committed afterwards in one commit, without pushing. Untracked `.idea/` files were left untouched.
+- **Request/scope:**
+  - "continue with MOBILE-001-H", at the user's request taking over from the Codex / ios-shell-remediation continuation of 2026-10-10.
+  - That entry ends at "Native rebuild results and final status follow below". Its native rebuild results were never recorded, and no file had changed since. Its working-tree changes (the four Expo patch updates and its doc edits) were kept.
+  - During this session the user authorized two more changes through a question: aligning the six Expo patches that online doctor newly reported, and fixing `Screen` (option "Fix in Screen").
+- **Changes:**
+  - **`apps/mobile/package.json` and `pnpm-lock.yaml`:** exact pins `expo` 57.0.31, `expo-constants` 57.0.22, `expo-dev-client` 57.0.20, `expo-linking` 57.0.13, `expo-router` 57.0.29, and dev `jest-expo` 57.0.6.
+    - Against HEAD, the lockfile changes only Expo packages, `react-native-drawer-layout` 4.2.11 → 4.2.12, and a new transitive `xcode` 4.0.0.
+    - `@expo/config-plugins` is present at 57.0.10 and 57.0.11.
+    - `react-native-gesture-handler` stays at 3.3.0.
+  - **`apps/mobile/src/ui/Screen.tsx`:** a `View` padded by 24 points plus `useSafeAreaInsets()` for each requested edge, replacing the native `SafeAreaView`. Same props and defaults; TSDoc updated.
+  - **`apps/mobile/tests/ui.test.tsx`:** two `Screen` tests under a `SafeAreaProvider` with fixed `initialMetrics` (top 62, bottom 34). Default edges give padding 86/24/58/24, and omitting `top` gives 24/24/58/24. That makes 18 tests.
+  - **Removed:**
+    - The unused repo-root `.pnpm-store/`: one empty 8 KB index, left by Codex's sandboxed install. `node_modules/.modules.yaml` uses `~/Library/pnpm/store/v11`, and no config references the folder.
+    - The leftover `apps/mobile/dist/`.
+    - The generated `android/` and `ios/`, deleted before each clean regeneration.
+  - **Docs:** `TOOLCHAIN.md` (version rows, patch-alignment correction, iOS result, `Screen` safe-area section, install commands, MEGAsync row, verify-later), `DEVELOPMENT.md` (command status, checkpoint section, harness, Android link limitation), `MOBILE_IMPLEMENTATION_PLAN.md` (next-card and status sentences), `FIRST_STEPS.md` (H `Completed`), `ROADMAP.md` (MOBILE-001 `Completed`), the root `README.md`, `docs/README.md`, `ARCHITECTURE.md`, and `AI_CONTEXT.md`.
+- **Decisions:**
+  - **Provider insets in `Screen`.**
+    - The native `SafeAreaView` measures its own window position. When the iOS sign-in sheet opened, it measured during the slide-in, so the sheet's first screen had no bottom inset. Its buttons ended 24 points above the screen edge instead of 58.
+    - This happened on every fresh presentation (Sign in, after a swipe-dismiss, warm link, cold link). It corrected only after a push and pop within the sheet, and stayed wrong for at least 11 s otherwise.
+    - The provider's window insets are correct for full-screen screens and for the sheet's bottom edge. Callers still omit `top` in the iOS sheet.
+  - **Patch alignment.** Online doctor checks Expo's current SDK 57 list. Expo published 57.0.28–57.0.31 between October 12 and 21, so Codex's October 10 alignment fell behind: online doctor reported 20/21 (six packages), while offline (`EXPO_OFFLINE=1`) it reported 21/21. The user chose to align instead of accepting the offline result.
+  - **Not changed:**
+    - The gesture-handler version, which belongs to TOOLCHAIN-001-A.
+    - The Android development-client link behavior below. Production deep-link handling belongs to later notification and link work.
+- **Verification:** Node 24.17.0, pnpm 11.28.2, `TURBO_TELEMETRY_DISABLED=1 EXPO_NO_TELEMETRY=1 CI=1`. Android commands used the per-command variables from TOOLCHAIN and iOS used `LANG/LC_ALL=en_US.UTF-8`.
+  - **Starting state:** no file changes since 2026-10-10. No emulator, simulator, adb server, Metro, or Gradle daemon was running. Every resolved package was inside the repository.
+  - **Android, first H rebuild (Codex's 57.0.27 set):** before the run, the app was uninstalled and `android/` deleted.
+    - `pnpm mobile:android` → `BUILD SUCCESSFUL in 2m 13s`; the app installed and opened.
+    - **Scripted adb/uiautomator checks:** 13/13 navigation checks and 28/28 direct-entry, inert-route, and cold-start checks passed.
+    - **Link after Android back:** one failure appeared first. Once Android back had closed an app that was loaded from the server list, a `ride-match://auth/otp` link opened home instead of the code step.
+      - Six repeats from a warm process all opened the code step.
+      - Two repeats right after a server-list cold start split one to home and one to the code step.
+      - Logcat showed a new React root each time (`rootTag` 11, then 21). No crash; home is a safe fallback.
+  - **iOS, first H rebuild (same set):** before the run, the app was uninstalled and `ios/` deleted.
+    - **Build:** `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pnpm mobile:ios` → 105 pods, "Build Succeeded", 0 errors, 2 warnings (duplicate `-lc++`; the dev launcher's "Strip Local Network Keys for Release" phase with ambiguous dependencies).
+    - **Swipe dismissal:** driven through the simulator tool, a gradual 12-point downward touch path from the sheet's top dismissed it from the phone step and from the code step, and the next Sign in reopened at the phone step. This closes Codex's open swipe check.
+    - **Safe-area defect:** found by measuring screenshots (a scratch script that decodes `xcrun simctl io … screenshot` and finds the lowest dark button in one pixel column).
+    - **Other flows:** Back, Close, warm and cold links, the inert routes, edge swipe-back, and cold launch all worked.
+  - **Checkpoint on the 57.0.27 set:**
+    - Passing: frozen install, build, typecheck and lint (Turbo cache, then uncached `pnpm -r run typecheck`/`lint`), 16 tests, and both exports.
+    - Failing: online doctor at 20/21.
+  - **Alignment:** `pnpm --filter @ride-match/mobile add --save-exact expo@57.0.31 expo-constants@57.0.22 expo-dev-client@57.0.20 expo-linking@57.0.13 expo-router@57.0.29` and `… add --save-exact -D jest-expo@57.0.6` → exit 0. Results: `pnpm peers check` "No peer dependency issues found", online doctor 21/21, `npx expo install --check` "Dependencies are up to date".
+  - **`Screen` fix:**
+    - `pnpm test:mobile` → 2 suites, 18 tests passed (one Watchman recrawl warning).
+    - **Mutation probes, restored afterwards:** the HEAD `SafeAreaView` version failed both new tests, and a version that ignored `edges` failed the omitted-edge test.
+    - Mobile typecheck and lint both exited 0.
+  - **Final iOS rebuild (iPhone 17 Pro, iOS 26.5, Xcode 26.6; clean `ios/`, fresh install):**
+    - **Build:** 105 pods, "Build Succeeded", 0 errors, the same 2 warnings, bundled from `expo-router` 57.0.29.
+    - **Bottom gap:** 58 points on home, on the sheet's phone and code steps after every presentation (first open, after a swipe, warm link, cold link), after Back, and on the group, chat, settings, and scenario pages.
+    - **Navigation:** Sign in → phone → code → Back → phone. Close works from either step. Swipe dismissal works from both steps, and the next Sign in restarts at the phone step.
+    - **Links:** a warm `/auth/otp` link opens the code step, and Back goes to the phone step. The group, chat, settings, and scenario links show their unavailable messages without the ID, and Go to map returns home. Edge swipe-back from a pushed page returns home.
+    - **Cold starts:** `simctl launch` opens home directly. A cold `/auth/otp` link shows the server list; choosing the recent server opens the code step, and Close falls back to home.
+    - **Status bar and Info.plist:** status-bar content is dark. The only usage description is the development launcher's `NSLocalNetworkUsageDescription`.
+    - **Logs:** no crash report and no React error or fault logs.
+  - **Final Android rebuild (Pixel 9 Pro XL emulator, Android 16 / API 36; clean `android/`, fresh install):**
+    - **Build:** `BUILD SUCCESSFUL in 1m 50s`.
+    - **Scripted checks:** 13/13 and 28/28 passed.
+    - **Layout:** uiautomator bounds are identical to MOBILE-001-G (Sign in, Preview, Close, and Back at `[72,2704][1272,2848]` and `[72,2524][1272,2668]`; title `[458,1367][885,1479]`), so the `Screen` change did not alter Android layout.
+    - **Status bar, permissions, logs:**
+      - `LIGHT_STATUS_BARS`, and no runtime permissions.
+      - 0 `FATAL EXCEPTION`, 0 ANR, 0 `ReactNativeJS` errors, and two dev-server "Cannot connect to Expo CLI" warnings.
+      - The APK still contains `libgesturehandler.so`.
+    - **Link-after-back limitation:** reproduced in 2 of 3 attempts.
+  - **Final checkpoint (final files):**
+    - `pnpm install --frozen-lockfile` exited 0, and `pnpm build:contracts` exited 0 from the cache.
+    - `pnpm typecheck` and `pnpm lint` exited 0. Mobile ran fresh and contracts came from the cache.
+    - `pnpm test:mobile` → 18 passed. `pnpm test` → 18 passed in 2 Turbo tasks.
+    - `pnpm doctor:mobile` → "21/21 checks passed. No issues detected!".
+    - `pnpm export:android` exited 0 with 1252 modules (2.7 MB). `pnpm export:ios` exited 0 with 1116 modules (2.4 MB). `apps/mobile/dist/` was deleted afterwards.
+    - **Ancestor guards:** `tsc --listFilesOnly` lists nothing outside the repository, and `require.resolve` resolves `react`, `react-native`, `expo`, `expo-router`, reanimated, worklets, `react-dom`, `jest`, `jest-expo`, `@babel/runtime`, and safe-area-context inside it.
+    - **Working tree:** `git status` shows only the intended files. `android/` and `ios/` are ignored, and `git ls-files apps/api` is empty.
+  - **Parent criteria:**
+    - The development app launches on both platforms.
+    - Map-placeholder and auth modal navigation work, including manual open and dismiss.
+    - The behavior-test harness runs (18 tests).
+    - Dependencies pass Expo's checks (doctor, peers, `expo install --check`).
+  - **Cleanup:**
+    - Metro stopped with `SIGINT` both times, and port 8081 is free.
+    - `./gradlew --stop` stopped one daemon each time.
+    - The emulator was shut down with `adb emu kill` and the adb server with `adb kill-server`; the simulator was shut down with `xcrun simctl shutdown`, and the panel detached.
+    - No Expo, Metro, Gradle, emulator, or adb process remains.
+    - The app stays installed on the emulator and the simulator.
+  - **Final doc checks:** a scratch validator found 0 errors in 176 local links and anchors across 23 Markdown files. All 13 FIRST_STEPS child rows match their 13 cards and are `Completed`, and the MOBILE-001 roadmap row is `Completed`. `git diff --check` reported no problems. No LAN address, emulator serial, or simulator identifier appears in the docs.
+  - **Not run:** physical devices, release builds, and an exact top-inset measurement (content is vertically centered).
+- **JSDoc/TSDoc:** `Screen`'s TSDoc now explains that insets come from the provider, why (the iOS sheet measurement during presentation), and how the `edges` prop interacts with window insets.
+- **Remaining/blockers:**
+  - MEGAsync exclusions are still needed for `packages/contracts/dist/`, `apps/mobile/dist/`, `apps/mobile/android/`, and `apps/mobile/ios/`.
+  - The gesture-handler alignment belongs to TOOLCHAIN-001-A.
+  - The Android development-client link-after-back limitation is recorded in DEVELOPMENT.
+- **Resume from:** assign TOOLCHAIN-001-A with the one-task prompt, only when requested.
+- **Ownership:** Released; no active task.

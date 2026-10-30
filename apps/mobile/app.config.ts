@@ -11,6 +11,11 @@ const config: ExpoConfig = {
   android: {
     package: 'com.ridematch.dev',
   },
+  plugins: [
+    // Screens have light backgrounds, so the status bar needs dark icons. Without a style,
+    // Android's edge-to-edge status bar keeps white icons and they disappear.
+    ['expo-status-bar', { style: 'dark' }],
+  ],
 };
 
 export default config;

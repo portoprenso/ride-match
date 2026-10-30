@@ -1,6 +1,6 @@
 # First steps: small assignments for Terra
 
-Last updated: 2026-10-10. Current child statuses are in [Execution order and progress](#execution-order-and-progress); this plan does not authorize implementation by itself.
+Last updated: 2026-10-30. Current child statuses are in [Execution order and progress](#execution-order-and-progress); this plan does not authorize implementation by itself.
 
 ## Target and limits
 
@@ -42,7 +42,7 @@ One assistant writes to this checkout at a time. A new chat may help isolate an 
 | MOBILE-001-E | Add inert shells for other planned routes | MOBILE-001-D | Completed |
 | MOBILE-001-F | Verify behavior with the mobile test harness | MOBILE-001-E | Completed |
 | MOBILE-001-G | Build and verify Android | MOBILE-001-F | Completed |
-| MOBILE-001-H | Build and verify iOS and the final checkpoint | MOBILE-001-G | Planned |
+| MOBILE-001-H | Build and verify iOS and the final checkpoint | MOBILE-001-G | Completed |
 
 This is the recommended serial order. If one native platform is unavailable, record its blocker; the user may assign the other platform check independently after MOBILE-001-F. Do not infer that permission or mark the blocked check passed.
 
@@ -263,6 +263,8 @@ Implement root `dev`, `dev:mobile`, `doctor:mobile`, `export:android`, `export:i
 **Stop/defer:** No cloud build, release signing, machine cleanup/reconfiguration without required authorization, or guessed package downgrades to conceal toolchain blockers.
 
 ### MOBILE-001-H — Verify iOS and finish the shell checkpoint
+
+**2026-10-30 — Completed.** The iOS (iPhone 17 Pro, iOS 26.5) and Android (Android 16 emulator) development builds pass the card's checks, including native swipe dismissal and safe areas. The full final checkpoint also passes, with online doctor at 21/21. Two changes were authorized during this child: the Expo patch alignment and the `Screen` safe-area fix. The 2026-10-10 blocker history is in WORK_LOG.
 
 **Outcome:** The shell works in an iOS development build and the first batch has complete evidence.
 

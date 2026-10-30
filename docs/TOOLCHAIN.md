@@ -10,11 +10,11 @@ From MONO-001-B onward, tasks use the versions, commands, and decisions recorded
 | --- | --- |
 | Node.js | 24.17.0 (Active LTS line 24 "Krypton"); `.nvmrc`, root `engines`, and `engineStrict` |
 | Package manager | pnpm 11.28.2 through Corepack; root `packageManager: "pnpm@11.28.2"` |
-| Mobile SDK | Expo SDK 57: `expo` 57.0.26, React Native 0.86.3, React 19.2.3 |
+| Mobile SDK | Expo SDK 57: `expo` 57.0.31 (57.0.26 until MOBILE-001-H; see its correction), React Native 0.86.3, React 19.2.3 |
 | TypeScript | 6.0.3 in every package |
 | Task runner | Turbo 2.11.6; root `turbo.json` with `agentGuidance: false` (MONO-001-E) |
 | Lint | ESLint 9.39.5 (flat config); `typescript-eslint` 8.71.0 for contracts; `eslint-config-expo` 57.0.2 for mobile |
-| Mobile tests | Jest 29.7.0, `jest-expo` 57.0.5, React Native Testing Library 14.0.1 with `test-renderer` 1.2.0 (MOBILE-001-F; see the correction below) |
+| Mobile tests | Jest 29.7.0, `jest-expo` 57.0.6, React Native Testing Library 14.0.1 with `test-renderer` 1.2.0 (MOBILE-001-F; see the correction below) |
 | Doctor | `expo-doctor` 1.20.4 as an exact mobile dev dependency |
 | Contracts format | ESM (`"type": "module"`), one `exports` entry with `types` then `default` |
 | Typed routes | Off for this batch (see [Mobile](#mobile-tsconfigjson-mobile-001-a)) |
@@ -114,7 +114,7 @@ engineStrict: true
 
 ## Direct dependencies
 
-All versions are exact. "Expo range" means `bundledNativeModules.json` in `expo@57.0.26` or the SDK 57 `relatedPackages` from the Expo versions API.
+All versions are exact. "Expo range" means `bundledNativeModules.json` in `expo@57.0.26` or the SDK 57 `relatedPackages` from the Expo versions API, as checked in MOBILE-001-A. Rows marked MOBILE-001-H were realigned to online `expo-doctor`'s expectations on 2026-10-30.
 
 ### Root (`devDependencies`, MONO-001-B)
 
@@ -139,16 +139,16 @@ There are no runtime dependencies. Zod arrives with CONTRACT-001.
 
 | Package | Version | Kind | Purpose | Evidence | Added in |
 | --- | --- | --- | --- | --- | --- |
-| `expo` | 57.0.26 | runtime | SDK | `latest` and `sdk-57` tags | MOBILE-001-A |
+| `expo` | 57.0.31 | runtime | SDK | `latest` and `sdk-57` tags; online doctor `~57.0.31` | MOBILE-001-A; realigned in MOBILE-001-H |
 | `react` | 19.2.3 | runtime | UI runtime | Expo range | MOBILE-001-A |
 | `react-native` | 0.86.3 | runtime | Native runtime | Expo range | MOBILE-001-A |
-| `expo-router` | 57.0.24 | runtime | File routes | Expo `~57.0.24` | MOBILE-001-A |
+| `expo-router` | 57.0.29 | runtime | File routes | Expo `~57.0.29` | MOBILE-001-A; realigned in MOBILE-001-H |
 | `react-native-safe-area-context` | 5.7.0 | runtime | Router peer; safe areas | Expo `~5.7.0` | MOBILE-001-A |
 | `react-native-screens` | 4.26.2 | runtime | Router peer | Expo `~4.26.0` | MOBILE-001-A |
-| `expo-linking` | 57.0.11 | runtime | Router peer | Expo `~57.0.11` | MOBILE-001-A |
-| `expo-constants` | 57.0.20 | runtime | Router peer | Expo `~57.0.20` | MOBILE-001-A |
+| `expo-linking` | 57.0.13 | runtime | Router peer | Expo `~57.0.13` | MOBILE-001-A; realigned in MOBILE-001-H |
+| `expo-constants` | 57.0.22 | runtime | Router peer | Expo `~57.0.22` | MOBILE-001-A; realigned in MOBILE-001-H |
 | `expo-status-bar` | 57.0.1 | runtime | Listed in Expo Router's install command | Expo `~57.0.1` | MOBILE-001-A |
-| `expo-dev-client` | 57.0.19 | runtime | Development builds | Expo `~57.0.19` | MOBILE-001-A |
+| `expo-dev-client` | 57.0.20 | runtime | Development builds | Expo `~57.0.20` | MOBILE-001-A; realigned in MOBILE-001-H |
 | `react-native-reanimated` | 4.5.1 | runtime | Required peer of `react-native-drawer-layout`, an `expo-router` dependency; pinned so pnpm does not pick a newer release | Expo `4.5.1`; peer `react-native` `0.83 - 0.86` | MOBILE-001-A |
 | `react-native-worklets` | 0.10.1 | runtime | Required peer of reanimated 4.5.1 (`0.10.x`); optional peer of `expo-modules-core` (`^0.7.4` … `^0.10.0`) | Expo `0.10.1` | MOBILE-001-A |
 | `react-dom` | 19.2.3 | runtime | Required peer of `expo-router`'s web dependencies (`vaul`, Radix); must match `react` | Expo `19.2.3`; peer `react ^19.2.3` | MOBILE-001-A |
@@ -160,7 +160,7 @@ There are no runtime dependencies. Zod arrives with CONTRACT-001.
 | `@react-native/metro-config` | 0.86.3 | dev | Required peer of `react-native-worklets` (`*`); optional peer of `@react-native/community-cli-plugin` 0.86.3 (`0.86.3`) | Matches React Native 0.86.3 and Metro 0.84 | MOBILE-001-A |
 | `expo-doctor` | 1.20.4 | dev | Pinned doctor | `latest`, published 2026-08-26 | MOBILE-001-B |
 | `jest` | 29.7.0 | dev | Test runner | Expo `~29.7.0`; `jest-expo` depends on Jest 29 packages | MOBILE-001-F |
-| `jest-expo` | 57.0.5 | dev | Expo Jest preset | Expo `~57.0.5` | MOBILE-001-F |
+| `jest-expo` | 57.0.6 | dev | Expo Jest preset | Expo `~57.0.6` | MOBILE-001-F; realigned in MOBILE-001-H |
 | `@types/jest` | 29.5.14 | dev | Jest types | Expo `29.5.14` | MOBILE-001-F |
 | `@testing-library/react-native` | 14.0.1 | dev | Behavior tests | Expo Router testing requires 14 or newer | MOBILE-001-F |
 | `test-renderer` | 1.2.0 | dev | Testing Library 14's required renderer peer (`^1.0.0`) | Peer `react ^19.0.0`; depends on `react-reconciler ~0.33.0`, whose 0.33.0 needs `react ^19.2.0` | MOBILE-001-F |
@@ -183,6 +183,14 @@ There are no runtime dependencies. Zod arrives with CONTRACT-001.
 The four rows marked MOBILE-001-A above that are not in the original plan pin these at Expo SDK 57's `bundledNativeModules.json` versions, or at React Native's version for `@react-native/metro-config`. They are declared, not overridden: no `overrides` and no `peerDependencyRules`. After a clean `pnpm install --frozen-lockfile`, `pnpm peers check` reports no issues, and the tree has one copy each of reanimated, worklets, `react-dom`, and `@react-native/metro-config`, with no Metro 0.87. Metro 0.84.5 and 0.84.6 both remain (Expo's and React Native's ranges); no failure has been reproduced, so they are left alone.
 
 **Optional peers intentionally not installed:** `react-native-web` (no web target) and `react-server-dom-webpack`. `react-dom` and `react-native-reanimated` are installed only because transitive dependencies require them (see the correction above). The app does not import them. The Android export's source map contains neither; worklets is bundled because Expo's modules import it. No Babel or Metro config file is needed: the exports work with Expo defaults.
+
+**Correction from MOBILE-001-H (2026-10-10 and 2026-10-30): Expo patch alignment.** Online `expo-doctor` compares the installed packages with Expo's current SDK 57 version list, so it starts failing whenever Expo publishes newer patches, even though nothing in the repository changed. Offline (`EXPO_OFFLINE=1`) it compares with the installed `expo`'s own list and passed 21/21 on 2026-10-30.
+- **2026-10-10 (Codex):** online doctor reported 20/21. The user authorized updating `expo` 57.0.26 → 57.0.27, `expo-constants` → 57.0.21, `expo-linking` → 57.0.12, and `expo-router` → 57.0.25, after which doctor passed 21/21.
+- **2026-10-30 (Claude Code):** Expo had published 57.0.28–57.0.31 between October 12 and 21, so online doctor reported 20/21 again, this time with six packages behind. The user authorized `expo` 57.0.31, `expo-constants` 57.0.22, `expo-dev-client` 57.0.20, `expo-linking` 57.0.13, `expo-router` 57.0.29, and `jest-expo` 57.0.6.
+  - Results: online doctor passed 21/21, `pnpm peers check` reported no issues, and `expo install --check` said "Dependencies are up to date".
+  - Lockfile changes are limited to Expo packages, `react-native-drawer-layout` 4.2.11 → 4.2.12 (an `expo-router` dependency), and a new transitive `xcode` 4.0.0 used by Expo's config plugins. `@expo/config-plugins` now appears at two patch versions (57.0.10 and 57.0.11), and doctor's duplicate check passes.
+  - `react-native-gesture-handler` stays at 3.3.0 (TOOLCHAIN-001-A).
+- Every native and checkpoint result in MOBILE-001-H was rerun after the last alignment.
 
 **Correction from MOBILE-001-G (2026-10-03):** `react-native-gesture-handler` *is* installed, at **3.3.0**, and has been in the lockfile since MOBILE-001-A. It is optional for `expo-router`, but `react-native-drawer-layout` 4.2.11 (an `expo-router` dependency) declares it as a required peer (`>= 2.0.0`), so pnpm auto-installed the newest matching version. Expo SDK 57's `bundledNativeModules.json` expects `~2.32.0`. `pnpm peers check` and `expo-doctor` do not flag it, because the declared ranges are satisfied and it is not a direct dependency. The app imports none of its JavaScript (an Android export's source map has no gesture-handler or drawer-layout source), but Expo's autolinking finds it, so the native Android build compiles and links it (`libgesturehandler.so` is in the debug APK). The Android build, launch, and checked interactions worked with it. It was left unchanged, because pinning it (for example to `2.32.x`, like the four MOBILE-001-A pins) changes dependencies and the lockfile, which is outside MOBILE-001-G's scope. That decision is pending. `@react-native-masked-view/masked-view` 0.3.2 is also autolinked; it is an `expo-router` dependency and matches Expo's version.
 
@@ -448,6 +456,12 @@ pnpm --filter @ride-match/mobile add -D jest@29.7.0 jest-expo@57.0.5 @types/jest
 pnpm test:mobile
 pnpm test:mobile --runTestsByPath tests/navigation.test.tsx
 pnpm test
+
+# MOBILE-001-H (Expo patch alignment authorized by the user; the 2026-10-10 step was superseded on 2026-10-30)
+pnpm --filter @ride-match/mobile add --save-exact expo@57.0.31 expo-constants@57.0.22 expo-dev-client@57.0.20 expo-linking@57.0.13 expo-router@57.0.29
+pnpm --filter @ride-match/mobile add --save-exact -D jest-expo@57.0.6
+pnpm peers check
+pnpm doctor:mobile
 ```
 
 The remaining checks for each card are listed in [FIRST_STEPS.md](FIRST_STEPS.md). The file-list checks pass when they print nothing, because `grep` then exits 1. The `require.resolve` check passes when every printed path is inside the repository.
@@ -472,7 +486,7 @@ The existing sync-root rules already exclude `node_modules`, every dot-entry (in
 | `packages/contracts/dist/` | MONO-001-C |
 | `apps/mobile/dist/` | MOBILE-001-A exports (A created it for its checks, then removed it; B's exports recreate it) |
 | `apps/mobile/android/` | MOBILE-001-G. Generated there on 2026-10-03: 1.3 GB, almost all already excluded by the rules above (`app/build` 1.1 GB, `.cxx` 142 MB, `.gradle`). Only 38 files (about 624 KB: generated sources, the Gradle wrapper, the template's debug keystore, and `android/build`) fall outside them |
-| `apps/mobile/ios/` | MOBILE-001-H |
+| `apps/mobile/ios/` | MOBILE-001-H. Generated there on 2026-10-30; the existing rules already skip `ios/Pods` and `ios/build` |
 | `*.tsbuildinfo` | Only if a later task enables incremental builds |
 
 Tasks do not wait on this, because assistants cannot see or verify sync settings, but they remind the user before creating each path. Because dot-entries such as `.git`, `.gitignore`, and `.nvmrc` are excluded from sync, the MEGA copy is not a usable checkout. Use Git for transfers.
@@ -518,6 +532,25 @@ Run:
 LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pnpm mobile:ios
 ```
 
+- **Result (MOBILE-001-H, final on 2026-10-30):** the command above worked as written with the iPhone 17 Pro simulator (iOS 26.5, Xcode 26.6) already booted.
+  - **Build:** Expo generated `apps/mobile/ios/`, and CocoaPods installed 105 pods. Xcode reported "Build Succeeded" with 0 errors and two warnings: duplicate `-lc++` libraries, and the dev launcher's "Strip Local Network Keys for Release" script phase having ambiguous dependencies.
+  - **Install and launch:** the app installed and opened through the development client.
+  - **Changes:** no handwritten native patch.
+  - **Info.plist:** `UIStatusBarStyleDarkContent`, `UIUserInterfaceStyle` `Light`, minimum iOS 16.4. The only usage description is the development launcher's `NSLocalNetworkUsageDescription`, which its build phase strips from release builds.
+- **Development-build behavior on iOS:**
+  - **Cold launch from the app:** `xcrun simctl launch` reopens the recent development server directly.
+  - **Cold launch through a link:** a `ride-match://` link shows the server list first. After the server is chosen, the pending link is delivered.
+  - **First install:** the developer-menu introduction appears once.
+- **Safe-area correction:** see [Mobile `Screen` safe areas](#mobile-screen-safe-areas-mobile-001-h).
+
+### Mobile `Screen` safe areas (MOBILE-001-H)
+
+`src/ui/Screen.tsx` pads each requested edge by 24 points plus the `SafeAreaProvider`'s inset, read with `useSafeAreaInsets()`. Until MOBILE-001-H it was a native `SafeAreaView`.
+
+- **The problem:** that view measures its own position in the window. When the iOS sign-in sheet first opened, it measured while the sheet was still sliding in. The first screen in the sheet then had no bottom inset: its buttons ended 24 points above the screen edge instead of 58. This happened on every fresh presentation, from Sign in, a warm link, or a cold link. It corrected only after a push and pop inside the sheet.
+- **The fix:** provider insets belong to the window and don't depend on that animation. The sheet reaches the bottom of the screen, so the window's bottom inset is the right one, and callers still omit the top edge inside the iOS sheet.
+- **Verified:** after the change, every iOS presentation measured 58 points. Android bounds are unchanged from MOBILE-001-G. Two Jest tests in `tests/ui.test.tsx` cover the padding.
+
 ## Verify later
 
 These are expectations recorded here, not checked results. The named task confirms or corrects each one and updates this file.
@@ -545,7 +578,7 @@ These are expectations recorded here, not checked results. The named task confir
   - No `babel.config.js` is needed; `"jest"` belongs in `types` (see above); `pnpm test:mobile --runTestsByPath tests/navigation.test.tsx` runs `jest --runTestsByPath tests/navigation.test.tsx`.
   - **Corrected:** `test-renderer` 1.2.0 instead of 1.3.0, `@babel/runtime` declared, and no `transformIgnorePatterns` override.
 - **MOBILE-001-G:** verified on 2026-10-03; see the Android result above and the gesture-handler correction. One app-config fix: the `expo-status-bar` plugin with `style: 'dark'`, because Android's edge-to-edge status bar otherwise kept white icons on the white screens.
-- **MOBILE-001-H:** the native iOS build on the recorded simulator.
+- **MOBILE-001-H:** verified on 2026-10-30. See the iOS result, the patch-alignment correction, and the `Screen` safe-area section above. The Android checks were rerun on the final files.
 
 ## Sources (checked 2026-10-03)
 
