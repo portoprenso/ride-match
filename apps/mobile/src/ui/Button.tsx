@@ -1,14 +1,36 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+
+import { AppText } from './AppText';
+import { colors, radii, spacing, type ColorName } from './tokens';
+
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+
+type Look = { background?: ColorName; text: ColorName };
+
+const VARIANTS: Record<ButtonVariant, Look> = {
+  primary: { background: 'ink', text: 'white' },
+  secondary: { background: 'soft', text: 'ink' },
+  ghost: { text: 'ink' },
+  danger: { background: 'danger', text: 'white' },
+};
 
 type ButtonProps = {
   /** Visible text. Screen readers also use it as the button's name unless `accessibilityLabel` is set. */
   label: string;
   onPress: () => void;
+  /** Visual emphasis: one `primary` action per screen, `danger` for destructive ones. Defaults to `primary`. */
+  variant?: ButtonVariant;
   /**
-   * Prevents presses and dims the button. React Native's `Pressable` also reports the
-   * disabled state to screen readers, so assistive technology announces it as unavailable.
+   * Prevents presses and shows the unavailable style. React Native's `Pressable` also
+   * reports the disabled state to screen readers, so assistive technology announces it.
    */
   disabled?: boolean;
+  /**
+   * Marks the action as running: shows a spinner, ignores further presses, and reports
+   * busy and disabled to screen readers. Set it as soon as the work starts, so a second
+   * press cannot submit the same action again.
+   */
+  busy?: boolean;
   /**
    * Spoken name that replaces `label` for screen readers. Set it only when the visible text
    * lacks context on its own, for example "Close sign-in" for a button labeled "Close".
@@ -16,39 +38,59 @@ type ButtonProps = {
   accessibilityLabel?: string;
 };
 
-/** Text button with a single press action and a touch target at least 48 points tall. */
-export function Button({ label, onPress, disabled = false, accessibilityLabel }: ButtonProps) {
+/**
+ * Text button with a single press action, at least 52 points tall (above the 48-point
+ * minimum touch target). The label wraps and the button grows with larger text.
+ */
+export function Button({
+  label,
+  onPress,
+  variant = 'primary',
+  disabled = false,
+  busy = false,
+  accessibilityLabel,
+}: ButtonProps) {
+  const look: Look = disabled
+    ? { background: variant === 'ghost' ? undefined : 'line', text: 'muted' }
+    : VARIANTS[variant];
+
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      disabled={disabled}
+      accessibilityState={{ busy }}
+      disabled={disabled || busy}
       onPress={onPress}
-      style={({ pressed }) => [styles.button, pressed && styles.pressed, disabled && styles.disabled]}
+      style={({ pressed }) => [
+        styles.button,
+        look.background && { backgroundColor: colors[look.background] },
+        pressed && styles.pressed,
+      ]}
     >
-      <Text style={styles.label}>{label}</Text>
+      {busy && <ActivityIndicator color={colors[look.text]} />}
+      <AppText variant="label" color={look.text} style={styles.label}>
+        {label}
+      </AppText>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 48,
+    minHeight: 52,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    backgroundColor: '#111111',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radii.md,
   },
   pressed: {
     opacity: 0.8,
   },
-  disabled: {
-    opacity: 0.4,
-  },
   label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
+    flexShrink: 1,
+    textAlign: 'center',
   },
 });

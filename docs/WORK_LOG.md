@@ -976,3 +976,39 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - MEGAsync exclusions for the generated `dist/`, `android/`, and `ios/` paths.
 - **Resume from:** when asked, run the combined deferred verification. UI-001-B is next only when requested.
 - **Ownership:** Released; no active task.
+
+## 2026-10-30 — UI-001-B: Button variants, IconButton, Badge and Notice
+
+- **Actor/session:** Claude Code / ui-controls.
+- **Status:** Completed; ownership released. UI-001 stays `Paused`, because UI-001-A waits for the deferred verification pass.
+- **Working copy:** `main` at `619b134` (UI-001-A, committed at the user's request just before this card). At the user's request, UI-001-B was committed on top of it, without pushing. Untracked `.idea/` files were left untouched.
+  - The UI-001-A commit was checked with `git diff --cached --check` excluding `assets/fonts/OFL.txt`. Line 21 of that file has trailing whitespace from the published license text, and `cmp` confirmed it is identical to the package's `LICENSE_FONT`, so it was kept verbatim.
+- **Request/scope:** "commit and continue with UI-001-B"; keep per-step verification light.
+- **Changes:**
+  - **`src/ui/Button.tsx`** (extended):
+    - **Variants:** `variant` is primary (ink/white), secondary (soft/ink), ghost (ink text), or danger (danger/white), from the design kit's Button styles. When disabled it uses the kit's line background and muted text (muted text only for ghost).
+    - **Busy:** `busy` shows a spinner, keeps the label, sets `accessibilityState.busy`, and disables the `Pressable`, so a second press cannot submit again.
+    - **Layout:** minimum height 52, radius 16, Manrope `label` text that wraps and grows. Existing call sites keep the default primary variant.
+  - **New components:**
+    - **`src/ui/IconButton.tsx`:** a 48×48 square with radius 16, `soft` or `white` tone, a required `accessibilityLabel`, and a caller-supplied icon wrapped in a view hidden from screen readers. Disabled dims it; busy shows a spinner. Both block presses.
+    - **`src/ui/Badge.tsx`:** neutral (soft/ink), success (lime/ink), warning (warningSoft/warning), and danger (dangerSoft/danger), with `small` text and 10/5 padding at radius 12. The label always states the meaning.
+    - **`src/ui/Notice.tsx`:** neutral (soft/muted), warning, and danger, with `small` text, padding 12, and radius 12. It shows the message only; screens decide on announcements and actions.
+  - **`src/ui/tokens.ts`:** added `dangerSoft` `#FFF0EC` and `warningSoft` `#FFF3D4`, from the design source's palette.
+  - **`tests/ui.test.tsx`:** one Button busy test, plus IconButton tests for its name with the icon hidden, a single press, the 48-point target, and disabled and busy blocking presses.
+  - **Docs:** `MOBILE_IMPLEMENTATION_PLAN.md` (card `Completed`, Icons row, component inventory), `ROADMAP.md`, `ARCHITECTURE.md`, `DEVELOPMENT.md`, `docs/README.md`, and `AI_CONTEXT.md`.
+- **Decisions:**
+  - **No icon library in this card.** `IconButton` takes its icon as a child, because neither `react-native-svg` nor `@expo/vector-icons` is installed. The first card that draws real icons chooses: Expo lists `react-native-svg` 15.15.4, which could reuse the design's stroke paths.
+  - **Busy is controlled by the caller** and blocks presses through `disabled`. Callers set it as soon as an action starts.
+  - **Button colors come from the design kit**, which matches the plan's contrast notes; there is no separate visual check in this card.
+- **Verification:**
+  - Mobile typecheck and lint → exit 0.
+  - `npx jest tests/ui.test.tsx` → 9 passed.
+  - `pnpm test:mobile` → 2 suites, 23 tests passed. The navigation tests press the reworked Button.
+  - **Not run:** exports and native visual checks. The card's acceptance does not require them; the Manrope labels are covered by UI-001-A's deferred native inspection.
+- **JSDoc/TSDoc:** `Button` props (variant use, disabled, busy semantics, spoken name), `IconButton` (icon decorative and hidden, required name, why the icon set is external, tones, busy), `Badge` (color never alone), and `Notice` (display only; screens own announcements and actions).
+- **Remaining/blockers:**
+  - The deferred verification for UI-001-A and TOOLCHAIN-001-A.
+  - The icon renderer decision, for the first card that needs real icons.
+  - MEGAsync exclusions.
+- **Resume from:** UI-001-C when requested, or the combined deferred verification.
+- **Ownership:** Released; no active task.

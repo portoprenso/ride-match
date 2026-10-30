@@ -146,7 +146,7 @@ Additional variants stay inside these screens: empty search, throttled resend, p
 | Shape | Radii 12/16/24/32; reference buttons 52 high with radius 16; allow growth with text. |
 | Colors | Ink #123C38; teal #146B59; lime #DDF5A0; paper #F7F8F2; muted #586D68; line #DCE4DC; soft #EAF2E9; danger #AD3E36; warning #8A5B14. |
 | Layout | Separate map, scrolling content, modal form, and chat layouts; shared footer/spacing rules. |
-| Icons | Consistent small vector set: back, close, search, location, members, chat, shield, clock, settings, external opening. Hide decorative icons from accessibility. |
+| Icons | Consistent small vector set: back, close, search, location, members, chat, shield, clock, settings, external opening. Hide decorative icons from accessibility. UI-001-B's `IconButton` hides whatever icon it receives. No icon renderer is installed yet. The first card that draws real icons decides: Expo SDK 57 lists `react-native-svg` 15.15.4, which can draw the design's own stroke paths, and `@expo/vector-icons`. |
 | Sheets | One coordinated host per flow; content-driven sizing, keyboard handling, focus restoration, explicit dismissal. |
 
 For SDK 57, use static Manrope font assets. Expo's guidance supports native embedding through expo-font, avoiding startup font swapping; verify platform font-family/weight names and preserve the license. [Expo font guidance](https://docs.expo.dev/develop/user-interface/fonts/)
@@ -154,7 +154,7 @@ For SDK 57, use static Manrope font assets. Expo's guidance supports native embe
 Component inventory:
 
 - Extend Screen, Button, UnavailableScreen.
-- Core: AppText (UI-001-A, `src/ui/AppText.tsx`, with tokens in `src/ui/tokens.ts`), IconButton, Badge, Notice, LoadingState, EmptyState.
+- Core: AppText (UI-001-A, `src/ui/AppText.tsx`, with tokens in `src/ui/tokens.ts`), and, from UI-001-B, `Button` variants (primary, secondary, ghost, danger; `busy`), IconButton, Badge (neutral, success, warning, danger), and Notice (neutral, warning, danger). LoadingState and EmptyState are still to come.
 - Inputs: TextField, SearchField, a single accessible OTP input with optional visual cells, departure selector.
 - Layout: ScreenHeader, scrolling form, sticky action footer, ConfirmAction, map overlay layout, sheet host.
 - Discovery: destination row/chip, public ride/group card, nearby row, ride/group/own/meeting markers, cluster marker.
@@ -264,7 +264,7 @@ Documentation: shared handoff/progress plus TOOLCHAIN.md and DEVELOPMENT.md as a
 | MOBILE-001-H | MOBILE-001-G | Existing iOS shell checkpoint; reuse current app; normally docs and narrow config fixes. No design implementation. | Native launch/navigation/dismissal/safe areas and existing final checkpoint pass; recheck Android for shared changes. | S / iOS environment | See FIRST_STEPS.md |
 | TOOLCHAIN-001-A | MOBILE-001-H | Resolve gesture-handler alignment in M/package.json and root lockfile; record decision. New bounded compatibility work. | Intended version resolves/autolinks; doctor, tests, exports and both native builds pass. Doctor alone is insufficient. | S / native compatibility | Paused: 2.32.0 pinned (2026-10-30); tests, exports and native rebuilds deferred at the user's request |
 | UI-001-A | MOBILE-001-H | New UI tokens/AppText and M/assets static Manrope/license/Along mark; reuse existing art. All screens. | Correct native weights; no clipped sample headings/startup font failure; static checks and both-platform inspection. | S / font naming/assets | Paused: assets, tokens and AppText done (2026-10-30); tests, exports and native font inspection deferred |
-| UI-001-B | UI-001-A | Extend Button; add UI IconButton/Badge/Notice. All screens. | Variants, busy/disabled states, names, touch targets; blocked controls cannot submit again. Focused behavior tests. | S / low | Planned |
+| UI-001-B | UI-001-A | Extend Button; add UI IconButton/Badge/Notice. All screens. | Variants, busy/disabled states, names, touch targets; blocked controls cannot submit again. Focused behavior tests. | S / low | Completed (2026-10-30) |
 | UI-001-C | UI-001-B | New UI fields, accessible OTP and departure selector. 03, 06–09, 41, 47. | Error/focus/paste/selection behavior; native keyboard and enlarged text. | M / native input behavior | Planned |
 | UI-001-D | UI-001-B, TOOLCHAIN-001-A | Extend Screen; new form/footer, ConfirmAction and sheet host. Verify candidate library before adoption. | One sheet at a time; Android back/iOS dismissal; keyboard-safe actions and restored focus; native checks. | M / gestures/keyboard | Planned |
 

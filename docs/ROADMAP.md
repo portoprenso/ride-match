@@ -13,6 +13,12 @@ This roadmap covers only items 1–2. No backend implementation or real transpor
 
 ## Progress
 
+**UI-001-B — Completed (2026-10-30).**
+
+- **`Button`:** primary, secondary, ghost, and danger variants, a `busy` state that blocks repeat presses and reports busy, 52-point height, and Manrope labels.
+- **New:** `IconButton` (a 48-point target with a required name and a hidden icon), `Badge`, and `Notice`.
+- **Checks:** 23 mobile tests pass, along with typecheck and lint.
+
 **UI-001-A — Paused (2026-10-30).**
 
 - **Done:** design tokens (`src/ui/tokens.ts`) and `AppText` were added, and the map, sign-in, and unavailable screens now use `AppText`. Static Manrope 400–800 with its OFL license is embedded through `expo-font`, and the Along mark (SVG plus PNGs) is in `apps/mobile/assets`. Typecheck, lint, and doctor (21/21) pass.

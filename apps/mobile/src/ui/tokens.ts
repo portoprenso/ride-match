@@ -13,7 +13,9 @@ export const colors = {
   line: '#DCE4DC',
   soft: '#EAF2E9',
   danger: '#AD3E36',
+  dangerSoft: '#FFF0EC',
   warning: '#8A5B14',
+  warningSoft: '#FFF3D4',
 } as const;
 
 export type ColorName = keyof typeof colors;
