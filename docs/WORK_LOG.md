@@ -1330,3 +1330,53 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
   - MEGAsync exclusions.
 - **Ownership:** Released; no active task.
+
+## 2026-10-31 — CONTRACT-001-C: Authentication contracts
+
+- **Actor/session:** Claude Code / contract-001-c.
+- **Status:** `Completed`; ownership released. With it, the parent CONTRACT-001 is `Completed`.
+- **Working copy:** `main` at `2970bb0` (CONTRACT-001-B). Committed on top of it at the user's request, with no push. The untracked `.idea/` files were left untouched.
+- **Request/scope:** "continue in this one with next step" (the user could not open a new session): CONTRACT-001-C only, then commit.
+- **Prerequisites:** CONTRACT-001-B is `Completed`.
+- **Changes:**
+  - **`src/auth.ts` (new):**
+    - **Scalars:** `PhoneNumberSchema` (Zod's `z.e164()`: `+`, a country code not starting with 0, 7–15 digits); `OtpCodeSchema` (exactly six ASCII digits, as a string); `SessionTokenSchema` (opaque, 16–4,096 bearer-token characters per RFC 6750, `=` padding only at the end).
+    - **Challenge:** `CreateOtpChallengeInputSchema` (`phoneNumber`; also the resend request) and `OtpChallengeSchema` (`id`, `expiresAt`, `resendAvailableAt`, with a refinement that resend is never after expiry).
+    - **Verification:** `VerifyOtpInputSchema` (`challengeId`, `code`). Its TSDoc records which code each failure returns.
+    - **Session:** `SessionCredentialsSchema` (access and refresh tokens with their expiries, refined so the access token never outlives the refresh token) and `AuthSessionSchema` (public `UserDto` plus the same fields and rule). Both are built from one shared field set and one shared check.
+    - **Refresh and logout:** `RefreshSessionInputSchema` and `LogoutInputSchema`, `{ refreshToken }` only.
+    - **`AUTH_POLICY`:** code length 6, challenge lifetime 300 s, resend interval 30 s, 5 wrong codes per challenge, access token 900 s, refresh token 30 days.
+  - **`src/errors.ts`:** `OTP_EXPIRED` (410) and `OTP_INVALID` (422), for 27 codes; the comment now says the OTP codes are in.
+  - **`src/index.ts`:** re-exports `auth.js`.
+  - **Tests:** `tests/auth.test.ts` (new) and the four OTP codes in `tests/errors.test.ts`.
+    - Phone number, code and token formats at their limits.
+    - Both cross-field rules at equality and 1 ms past it.
+    - A challenge and credentials built from `AUTH_POLICY` pass the schemas, so the policy and the rules cannot drift apart.
+    - The challenge rejects the code and phone number; the session rejects the phone number and code; the public user rejects tokens.
+    - 233 tests (54 new).
+- **Decisions:**
+  - **Resend reuses the challenge request.** A new challenge for the same number replaces the old one, whose code then fails with `OTP_EXPIRED`. That covers resend without a second endpoint.
+  - **`OTP_EXPIRED` (410) also covers used, replaced and unknown challenges.** The user's next step is the same in each case (get a new code), and an unknown ID reveals nothing.
+  - **The fifth wrong code already answers `OTP_ATTEMPTS_EXCEEDED`,** so the app can switch to "get a new code" at once; later attempts fail the same way even with the right code.
+  - **A malformed code is a validation failure and does not count as an attempt.**
+  - **Contracts enforce only what a payload can show.** The code length and the two ordering rules are schema checks. Lifetimes, the resend interval and the attempt limit need issue times and server state, so AUTH-001-A applies and tests them; `AUTH_POLICY` is their single recorded source.
+  - **No `attemptsRemaining`, masked phone or code length in the challenge.** The spec's three fields suffice; the app already knows the number it sent.
+  - **`AuthSessionDto.user` is the public `UserDto`;** current request and group references come from `GET /me`, as the spec says.
+- **Excluded:** the demo code and synthetic identity (AUTH-001-A fixtures), push-device deregistration on logout (notification cards), `PATCH /me`, and any mobile code. The existing `OtpField` keeps its default length of 6, matching the policy.
+- **Verification:**
+  - `pnpm test:contracts`: 5 files, 233 tests pass.
+  - `pnpm build:contracts`, `pnpm typecheck` and `pnpm lint`: all Turbo tasks pass.
+  - Importing the built `packages/contracts/dist/index.js` in Node finds the new exports and 27 error codes.
+  - `git diff --check`: clean. Local Markdown links and anchors in the edited docs resolve.
+  - **Not run:** mobile Jest, both exports and native builds, because no app code changed (the user's standing preference to defer heavy checks).
+- **Docs:**
+  - `api/authentication.md`: an "Implemented contracts (CONTRACT-001-C)" section with the schema rules, the failure-to-code table and the mock policy table. The old "remain configuration choices" note now points to it.
+  - `api/overview.md`: status line, inventory rows (plus the credential, refresh and logout shapes), the error-code row and the 410 and 422 rows of the error table.
+  - `ARCHITECTURE.md`: the existing modules now include `auth.ts`.
+  - Also updated: `MOBILE_IMPLEMENTATION_PLAN.md` (card status and the pending-decisions note), `ROADMAP.md` (progress, CONTRACT-001 `Completed`), `DEVELOPMENT.md`, both READMEs, and `AI_CONTEXT.md`.
+- **TSDoc:** each exported schema states who may see it, what it rejects, and which error each failure returns; `AUTH_POLICY` says which values the schemas enforce and which AUTH-001-A applies.
+- **Remaining/next:**
+  - CONTRACT-002-A (curated place search) is the next planned card, when requested.
+  - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
+  - MEGAsync exclusions.
+- **Ownership:** Released; no active task.

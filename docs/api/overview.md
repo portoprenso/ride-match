@@ -1,6 +1,6 @@
 # Future API: conventions, boundaries, and handoff
 
-Status: proposed specification, not an implemented API. Last updated: 2026-10-31. The shared schemas for [common values and errors](#common-values-and-errors-contract-001-a) and for [locations and users](#locations-and-users-contract-001-b) exist in `packages/contracts`; the other contracts are still planned.
+Status: proposed specification, not an implemented API. Last updated: 2026-10-31. The shared schemas for [common values and errors](#common-values-and-errors-contract-001-a) for [locations and users](#locations-and-users-contract-001-b), and for [authentication](authentication.md#implemented-contracts-contract-001-c) exist in `packages/contracts`; the other contracts are still planned.
 
 The mobile mock data source must reproduce these observable operations and rules. A future NestJS backend will implement the reviewed contracts after the mock mobile MVP. No backend implementation belongs to the current milestone.
 
@@ -31,9 +31,11 @@ Schemas live in `packages/contracts`, organized as described in [architecture](.
 | `PublicLocationDto` | Approximate area center, uncertainty radius, optional area label. Implemented |
 | `UserDto` | ID, display name, optional avatar URL; never phone/session fields. Implemented |
 | `CurrentUserDto` | User and current request/group references. Implemented |
-| `OtpChallengeDto` | Challenge ID, expiresAt, resendAvailableAt |
-| `VerifyOtpInput` | Challenge ID, OTP code |
-| `AuthSessionDto` | User, access/refresh credentials and expiry timestamps |
+| `CreateOtpChallengeInput` | E.164 phone number; private. Implemented; see [authentication](authentication.md#implemented-contracts-contract-001-c) |
+| `OtpChallengeDto` | Challenge ID, expiresAt, resendAvailableAt. Implemented |
+| `VerifyOtpInput` | Challenge ID, OTP code. Implemented |
+| `AuthSessionDto` | User, access/refresh credentials and expiry timestamps. Implemented |
+| `SessionCredentialsDto`, `RefreshSessionInput`, `LogoutInput` | Rotated credentials; the refresh token sent to refresh or log out. Implemented |
 | `PlaceDto` | Stable place ID, label, coordinates of selected place/venue |
 | `CreateRideRequestInput` | Exact origin, selected destination, departure time, client operation ID |
 | `RideRequestDto` | ID, public user summary, public origin/destination, departure/expiry, status, group reference, version |
@@ -64,7 +66,7 @@ Implemented in `packages/contracts/src/{common,errors}.ts` and covered by `pnpm 
 | `OperationIdSchema` | A UUID created once per user intent and reused on every retry of it; the future `Idempotency-Key` |
 | `CursorSchema` | 1–512 RFC 3986 unreserved characters (`A–Z`, `a–z`, `0–9`, `-`, `.`, `_`, `~`), so it needs no encoding in a query string. Opaque |
 | `ResponseMetaSchema`, `apiResponseSchema(data)` | The success envelope `{ data, meta: { serverTime } }`; no other top-level fields |
-| `ApiErrorCodeSchema` | Exactly the codes in the [errors](#errors) table. A domain contract that owns more codes (OTP verification in CONTRACT-001-C) adds them to this list |
+| `ApiErrorCodeSchema` | Exactly the codes in the [errors](#errors) table, including the OTP verification codes added by CONTRACT-001-C. A later domain contract that owns more codes adds them to this list |
 | `FieldErrorSchema` | `{ field, code, message }`. `field` is a dot path (`origin.latitude`, `members.0.userId`); `code` is `REQUIRED`, `INVALID_FORMAT`, `TOO_SHORT`, `TOO_LONG`, `OUT_OF_RANGE` or `INVALID_VALUE`; `message` is 1–200 characters. There is no field for the submitted value, so an error cannot echo it |
 | `ApiErrorSchema` | `code`, `message` (1–500 characters, safe to show), `requestId` (an ID), optional `fieldErrors` (1–50), optional `retryAfterSeconds` (integer, 1–86,400) |
 | `singleLineTextSchema(max)` | Builds a short text schema (added by CONTRACT-001-B): 1–`max` characters, no leading or trailing whitespace, no control characters such as line breaks. Nothing is trimmed; unclean text fails |
@@ -138,8 +140,8 @@ Server responses use stable error codes; mobile must not branch on human-readabl
 | 403 | `FORBIDDEN`, `MEMBERSHIP_REQUIRED` |
 | 404 | `NOT_FOUND`, `TARGET_UNAVAILABLE` where existence should not be disclosed |
 | 409 | `ACTIVE_REQUEST_EXISTS`, `ALREADY_IN_GROUP`, `GROUP_FULL`, `GROUP_CLOSED`, `VERSION_CONFLICT`, `IDEMPOTENCY_CONFLICT`, `USE_LEAVE_GROUP`, `BLOCKED_RELATIONSHIP` |
-| 410 | `RIDE_EXPIRED`, `HISTORY_EXPIRED` when authorized to know the resource |
-| 422 | `VALIDATION_FAILED`, `LOCATION_STALE`, `INVALID_DEPARTURE`, `INVALID_TRANSITION` |
+| 410 | `RIDE_EXPIRED`, `HISTORY_EXPIRED` when authorized to know the resource; `OTP_EXPIRED` |
+| 422 | `VALIDATION_FAILED`, `LOCATION_STALE`, `INVALID_DEPARTURE`, `INVALID_TRANSITION`, `OTP_INVALID` |
 | 429 | `RATE_LIMITED`, `OTP_ATTEMPTS_EXCEEDED`, `OTP_RESEND_THROTTLED` |
 | 503 | `SERVICE_UNAVAILABLE` |
 

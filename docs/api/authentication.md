@@ -24,7 +24,48 @@ Paths are relative to `/v1`; response conventions and common failures are in [ov
 - Successful verification returns the user and credentials. No role/identity can be supplied by the client.
 - In mocks, use a documented synthetic number/code and deterministic challenge state. Show clearly that no SMS is sent. Do not solicit or persist real personal data merely to demonstrate the flow.
 
-The exact OTP lifetime, resend interval, and attempt limit remain implementation/handoff configuration choices. CONTRACT-001/AUTH-001 must record their selected mock values and test them; production policy is not implied by a static demo code.
+CONTRACT-001-C recorded the mock OTP lifetime, resend interval and attempt limit (see [implemented contracts](#implemented-contracts-contract-001-c)); AUTH-001-A applies and tests them. Production policy is not implied by these values or by a static demo code.
+
+## Implemented contracts (CONTRACT-001-C)
+
+Implemented in `packages/contracts/src/auth.ts` and covered by `pnpm test:contracts`. All of them are private to the authentication boundary; none is a public or member shape.
+
+| Schema | Rule |
+| --- | --- |
+| `PhoneNumberSchema` | E.164: `+`, a country code not starting with 0, 7–15 digits in total, no spaces or punctuation. The app normalizes typed input first. Never echoed by any response |
+| `OtpCodeSchema` | Exactly six ASCII digits, as a string |
+| `SessionTokenSchema` | Opaque, 16–4,096 bearer-token characters (RFC 6750: letters, digits, `-._~+/`, then optional `=` padding) |
+| `CreateOtpChallengeInputSchema` | `{ phoneNumber }`. Also the resend request: a new challenge replaces the number's current one, whose code stops working |
+| `OtpChallengeSchema` | `{ id, expiresAt, resendAvailableAt }`, with `resendAvailableAt` no later than `expiresAt`. Never contains the code or the phone number |
+| `VerifyOtpInputSchema` | `{ challengeId, code }` |
+| `SessionCredentialsSchema` | `accessToken`, `accessTokenExpiresAt`, `refreshToken`, `refreshTokenExpiresAt`; the access token never outlives the refresh token. The refresh response |
+| `AuthSessionSchema` | `user` (public `UserDto`) plus the same credential fields and rule. The verification response; no phone number |
+| `RefreshSessionInputSchema`, `LogoutInputSchema` | `{ refreshToken }` only |
+
+Error semantics the mock (AUTH-001-A) implements:
+
+| Situation | Result |
+| --- | --- |
+| New challenge before the current one's `resendAvailableAt` | `OTP_RESEND_THROTTLED` (429) with `retryAfterSeconds` |
+| Wrong code | `OTP_INVALID` (422) |
+| Fifth wrong code for one challenge, and every attempt after it, even with the right code | `OTP_ATTEMPTS_EXCEEDED` (429); request a new challenge |
+| Expired, already used, replaced or unknown challenge | `OTP_EXPIRED` (410); request a new challenge |
+| Malformed code or phone number | `VALIDATION_FAILED` (422) with a field error; a malformed code is not counted as an attempt |
+| Unknown, expired, revoked or already rotated refresh token | `REFRESH_TOKEN_INVALID` (401); the app clears the session |
+| Logout with an already revoked token | `204`, as for a first logout |
+
+**Mock policy (`AUTH_POLICY`).** Reviewed values for the mock MVP, not production policy. The schemas enforce the code length; the mock applies the rest and tests their boundaries in AUTH-001-A. Clients read the timestamps in each challenge and session rather than hardcoding these durations.
+
+| Value | Default |
+| --- | --- |
+| Code length | 6 digits |
+| Challenge lifetime | 300 s (5 minutes) |
+| Resend interval | 30 s |
+| Wrong codes per challenge | 5 |
+| Access token lifetime | 900 s (15 minutes) |
+| Refresh token lifetime | 30 days, renewed on each rotation |
+
+The demo code itself is a mock fixture that AUTH-001-A documents; it is never part of a challenge response.
 
 ## Session lifecycle
 

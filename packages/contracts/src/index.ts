@@ -7,6 +7,7 @@
  * private data) is caught. Keep this package limited to transport contracts; UI state,
  * services, and backend-only logic belong elsewhere.
  */
+export * from './auth.js';
 export * from './common.js';
 export * from './errors.js';
 export * from './location.js';

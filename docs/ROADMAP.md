@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-10-31. **MONO-001, MOBILE-001 and TOOLCHAIN-001 are completed; UI-001 is paused for an Android text fix and screen-reader checks; CONTRACT-001 has A and B completed; all other implementation tasks are planned.**
+Last updated: 2026-10-31. **MONO-001, MOBILE-001, TOOLCHAIN-001 and CONTRACT-001 are completed; UI-001 is paused for an Android text fix and screen-reader checks; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,17 @@ Last updated: 2026-10-31. **MONO-001, MOBILE-001 and TOOLCHAIN-001 are completed
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**CONTRACT-001-C — Completed (2026-10-31); CONTRACT-001 is `Completed`.**
+
+- **Done:**
+  - `auth.ts`: E.164 phone number, six-digit code, opaque session tokens, the challenge request (also used to resend), the challenge, code verification, session credentials, the new session (user plus credentials), and the refresh and logout inputs.
+  - Cross-field rules: a challenge's resend time is never after its expiry, and an access token never outlives its refresh token.
+  - `OTP_INVALID` (422) and `OTP_EXPIRED` (410) joined the shared error codes; `api/authentication.md` maps each OTP and refresh failure to its code.
+  - Mock policy recorded in `api/authentication.md` and `AUTH_POLICY`: 6-digit code, 5-minute challenge, 30-second resend interval, 5 wrong codes, 15-minute access token, 30-day refresh token. AUTH-001-A applies and tests the timing and attempt values.
+  - 233 contract tests (54 new). No response schema carries the phone number or the code, and the public user rejects credentials.
+- **Parent check:** every CONTRACT-001 criterion holds: public schemas reject private fields, invalid location and auth inputs fail predictably, and all types are inferred from the schemas.
+- **Not run (no app code changed):** mobile Jest, exports and native builds.
 
 **CONTRACT-001-B — Completed (2026-10-31).**
 
@@ -100,7 +111,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | ID | Task | Status |
 | --- | --- | --- |
 | MONO-001 | Workspace foundation | Completed |
-| CONTRACT-001 | Common, location, authentication contracts | Paused (A and B completed; C planned) |
+| CONTRACT-001 | Common, location, authentication contracts | Completed |
 | CONTRACT-002 | Places, rides, matching contracts | Planned |
 | CONTRACT-003 | Groups, chat, safety contracts | Planned |
 | CONTRACT-004 | Realtime and notification contracts | Planned |

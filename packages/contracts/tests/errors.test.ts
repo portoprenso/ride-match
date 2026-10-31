@@ -34,6 +34,15 @@ describe('ApiErrorSchema', () => {
     ).toBe(true);
   });
 
+  it.each(['OTP_INVALID', 'OTP_EXPIRED', 'OTP_ATTEMPTS_EXCEEDED', 'OTP_RESEND_THROTTLED'])(
+    'accepts the OTP code %s',
+    (code) => {
+      expect(
+        ApiErrorSchema.safeParse({ code, message: 'Request a new code.', requestId: 'req_3' }).success,
+      ).toBe(true);
+    },
+  );
+
   it.each([
     ['an unknown code', { ...validationError, code: 'TEAPOT' }],
     ['a lowercase code', { ...validationError, code: 'validation_failed' }],
