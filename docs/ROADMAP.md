@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-10-31. **MONO-001 and MOBILE-001 are completed; TOOLCHAIN-001, UI-001 and CONTRACT-001 are paused for deferred checks; all other implementation tasks are planned.**
+Last updated: 2026-10-31. **MONO-001, MOBILE-001 and TOOLCHAIN-001 are completed; UI-001 is paused for an Android text fix and screen-reader checks; CONTRACT-001 has A completed; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,15 @@ Last updated: 2026-10-31. **MONO-001 and MOBILE-001 are completed; TOOLCHAIN-001
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**VERIFY-001 — Completed (2026-10-31).** One verification pass for TOOLCHAIN-001-A, UI-001-A, UI-001-C, UI-001-D and CONTRACT-001-A.
+
+- **Passed:**
+  - Frozen install, build, typecheck, lint, 61 contract and 42 mobile tests, online doctor (21/21), and both exports (run again after the fixes).
+  - Clean Android 16 and iOS 26.5 rebuilds; every shell flow from MOBILE-001-G/H, with the 58-point bottom gap on every iOS screen.
+  - Fonts, keyboards, focus, code paste, the selector, sheets, busy refusal and keyboard-safe actions, through a temporary development-only sample that was then removed.
+- **Fixed during the pass:** `Screen`'s scroll layout passed content under the status bar; `OtpField` showed its hidden text on Android; `Button` lost its accessible name on Android after a busy state.
+- **Result:** TOOLCHAIN-001-A, UI-001-C and CONTRACT-001-A are `Completed`. UI-001-A stays `Paused` for Android line-height clipping at 150% and above. UI-001-D stays `Paused` for screen-reader focus return and the VoiceOver escape gesture, which could not be driven on the emulator or simulator.
 
 **CONTRACT-001-A — Paused (2026-10-31).**
 
@@ -81,7 +90,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | ID | Task | Status |
 | --- | --- | --- |
 | MONO-001 | Workspace foundation | Completed |
-| CONTRACT-001 | Common, location, authentication contracts | Paused |
+| CONTRACT-001 | Common, location, authentication contracts | Paused (A completed; B and C planned) |
 | CONTRACT-002 | Places, rides, matching contracts | Planned |
 | CONTRACT-003 | Groups, chat, safety contracts | Planned |
 | CONTRACT-004 | Realtime and notification contracts | Planned |
@@ -112,7 +121,7 @@ These additions are recorded separately from the original 25-parent graph. They 
 
 | ID | Task | Prerequisites / execution | Status |
 | --- | --- | --- | --- |
-| TOOLCHAIN-001 | Resolve recorded gesture-handler compatibility decision | MOBILE-001-H; TOOLCHAIN-001-A in the implementation plan. Changes require its explicit assignment. | Paused |
+| TOOLCHAIN-001 | Resolve recorded gesture-handler compatibility decision | MOBILE-001-H; TOOLCHAIN-001-A in the implementation plan. Changes require its explicit assignment. | Completed |
 | UI-001 | Along tokens, controls, inputs and layouts | MOBILE-001-H; gesture-dependent UI-001-D also requires TOOLCHAIN-001-A. Execute UI-001-A through D individually. | Paused |
 
 ## Task rules

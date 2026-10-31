@@ -62,7 +62,9 @@ export function Button({
     <Pressable
       ref={ref}
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
+      // Always explicit: when Android derives the name from the children, it kept "busy" as
+      // the button's name after the busy state ended (seen on Android 16).
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ busy }}
       disabled={disabled || busy}
       onPress={onPress}

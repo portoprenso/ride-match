@@ -1,5 +1,5 @@
 import { useState, type Ref } from 'react';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { Platform, StyleSheet, TextInput, View } from 'react-native';
 
 import { AppText } from './AppText';
 import { FieldMessage, useAnnouncement } from './FieldMessage';
@@ -120,5 +120,9 @@ const styles = StyleSheet.create({
     left: 0,
     color: 'transparent',
     backgroundColor: 'transparent',
+    // Android (new architecture) still draws the text despite the transparent color, so there
+    // the input is also made almost invisible, with 1-point text. iOS honors the color and
+    // ignores touches on a view this transparent, so it keeps full opacity.
+    ...Platform.select({ android: { opacity: 0.01, fontSize: 1 } }),
   },
 });

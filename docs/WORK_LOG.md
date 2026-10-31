@@ -1186,3 +1186,94 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - MEGAsync exclusions.
 - **Resume from:** CONTRACT-001-B when requested (its prerequisite CONTRACT-001-A is `Paused` only for the deferred mobile checks), or the combined deferred verification.
 - **Ownership:** Released; no active task.
+
+## 2026-10-31 — VERIFY-001: Combined deferred verification pass
+
+- **Actor/session:** Claude Code / verify-pass.
+- **Status:** `Completed`; ownership released. Card results: TOOLCHAIN-001-A, UI-001-C and CONTRACT-001-A `Completed`; UI-001-A and UI-001-D stay `Paused` (see Findings). Parents: TOOLCHAIN-001 `Completed`; UI-001 `Paused`; CONTRACT-001 waits for B and C.
+- **Working copy:** `main` at `6ab3621` (CONTRACT-001-A). The fixes and docs were committed on top of it afterwards at the user's request, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Run verification pass" — the deferred checks recorded for TOOLCHAIN-001-A, UI-001-A, UI-001-C, UI-001-D and CONTRACT-001-A.
+- **Environment:** Node 24.17.0, pnpm 11.28.2; Android 16 (API 36) `Pixel_9_Pro_XL` emulator; iPhone 17 Pro simulator, iOS 26.5, Xcode 26.6.
+- **JavaScript checks** (all passed; repeated at the end on the final files):
+  - `pnpm install --frozen-lockfile`, `pnpm build:contracts`, `pnpm typecheck` and `pnpm lint` (3/3 tasks each).
+  - `pnpm test`: contracts 61, mobile 42 after the new `Button` test. Mobile Jest loads Zod through `@ride-match/contracts`.
+  - `pnpm doctor:mobile`: 21/21.
+  - `pnpm export:android` (1,351 modules) and `pnpm export:ios` (1,215 modules), run before and after the fixes. The iOS Hermes bytecode contains the contracts' strings and `ZodError`.
+- **Native builds:**
+  - **Android:** `apps/mobile/android/` was removed (ignored, untracked), and `pnpm mobile:android` with the TOOLCHAIN variables built it (BUILD SUCCESSFUL in 50 s). Install then failed with `INSTALL_FAILED_INSUFFICIENT_STORAGE`: the emulator had about 440 MB free. After uninstalling the old `com.ridematch.dev`, `adb install -r -d` worked, and Metro was started separately (see TOOLCHAIN, "Native UI checks").
+  - **iOS:** `apps/mobile/ios/` was removed and `pnpm mobile:ios` rebuilt it: Build Succeeded, 0 errors, and the same two warnings as MOBILE-001-H. Expo reused the running Metro.
+- **Shell flows** (MOBILE-001-G/H procedures; all passed):
+  - **Android:** sign-in steps, Back, Android back on both steps, Close from both steps, a fresh start at the phone step, warm and cold `ride-match://auth/otp`, all inert routes with "Go to map", 48 dp bottom gap. Only install-time permissions.
+  - **iOS:** the same flows plus swipe dismissal from both steps and the edge swipe back. Every screen, including freshly opened sheets, measured a 58.0 pt bottom gap.
+- **Temporary sample:** `app/dev/ui-sample.tsx` (development-only, removed afterwards, never committed). It held:
+  - Every Manrope face and typography variant (with `Ğğ Ÿ`).
+  - "Open form sheet" and "Open confirmation" buttons with `ref`s.
+  - A `SegmentedControl`, `SearchField`, phone `TextField`, `OtpField`, and a counted `TextField` at the bottom of a `Screen` with `scroll` and an `ActionFooter` footer.
+  - One `SheetHost` switching between a `SheetContent` form (field near the bottom, "Switch to confirmation", "Close") and a danger `ConfirmAction`. Confirming set `busy` (`dismissible={false}`) for 3 s, then showed a sample error.
+- **UI checks:**
+  - **Fonts (both platforms):** five distinct weights, no startup font error, and no clipping at default size. iOS showed no clipping at XXXL either (after relaunching; see Findings). Android clips at 150% and 200% (Findings).
+  - **Keyboards:**
+    - Android: phone `inputType 0x3`, code `0x2` (number), search `0x80001` with `imeOptions` search.
+    - iOS: phone pad with `+*#`, plain number pad, and a blue search key with lowercase and no suggestions.
+  - **Focus borders:** teal on both platforms.
+  - **Code input:**
+    - Typed `12a34b56` became `123456` on Android.
+    - On iOS, pasting `Code: 123 456` filled 1–6.
+    - Android paste was not exercised, because the emulator's clipboard is shared with the Mac.
+    - One-time-code autofill needs a real SMS and was not exercised.
+  - **Selector:** Android reports radio buttons with the right `checked` state, and the options wrap at 200%.
+  - **Sheet (both platforms):**
+    - One sheet at a time; switching from the form to the confirmation reuses it.
+    - Sized to its content over a dimmed background, with a 48 dp / 58 pt bottom gap.
+    - A background tap closes it. On Android, back closes it, but back with the keyboard open closes only the keyboard.
+    - While busy, background taps and Android back are ignored and Stay is disabled. The error then shows and both actions return.
+  - **Keyboard-safe actions (both platforms):** the footer and the sheet's actions stay above the keyboard. On Android this needed a docked keyboard (see TOOLCHAIN).
+- **Fixes made during the pass** (user-requested verification; small, within the cards' own components):
+  - **`src/ui/Screen.tsx` (UI-001-D):** in the `scroll`/`footer` layout the top inset was part of the scroll content, so scrolled text passed under the transparent status bar and overlapped the clock on both platforms. The top inset now pads the outer `KeyboardAvoidingView`, and the content keeps only the 24-point padding. `tests/layout.test.tsx` now checks both.
+  - **`src/ui/OtpField.tsx` (UI-001-C):**
+    - **Problem:** on Android (new architecture) the hidden `TextInput` drew its value in black over the first cell despite `color: 'transparent'`.
+    - **Fix:** on Android only, the input also gets `opacity: 0.01` and `fontSize: 1`.
+    - **Why only Android:** the first attempt applied the opacity on both platforms. On iOS the input then ignored taps, because UIKit skips views that transparent, so the code field could not be focused. With the Android-only style, iOS focus and paste work again and show no stray text.
+  - **`src/ui/Button.tsx` (used by UI-001-D):** `accessibilityLabel` now defaults to `label`. Without it, Android derived the name from the children: empty while busy, then "busy" after the busy state ended. Now it reads "Leave", "Leave, busy", and "Leave" again. A regression test in `tests/ui.test.tsx` fails without the fix.
+- **Findings left open:**
+  - **UI-001-A: Android line heights at enlarged text.**
+    - Android's nonlinear font scaling grows the fixed `lineHeight`s less than the font sizes.
+    - At 150%, `section` (24/30) cuts off the descenders of its last line, and heading lines are tight.
+    - At 200%, a `section` line is 38 dp, and `heading`, `section` and `subheading` clip.
+    - iOS scales line heights proportionally and is fine.
+    - A fix to `AppText`/`typography` needs a decision; this pass did not change it.
+  - **UI-001-D: screen readers.**
+    - **TalkBack:** it is installed, but its double-tap activation through `adb shell input` worked only once in four tries.
+    - **VoiceOver:** the iOS Simulator has none.
+    - **Not verified natively:** focus returning to the opener, the VoiceOver escape gesture, and announced errors. Jest covers these calls.
+  - **Cosmetic (both platforms):**
+    - When the bottom field is focused, its lower border sits at the scroll edge (the text line stays visible) and its counter is hidden.
+    - With the keyboard open, the footer keeps its bottom-inset padding.
+    - Not changed.
+  - **iOS runtime text-size changes:** React Native did not re-lay out text while the app ran, which left lines cut off until the app was relaunched. This is framework behavior; it is noted for later screens.
+- **Side effects outside the repository** (all deliberate and reported):
+  - **Emulator:**
+    - The old `com.ridematch.dev` was uninstalled and replaced.
+    - `hw.keyboard` in the AVD's `config.ini` went to `no` for a cold boot and was restored to `yes` (backup in the session scratchpad).
+    - Restored: `show_ime_with_hard_keyboard` 0, `stylus_handwriting_enabled` (default), `font_scale` 1.0, TalkBack and accessibility off.
+    - Starting TalkBack made Android Accessibility Suite ask for notification permission; it was answered "Don't allow".
+    - Gboard's toolbar "Show on-screen keyboard" was chosen.
+    - The emulator was shut down, Gradle stopped, and `adb reverse` removed.
+  - **Simulator:**
+    - The simulator tool's text entry replaced the simulator's clipboard ("sample", then `Code: 123 456`).
+    - Text size was restored to `large`, and the simulator was shut down.
+  - **Repository:** the generated `android/`, `ios/` and `apps/mobile/dist/` were left in place; all are ignored.
+- **Docs:**
+  - `ROADMAP.md`: progress entry and parent statuses.
+  - `MOBILE_IMPLEMENTATION_PLAN.md`: five card statuses.
+  - `TOOLCHAIN.md`: verify-later entries and "Native UI checks".
+  - Also updated: `DEVELOPMENT.md` (test count and the UI check procedure), `docs/README.md`, and `AI_CONTEXT.md`.
+- **JSDoc/comments:**
+  - The `Screen` doc comment explains why the top inset stays outside the scrolling area.
+  - The comments in `OtpField` and `Button` record the Android behavior and why each workaround is limited the way it is.
+- **Remaining/next:**
+  - UI-001-A line-height fix.
+  - UI-001-D screen-reader pass with a person or a device.
+  - MEGAsync exclusions.
+  - Otherwise CONTRACT-001-B, when requested.
+- **Ownership:** Released; no active task.

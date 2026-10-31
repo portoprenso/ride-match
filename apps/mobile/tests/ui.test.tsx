@@ -37,6 +37,14 @@ describe('Button', () => {
     await userEvent.press(button);
     expect(onPress).not.toHaveBeenCalled();
   });
+
+  // Android derived the name from the children and kept "busy" after the busy state ended.
+  it('sets its label as the explicit spoken name, also after a busy state ends', async () => {
+    const { rerender } = await render(<Button label="Leave" onPress={jest.fn()} busy />);
+    await rerender(<Button label="Leave" onPress={jest.fn()} />);
+
+    expect(screen.getByRole('button', { name: 'Leave' })).toHaveProp('accessibilityLabel', 'Leave');
+  });
 });
 
 describe('IconButton', () => {

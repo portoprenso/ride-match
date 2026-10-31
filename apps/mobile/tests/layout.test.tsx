@@ -32,7 +32,7 @@ function scrollViewAround(element: Element) {
 }
 
 describe('Screen with a footer', () => {
-  it('keeps the actions outside the scrolling content and gives them the bottom inset', async () => {
+  it('keeps the actions and the top inset outside the scrolling content', async () => {
     await render(
       withInsets(
         <Screen scroll footer={<Button label="Continue" onPress={jest.fn()} />}>
@@ -46,7 +46,8 @@ describe('Screen with a footer', () => {
     expect(StyleSheet.flatten(footer.props.style).paddingBottom).toBe(58);
     expect(scrollViewAround(screen.getByRole('button', { name: 'Continue' }))).toBeNull();
     const scroll = scrollViewAround(screen.getByText('Body'));
-    expect(StyleSheet.flatten(scroll?.props.contentContainerStyle)).toMatchObject({ paddingTop: 86, paddingBottom: 0 });
+    expect(StyleSheet.flatten(scroll?.props.contentContainerStyle)).toMatchObject({ paddingTop: 24, paddingBottom: 0 });
+    expect(StyleSheet.flatten(scroll?.parent?.props.style)).toMatchObject({ paddingTop: 62 });
   });
 });
 

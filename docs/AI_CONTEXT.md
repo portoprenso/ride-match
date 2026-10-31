@@ -38,7 +38,7 @@ Last updated: 2026-10-31
     - **iOS (iPhone 17 Pro, iOS 26.5):** build, cold launch, sign-in sheet, Back, Close, native swipe dismissal, warm and cold links, inert routes, edge swipe-back, dark status bar, and the 58-point bottom gap on every screen all pass.
     - **Android (Android 16 emulator):** the G checks were rerun on the final files and all pass.
     - **Known development-client limitation:** on Android, the first link right after back closed a server-list-loaded app sometimes opens home (see DEVELOPMENT).
-- CONTRACT-001-A (`Paused`; mobile Jest and exports deferred) added the first contracts.
+- CONTRACT-001-A (`Completed`; verified in VERIFY-001) added the first contracts.
   - `packages/contracts` now depends on Zod 4.6.7 (runtime) and Vitest 5.0.5 with its required peer Vite 8.3.5 (dev). `tsconfig.json` sets `skipLibCheck`, because Zod's declarations name the global `URL`, which the ES2022-only lib lacks. `tests/tsconfig.json` brings the tests into typecheck and typed lint.
   - `src/common.ts`: `IdSchema` (1–64 URL-safe characters), `TimestampSchema` (ISO-8601 with `Z`), `ResourceVersionSchema` (integer from 1), `OperationIdSchema` (UUID per user intent), `CursorSchema` (1–512 unreserved characters), `ResponseMetaSchema` and `apiResponseSchema(data)`.
   - `src/errors.ts`: `ApiErrorCodeSchema` (the overview's error table), `FieldErrorSchema` (dot path, code, message, no value field), and `ApiErrorSchema`.
@@ -47,37 +47,38 @@ Last updated: 2026-10-31
   - The mobile bootstrap import is unchanged apart from its comment; it now loads Zod through the package.
 - No domain, location, user, auth or backend contracts yet, and no backend code.
 - `apps/api/` is empty. Preserve unrelated files; do not populate `apps/api/` during the mobile milestone.
-- TOOLCHAIN-001-A pinned `react-native-gesture-handler` at **2.32.0** as a direct mobile dependency, so pnpm stops auto-installing 3.x for `react-native-drawer-layout`'s required peer. The quick dependency checks pass; tests, exports and native rebuilds are deferred (see TOOLCHAIN).
+- TOOLCHAIN-001-A pinned `react-native-gesture-handler` at **2.32.0** as a direct mobile dependency, so pnpm stops auto-installing 3.x for `react-native-drawer-layout`'s required peer. `Completed` in VERIFY-001: tests, both exports, doctor, and clean Android and iOS rebuilds pass, and 2.32.0 autolinks on both platforms.
 - UI-001-A added the UI foundation.
   - `src/ui/tokens.ts` holds the palette, spacing, radii, `MANROPE` face names, and the `typography` variants (display, heading, section, subheading, body, label, small).
   - `src/ui/AppText.tsx` renders `variant` and `color` and never sets `fontWeight`. The map, sign-in, and unavailable screens use it; `Button` is unchanged until UI-001-B.
   - Static Manrope 400–800 is in `assets/fonts/` with `OFL.txt`, from `@expo-google-fonts/manrope` 0.4.3. The files are named by PostScript name and embedded by the `expo-font` 57.0.4 config plugin.
   - The Along mark is in `assets/brand/` (SVG plus 1x/2x/3x PNGs) and is not displayed yet.
-  - Typecheck, lint, and doctor pass. Tests, exports, and native font inspection are deferred.
+  - **VERIFY-001 (still `Paused`):** all five weights render on both platforms with no startup font error, and iOS shows no clipping up to the XXXL text size. On Android, React Native grows line heights less than font sizes: from 150% font scale `section` cuts off descenders on its last line, and `heading`/`subheading` are tight. The fix for `AppText` line heights is open.
 - UI-001-B (`Completed`) added the core controls.
   - `Button` has primary, secondary, ghost, and danger variants, the design's disabled look, and `busy`, which shows a spinner, reports busy and disabled, and blocks repeat presses. It is at least 52 points tall and grows with its label.
   - New: `IconButton` (48-point square, required `accessibilityLabel`, caller-supplied icon hidden from screen readers, `soft`/`white` tones, disabled/busy), `Badge` (neutral, success, warning, danger), and `Notice` (neutral, warning, danger).
   - `tokens.ts` gained `dangerSoft` and `warningSoft`.
   - No icon renderer is installed yet; the first card that draws real icons chooses one.
   - 23 mobile tests pass.
-- UI-001-C (`Paused`; native keyboard and enlarged-text checks deferred) added the inputs.
+- UI-001-C (`Completed`; verified in VERIFY-001) added the inputs.
   - `TextField` and `SearchField`: the visible label is the spoken name; focus and error borders; errors read as the field hint and announced on change; `maxLength` counter; Clear for search.
-  - `OtpField`: one transparent `TextInput` over hidden digit cells, with digit-only paste and autofill and `oneTimeCode` / `one-time-code` hints.
+  - `OtpField`: one transparent `TextInput` over hidden digit cells, with digit-only paste and autofill and `oneTimeCode` / `one-time-code` hints. VERIFY-001 fix: Android (new architecture) drew the hidden input's text over the first cell despite `color: 'transparent'`, so on Android only the input also gets opacity 0.01 and 1-point text (on iOS that opacity made the input untappable).
   - `SegmentedControl`: radiogroup and radio roles with checked state; it holds no domain values.
   - Shared `FieldMessage` and `useAnnouncement`.
   - 32 mobile tests pass.
-- UI-001-D (`Paused`; native back, dismissal, keyboard and focus checks deferred) added the layouts.
+- UI-001-D (`Paused`; VERIFY-001 passed everything except the screen-reader checks) added the layouts.
   - `SheetHost` (`src/ui/SheetHost.tsx`): React Native `Modal`, dimmed background, content-sized up to the top inset plus 24, kept above the keyboard. Background tap, Android back and the VoiceOver escape gesture call `onDismiss`; `dismissible={false}` ignores them; `returnFocusRef` gets screen-reader focus back after closing. One host per flow, switching content; close it before navigating.
   - `SheetContent` (scrolling content plus pinned footer), `ActionFooter`, and `ConfirmAction` (heading, message, confirm in primary or danger, ghost cancel, `busy`, announced `error`).
   - `Screen` gained `scroll` and `footer`; `Button` and `IconButton` accept `ref`. `jest.config.js` sets `clearMocks`.
   - No sheet library: `@gorhom/bottom-sheet` 5.2.14 was checked and not adopted; MAP-002-A decides the draggable map sheet (see the plan's section C).
-  - 41 mobile tests pass.
-- MONO-001 and MOBILE-001 are `Completed` in [ROADMAP.md](ROADMAP.md), and all 13 [FIRST_STEPS.md](FIRST_STEPS.md) children are `Completed`. TOOLCHAIN-001-A and UI-001-A, and their parents TOOLCHAIN-001 and UI-001, are `Paused`, waiting for the deferred verification. UI-001-B is `Completed`, and UI-001-C and UI-001-D are `Paused` for their native checks. CONTRACT-001-A and its parent CONTRACT-001 are `Paused` for the mobile Jest suite and exports. The next card in [MOBILE_IMPLEMENTATION_PLAN.md](MOBILE_IMPLEMENTATION_PLAN.md) is CONTRACT-001-B, only when requested.
+  - **VERIFY-001 fixes:** `Screen`'s `scroll` layout keeps the top inset outside the scroll view (scrolled content passed under the status bar), and `Button` always sets its label as the accessible name (Android left it empty while busy and "busy" afterwards). 42 mobile tests pass.
+  - **Still to verify natively:** screen-reader focus returning to the opener (TalkBack and VoiceOver) and the VoiceOver escape gesture. TalkBack activation could not be driven reliably through adb, and the iOS Simulator has no VoiceOver.
+- MONO-001 and MOBILE-001 are `Completed` in [ROADMAP.md](ROADMAP.md), and all 13 [FIRST_STEPS.md](FIRST_STEPS.md) children are `Completed`. TOOLCHAIN-001-A and its parent TOOLCHAIN-001 are `Completed`. UI-001-B and UI-001-C are `Completed`; UI-001-A (Android line-height clipping) and UI-001-D (screen-reader checks), and so the parent UI-001, are `Paused`. CONTRACT-001-A is `Completed`; its parent CONTRACT-001 waits for B and C. The next card in [MOBILE_IMPLEMENTATION_PLAN.md](MOBILE_IMPLEMENTATION_PLAN.md) is CONTRACT-001-B, only when requested.
 - Sequence: mock mobile MVP -> contract review -> future backend -> future HTTP/Socket.IO adapter.
 
 ## Shared handoff and active work
 
-- Active implementation: **None.** CONTRACT-001-A (Claude Code / contracts-common, 2026-10-31) is `Paused` with ownership released; its mobile Jest suite and exports are deferred. UI-001-D (Claude Code / ui-layouts, 2026-10-31) is `Paused` too; its native checks are deferred. UI-001-A, UI-001-C, and TOOLCHAIN-001-A are also `Paused` for the same pass.
+- Active work: **None.** VERIFY-001 (Claude Code / verify-pass, 2026-10-31) is `Completed` with ownership released: the combined verification of TOOLCHAIN-001-A, UI-001-A, UI-001-C, UI-001-D and CONTRACT-001-A, with three fixes. Its temporary sample route was removed. Its changes are committed.
 
 - Latest implementation handoff: **MOBILE-001-H — Completed**, Claude Code / h-finish (2026-10-30), shared `main` at `19e345c`; committed on top of it at the user's request.
   - **Native evidence:** iOS (iPhone 17 Pro, iOS 26.5) and Android (Pixel 9 Pro XL emulator, Android 16) were rebuilt from clean native directories on the final files. Every card check passed, including native swipe dismissal and safe areas.
@@ -90,20 +91,14 @@ Last updated: 2026-10-31
 - Entry points: [AGENTS.md](../AGENTS.md) contains shared rules; [CLAUDE.md](../CLAUDE.md) imports them for Claude Code.
 - Both assistants use [AI_WORKFLOW.md](AI_WORKFLOW.md), this file, the roadmap, relevant specs, and [WORK_LOG.md](WORK_LOG.md) as shared project memory. Private chat/memory is not a substitute.
 - Active task/owner: **None; ownership released. DESIGN-001 paused for the user's native test of importer 1.0.1.** Codex / along-importer-repair fixed duplicate flow registration, parent-container rollback and stale IDs from sample pruning; regenerated plugin/ZIP. Regression checks pass for 55 screens, 17 components and 192 links. User reported the previous native failure; repaired native import/visual/prototype acceptance is unverified. Along is open in desktop; automated manifest picker input failed, and the user chose to test the package themselves. Next: reopen build 1.0.1, import/review six-screen sample, remove sample, import/review full design and save report. Preserve original draft, application code, MOBILE-001-G changes and unrelated files.
-- Latest handoff: CONTRACT-001-A (Claude Code / contracts-common, 2026-10-31) in `WORK_LOG.md`; before it, UI-001-D, UI-001-C, UI-001-B, UI-001-A, TOOLCHAIN-001-A, and MOBILE-001-H. The latest native design handoff remains DESIGN-001 (2026-10-04). `FIRST_STEPS.md` owns the original 13 child assignments, and all are `Completed`. Terra records its actor as `Codex (Terra)`.
+- Latest handoff: VERIFY-001 (Claude Code / verify-pass, 2026-10-31) in `WORK_LOG.md`; before it, CONTRACT-001-A, UI-001-D, UI-001-C, UI-001-B, UI-001-A, TOOLCHAIN-001-A, and MOBILE-001-H. The latest native design handoff remains DESIGN-001 (2026-10-04). `FIRST_STEPS.md` owns the original 13 child assignments, and all are `Completed`. Terra records its actor as `Codex (Terra)`.
 - DESIGN-001 continuation retry (2026-10-03): account inspection succeeded, but read-only canvas access still hit the Starter MCP limit; browser tab was signed out. No remote edits or fresh native inventory verification. Resume from saved IDs when MCP access is available.
-- Working copy: `main`; MONO-001-A is `2f35ea5`, MONO-001-B is `87bb91c`, MONO-001-C is `46a6865`, MONO-001-D is `f5a6c93`, MONO-001-E is `2e93390`, MOBILE-001-A is `c924bf1`, MOBILE-001-B is `2a4906a`, MOBILE-001-C is `76c8477`, MOBILE-001-D is `99d3572`, MOBILE-001-E is `243a715`, and MOBILE-001-F is `85f38aa`. Two Codex commits follow: `fd32dda` (DESIGN-001) and `19e345c` (DOC-003/DOC-004, which also carried the MOBILE-001-G write-up). `475e662` holds G's `app.config.ts` status-bar plugin and all MOBILE-001-H changes. None are pushed. TOOLCHAIN-001-A is `b4bb17f`. UI-001-A is `619b134`. UI-001-B is `8fe8ac0`. UI-001-C is `71aeec4`. UI-001-D is `d6909e4`. CONTRACT-001-A is the commit after it, made at the user's request. Preserve unrelated untracked `.idea/` files.
+- Working copy: `main`; MONO-001-A is `2f35ea5`, MONO-001-B is `87bb91c`, MONO-001-C is `46a6865`, MONO-001-D is `f5a6c93`, MONO-001-E is `2e93390`, MOBILE-001-A is `c924bf1`, MOBILE-001-B is `2a4906a`, MOBILE-001-C is `76c8477`, MOBILE-001-D is `99d3572`, MOBILE-001-E is `243a715`, and MOBILE-001-F is `85f38aa`. Two Codex commits follow: `fd32dda` (DESIGN-001) and `19e345c` (DOC-003/DOC-004, which also carried the MOBILE-001-G write-up). `475e662` holds G's `app.config.ts` status-bar plugin and all MOBILE-001-H changes. None are pushed. TOOLCHAIN-001-A is `b4bb17f`. UI-001-A is `619b134`. UI-001-B is `8fe8ac0`. UI-001-C is `71aeec4`. UI-001-D is `d6909e4`. CONTRACT-001-A is `6ab3621`. VERIFY-001 is the commit after it, made at the user's request. Preserve unrelated untracked `.idea/` files.
 - Local environment decisions (user, 2026-10-03; details in `TOOLCHAIN.md`): Node 24.17.0; the user-approved `corepack enable pnpm` ran in the Node 24.17.0 installation during MONO-001-B. The checkout stays in MEGAsync; the user adds exclusions for generated `dist/`, `android/`, and `ios/` paths. Ancestor home-folder packages stay; the repository relies on guards (explicit tsconfig `types`, compiler file-list check, `require.resolve` check). Reminder: `packages/contracts/dist/` and the generated `apps/mobile/android/` and `apps/mobile/ios/` now exist, and exports recreate `apps/mobile/dist/`. The sync-root rules did not exclude them when last checked (MEGAsync was not running), so the user still needs to add those exclusions. Existing rules already skip most of `android/` and `ios/`; see TOOLCHAIN. In Claude Code's shell, run `export NVM_DIR="$HOME/.nvm" && nvm use` before pnpm (Node 22 is the default; `engineStrict` refuses installs on it). Turbo and Expo CLI anonymous telemetry are still enabled by default for the user. Assistants set `TURBO_TELEMETRY_DISABLED=1` and `EXPO_NO_TELEMETRY=1` (plus `CI=1` for Expo) only in their own commands; disabling telemetry globally is the user's choice. Run Expo only from `apps/mobile`.
-- Next concrete step: when the user asks, run one deferred verification pass covering TOOLCHAIN-001-A, UI-001-A, UI-001-C, UI-001-D, and CONTRACT-001-A.
-  - **Commands:** `pnpm test:mobile`, typecheck, lint, both exports, then Android and iOS rebuilds from clean native directories (the TOOLCHAIN commands).
-  - **Shell flows:** recheck navigation, swipe and back, links, inert routes, safe-area gaps, and permissions (DEVELOPMENT procedures).
-  - **Fonts:** inspect each Manrope weight on both platforms. Headings must not clip at default and enlarged text, and there must be no startup font error.
-  - **After it passes:** mark both cards and their parents `Completed`.
-  - **UI-001-C:** in the same pass, check on both platforms the native keyboards (phone, number pad, search action), code paste and autofill, field focus, and enlarged text for the fields, code cells, and selector.
-  - **UI-001-D:** UI-001-D has no screen that uses the sheet yet, so the pass needs a temporary development-only sample, removed afterwards. On both platforms, check that one sheet opens at a time and sizes to its content, and that it closes on a background tap, Android back, and the VoiceOver escape gesture. Also check that a field near its bottom keeps the actions above the keyboard, that focus returns to the opening button, and that a form `Screen` with `scroll` and `footer` behaves the same way.
-  - **CONTRACT-001-A:** the pass's `pnpm test:mobile` and both exports confirm that Jest and Metro load Zod through `@ride-match/contracts`; the native launches confirm it runs under Hermes. Then mark CONTRACT-001-A `Completed` (CONTRACT-001 stays open for B and C).
-  - **Otherwise:** CONTRACT-001-B is next, only when requested.
-  - Keep per-step checks minimal; the user prefers heavy verification in one later pass.
+- Next concrete step, only when the user asks:
+  - **UI-001-A:** fix Android line-height clipping at enlarged text (`AppText`/`typography`), then recheck at 150% and 200% on Android and at XXXL on iOS.
+  - **UI-001-D:** a screen-reader pass on real devices or with the user driving TalkBack and VoiceOver: focus returns to the opening button after a sheet closes, the VoiceOver escape gesture closes it, and the confirmation error is announced. It needs a temporary development-only sample like VERIFY-001's (see WORK_LOG).
+  - **Otherwise:** CONTRACT-001-B is the next planned card.
 - Before any takeover, inspect current files and latest task handoff. Use one writer at a time in this directory; ownership notes do not synchronize separate checkouts.
 
 ## Planned stack and boundaries
@@ -152,7 +147,7 @@ Last updated: 2026-10-31
 - Planned: `EXPO_PUBLIC_DATA_SOURCE=mock`, `EXPO_PUBLIC_MOCK_SCENARIO=active-neighborhood`, `EXPO_PUBLIC_APP_ENV=development`.
 - Future API URL is documented only; `api` mode must fail clearly until implemented, never fall back to mocks.
 - Google Maps native build configuration will be required. No values have been configured.
-- Checks: typecheck/lint (MONO-001) and Jest/React Native Testing Library mobile tests (MOBILE-001-F; 18 since MOBILE-001-H) exist. The Android (MOBILE-001-G, rerun in H) and iOS (MOBILE-001-H) development builds were checked manually on an emulator and a simulator. Vitest contract tests exist since CONTRACT-001-A (61, `pnpm test:contracts`). Targeted Maestro/native checks are planned.
+- Checks: typecheck/lint (MONO-001) and Jest/React Native Testing Library mobile tests (MOBILE-001-F; 42 since VERIFY-001) exist. The Android (MOBILE-001-G, rerun in H) and iOS (MOBILE-001-H) development builds were checked manually on an emulator and a simulator. Vitest contract tests exist since CONTRACT-001-A (61, `pnpm test:contracts`). Targeted Maestro/native checks are planned.
 - Mocks reset on cold reload/scenario reset; foreground resume catches up against timestamps. No persistent fake database.
 
 ## Rules for future work

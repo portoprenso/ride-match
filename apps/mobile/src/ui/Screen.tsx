@@ -41,7 +41,9 @@ type ScreenProps = {
  * later layout (seen in MOBILE-001-H).
  *
  * With `scroll` or `footer` it becomes a form layout: the content (scrolling or not) above a
- * pinned footer, both kept above the keyboard. The footer then takes the bottom inset.
+ * pinned footer, both kept above the keyboard. The footer then takes the bottom inset, and
+ * the top inset stays outside the scrolling area, so scrolled content is clipped below the
+ * status bar instead of passing under it.
  */
 export function Screen({ children, edges = ALL_EDGES, scroll = false, footer }: ScreenProps) {
   const insets = useSafeAreaInsets();
@@ -57,9 +59,9 @@ export function Screen({ children, edges = ALL_EDGES, scroll = false, footer }: 
     );
   }
 
-  const contentStyle = [sides, { paddingTop: PADDING + inset('top'), paddingBottom: footer ? 0 : bottom }];
+  const contentStyle = [sides, { paddingTop: PADDING, paddingBottom: footer ? 0 : bottom }];
   return (
-    <KeyboardAvoidingView behavior="padding" style={styles.screen}>
+    <KeyboardAvoidingView behavior="padding" style={[styles.screen, { paddingTop: inset('top') }]}>
       {scroll ? (
         <ScrollView
           style={styles.fill}
