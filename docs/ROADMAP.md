@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-10-31. **MONO-001, MOBILE-001, TOOLCHAIN-001 and CONTRACT-001 are completed; UI-001 is paused for an Android text fix and screen-reader checks; all other implementation tasks are planned.**
+Last updated: 2026-10-31. **MONO-001, MOBILE-001, TOOLCHAIN-001 and CONTRACT-001 are completed; UI-001 is paused for an Android text fix and screen-reader checks; CONTRACT-002 has A completed; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,15 @@ Last updated: 2026-10-31. **MONO-001, MOBILE-001, TOOLCHAIN-001 and CONTRACT-001
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**CONTRACT-002-A — Completed (2026-10-31).**
+
+- **Done:**
+  - `places.ts`: the curated place (stable ID, label, optional detail line, coordinates), the search input (optional text, coarse area, limit 1–20) and the results (at most 20, each place once).
+  - `CoarseCoordinatesSchema` in `location.ts`: at most 2 decimal places, so anonymous search cannot carry an exact device position.
+  - `UNSUPPORTED_AREA` (422) for an area outside the curated coverage.
+  - Rules in `api/rides.md`; mock limits in `PLACE_SEARCH_POLICY`. 277 contract tests (44 new).
+- **Not run (no app code changed):** mobile Jest, exports and native builds.
 
 **CONTRACT-001-C — Completed (2026-10-31); CONTRACT-001 is `Completed`.**
 
@@ -112,7 +121,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | --- | --- | --- |
 | MONO-001 | Workspace foundation | Completed |
 | CONTRACT-001 | Common, location, authentication contracts | Completed |
-| CONTRACT-002 | Places, rides, matching contracts | Planned |
+| CONTRACT-002 | Places, rides, matching contracts | Paused (A completed; B planned) |
 | CONTRACT-003 | Groups, chat, safety contracts | Planned |
 | CONTRACT-004 | Realtime and notification contracts | Planned |
 | MOBILE-001 | Expo shell and navigation | Completed |

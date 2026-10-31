@@ -26,6 +26,11 @@ export const LOCATION_POLICY = {
   maxPublicRadiusMeters: 5_000,
   /** Longest walking estimate to a meeting point. */
   maxWalkingMinutes: 60,
+  /**
+   * Decimal places allowed in coarse coordinates, which anonymous requests send. Two places
+   * is about 1.1 km of latitude, so the point cannot single out where a person stands.
+   */
+  coarseCoordinateDecimals: 2,
 } as const;
 
 /** Name of an area or place, such as a district or "Central Station, main entrance". */
@@ -42,6 +47,21 @@ export const CoordinatesSchema = z.strictObject({
   longitude: z.number().min(-180).max(180),
 });
 export type CoordinatesDto = z.infer<typeof CoordinatesSchema>;
+
+const coarseScale = 10 ** LOCATION_POLICY.coarseCoordinateDecimals;
+const isCoarse = (degrees: number) => Math.round(degrees * coarseScale) / coarseScale === degrees;
+
+/**
+ * A point rounded to `LOCATION_POLICY.coarseCoordinateDecimals` decimal places, for requests
+ * that may be anonymous, such as place search. The client rounds before sending
+ * (`Math.round(degrees * 100) / 100`); a value with more precision fails, so an exact
+ * device position cannot slip into such a request.
+ */
+export const CoarseCoordinatesSchema = CoordinatesSchema.refine(
+  (point) => isCoarse(point.latitude) && isCoarse(point.longitude),
+  { message: 'Expected coordinates rounded to 2 decimal places' },
+);
+export type CoarseCoordinatesDto = z.infer<typeof CoarseCoordinatesSchema>;
 
 /** How an exact location was obtained: a device location fix, or a point the user picked on the map. */
 export const LocationSourceSchema = z.enum(['device', 'manual']);

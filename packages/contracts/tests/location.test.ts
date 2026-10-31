@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import {
+  CoarseCoordinatesSchema,
   CoordinatesSchema,
   ExactLocationInputSchema,
   MeetingPointSchema,
@@ -45,6 +46,31 @@ describe('CoordinatesSchema', () => {
     ['an extra altitude', { ...point, altitude: 800 }],
   ])('rejects %s', (_label, value) => {
     expect(accepts(CoordinatesSchema, value)).toBe(false);
+  });
+});
+
+describe('CoarseCoordinatesSchema', () => {
+  it.each([
+    [42.87, 74.59],
+    [43, 76.9],
+    [-0.01, -179.99],
+    [90, 180],
+  ])('accepts latitude %d and longitude %d', (latitude, longitude) => {
+    expect(accepts(CoarseCoordinatesSchema, { latitude, longitude })).toBe(true);
+  });
+
+  it('accepts what the documented rounding produces', () => {
+    const round = (degrees: number) => Math.round(degrees * 100) / 100;
+    expect(accepts(CoarseCoordinatesSchema, { latitude: round(42.87563), longitude: round(74.60371) })).toBe(true);
+  });
+
+  it.each([
+    ['three decimals', { latitude: 42.875, longitude: 74.59 }],
+    ['an exact device position', { latitude: 42.87563, longitude: 74.60371 }],
+    ['unrounded arithmetic', { latitude: 0.1 + 0.2, longitude: 74.59 }],
+    ['an out-of-range value', { latitude: 90.01, longitude: 74.59 }],
+  ])('rejects %s', (_label, value) => {
+    expect(accepts(CoarseCoordinatesSchema, value)).toBe(false);
   });
 });
 

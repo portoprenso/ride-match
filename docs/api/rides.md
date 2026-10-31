@@ -8,7 +8,7 @@ All paths use `/v1`; tables show unwrapped response data. See [overview](overvie
 
 | Method/path | Auth | Body/query | Response | Important errors |
 | --- | --- | --- | --- | --- |
-| `GET /places/search` | Public | Search text, coarse area, limit | `PlaceDto[]` | Invalid query, unsupported area |
+| `GET /places/search` | Public | Optional search text, coarse area, limit | `PlaceDto[]` | `VALIDATION_FAILED`, `UNSUPPORTED_AREA` |
 | `GET /rides/nearby` | Public | Bounded viewport, optional destination place/departure, limit | Public nearby items, preview matches, `truncated` | Viewport too large, invalid query |
 | `GET /rides/{rideId}` | Public | Ride ID | `RideRequestDto` | `NOT_FOUND`, `TARGET_UNAVAILABLE` |
 | `GET /me/ride-request` | User | None | Current/latest own request or `null` | Session expired |
@@ -19,6 +19,17 @@ All paths use `/v1`; tables show unwrapped response data. See [overview](overvie
 ## Places and discovery
 
 Destination search uses a curated fixture dataset in the MVP. Suggestions contain place ID, label, and selected place coordinates. Do not add a real geocoder or places-service dependency during the mock milestone.
+
+The place contracts exist since CONTRACT-002-A (`packages/contracts/src/places.ts`):
+
+| Schema | Rule |
+| --- | --- |
+| `PlaceSchema` | `id` (stable across searches, sessions and resets), `label` (1–80 characters), `detail` (secondary line such as a street, 1–120 characters, or `null`) and `coordinates` of the place itself. Public; it never describes a person |
+| `SearchPlacesInputSchema` | Optional `query` (1–80 characters, one line, trimmed by the app), `area` and `limit` (1–20). Without a query, the area's places come nearest its center first, for the "other places" list (screen 03) and named pickup points (screen 22); with one, matches come by relevance |
+| `PlaceSearchAreaSchema` | `center` as coarse coordinates (at most 2 decimal places, about 1 km) and `radiusMeters` (whole number, 1,000–50,000), derived from the map region, never the exact device position |
+| `PlaceSearchResultsSchema` | At most 20 places, each once, never more than the requested `limit`. Empty means nothing matched in a supported area |
+
+An area outside the curated coverage (the demo city) fails with `UNSUPPORTED_AREA` (422); an invalid query fails with `VALIDATION_FAILED`. These limits are mock values (`PLACE_SEARCH_POLICY`). How the future HTTP adapter encodes the input as query parameters is decided with that adapter.
 
 Discovery accepts a coarse bounded viewport, not an exact continuously uploaded device track. Apply input limits and return `truncated` when capped. The UI must not imply an exhaustive count when truncated.
 

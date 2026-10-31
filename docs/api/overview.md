@@ -1,6 +1,6 @@
 # Future API: conventions, boundaries, and handoff
 
-Status: proposed specification, not an implemented API. Last updated: 2026-10-31. The shared schemas for [common values and errors](#common-values-and-errors-contract-001-a) for [locations and users](#locations-and-users-contract-001-b), and for [authentication](authentication.md#implemented-contracts-contract-001-c) exist in `packages/contracts`; the other contracts are still planned.
+Status: proposed specification, not an implemented API. Last updated: 2026-10-31. The shared schemas for [common values and errors](#common-values-and-errors-contract-001-a) for [locations and users](#locations-and-users-contract-001-b), for [authentication](authentication.md#implemented-contracts-contract-001-c), and for [place search](rides.md#places-and-discovery) exist in `packages/contracts`; the other contracts are still planned.
 
 The mobile mock data source must reproduce these observable operations and rules. A future NestJS backend will implement the reviewed contracts after the mock mobile MVP. No backend implementation belongs to the current milestone.
 
@@ -36,7 +36,8 @@ Schemas live in `packages/contracts`, organized as described in [architecture](.
 | `VerifyOtpInput` | Challenge ID, OTP code. Implemented |
 | `AuthSessionDto` | User, access/refresh credentials and expiry timestamps. Implemented |
 | `SessionCredentialsDto`, `RefreshSessionInput`, `LogoutInput` | Rotated credentials; the refresh token sent to refresh or log out. Implemented |
-| `PlaceDto` | Stable place ID, label, coordinates of selected place/venue |
+| `PlaceDto` | Stable place ID, label, optional detail line, coordinates of selected place/venue. Implemented; see [place search](rides.md#places-and-discovery) |
+| `SearchPlacesInput`, `PlaceSearchResultsDto` | Optional text, coarse area, limit; at most 20 distinct places. Implemented |
 | `CreateRideRequestInput` | Exact origin, selected destination, departure time, client operation ID |
 | `RideRequestDto` | ID, public user summary, public origin/destination, departure/expiry, status, group reference, version |
 | `OwnRideRequestDto` | Public request plus authorized owner-only draft restoration fields |
@@ -66,7 +67,7 @@ Implemented in `packages/contracts/src/{common,errors}.ts` and covered by `pnpm 
 | `OperationIdSchema` | A UUID created once per user intent and reused on every retry of it; the future `Idempotency-Key` |
 | `CursorSchema` | 1–512 RFC 3986 unreserved characters (`A–Z`, `a–z`, `0–9`, `-`, `.`, `_`, `~`), so it needs no encoding in a query string. Opaque |
 | `ResponseMetaSchema`, `apiResponseSchema(data)` | The success envelope `{ data, meta: { serverTime } }`; no other top-level fields |
-| `ApiErrorCodeSchema` | Exactly the codes in the [errors](#errors) table, including the OTP verification codes added by CONTRACT-001-C. A later domain contract that owns more codes adds them to this list |
+| `ApiErrorCodeSchema` | Exactly the codes in the [errors](#errors) table, including the OTP verification codes added by CONTRACT-001-C and `UNSUPPORTED_AREA` from CONTRACT-002-A. A later domain contract that owns more codes adds them to this list |
 | `FieldErrorSchema` | `{ field, code, message }`. `field` is a dot path (`origin.latitude`, `members.0.userId`); `code` is `REQUIRED`, `INVALID_FORMAT`, `TOO_SHORT`, `TOO_LONG`, `OUT_OF_RANGE` or `INVALID_VALUE`; `message` is 1–200 characters. There is no field for the submitted value, so an error cannot echo it |
 | `ApiErrorSchema` | `code`, `message` (1–500 characters, safe to show), `requestId` (an ID), optional `fieldErrors` (1–50), optional `retryAfterSeconds` (integer, 1–86,400) |
 | `singleLineTextSchema(max)` | Builds a short text schema (added by CONTRACT-001-B): 1–`max` characters, no leading or trailing whitespace, no control characters such as line breaks. Nothing is trimmed; unclean text fails |
@@ -80,6 +81,7 @@ Implemented in `packages/contracts/src/{location,users}.ts` and covered by `pnpm
 | Schema | Visibility | Rule |
 | --- | --- | --- |
 | `CoordinatesSchema` | Depends on the carrying schema | `{ latitude, longitude }` in WGS 84 degrees: latitude −90 to 90, longitude −180 to 180, finite numbers only |
+| `CoarseCoordinatesSchema` | Requests that may be anonymous | Coordinates with at most 2 decimal places (about 1.1 km), as `Math.round(degrees * 100) / 100` produces. Added by CONTRACT-002-A for place search, so an exact device position cannot be sent there |
 | `ExactLocationInputSchema` | Private creation input | Union on `source`. `device`: `coordinates`, `accuracyMeters` (0–100) and `capturedAt`, nothing else (no altitude, speed or heading). `manual`: `coordinates` only, for a point the user picked on the map and confirmed |
 | `OwnerLocationSchema` | Owner only | `coordinates` and `source`; the fix's accuracy and capture time are not echoed back |
 | `PublicLocationSchema` | Anyone, including anonymous | `center`, `radiusMeters` (whole number, 200–5,000) and `label` (1–80 characters or `null`). Strict, so exact coordinates, accuracy, capture time, source or user fields fail |
@@ -96,6 +98,7 @@ Implemented in `packages/contracts/src/{location,users}.ts` and covered by `pnpm
 | Fix time ahead of the source clock | Up to 10 s | `isLocationFixFresh`, to absorb error in the client's clock-offset estimate |
 | Public uncertainty radius | 200–5,000 m | The schema. A smaller radius would claim a precise point |
 | Walking estimate to a meeting point | 0–60 min | The schema |
+| Coarse coordinate precision | 2 decimal places | The schema (`CoarseCoordinatesSchema`, CONTRACT-002-A) |
 
 `capturedAt` is on the source's clock: the client shifts the device's fix time by the clock offset it observes from `meta.serverTime`. This keeps freshness meaningful when the device clock is off, and when the development time controls move the mock clock. Manual points do not age, because the confirmation states where the user will be. Browsing defaults in [product](../PRODUCT.md#location-lifecycle) (a cached fix up to two minutes old, refresh after about 100 m) are mobile behavior and are not contract values.
 
@@ -141,7 +144,7 @@ Server responses use stable error codes; mobile must not branch on human-readabl
 | 404 | `NOT_FOUND`, `TARGET_UNAVAILABLE` where existence should not be disclosed |
 | 409 | `ACTIVE_REQUEST_EXISTS`, `ALREADY_IN_GROUP`, `GROUP_FULL`, `GROUP_CLOSED`, `VERSION_CONFLICT`, `IDEMPOTENCY_CONFLICT`, `USE_LEAVE_GROUP`, `BLOCKED_RELATIONSHIP` |
 | 410 | `RIDE_EXPIRED`, `HISTORY_EXPIRED` when authorized to know the resource; `OTP_EXPIRED` |
-| 422 | `VALIDATION_FAILED`, `LOCATION_STALE`, `INVALID_DEPARTURE`, `INVALID_TRANSITION`, `OTP_INVALID` |
+| 422 | `VALIDATION_FAILED`, `LOCATION_STALE`, `INVALID_DEPARTURE`, `INVALID_TRANSITION`, `OTP_INVALID`, `UNSUPPORTED_AREA` |
 | 429 | `RATE_LIMITED`, `OTP_ATTEMPTS_EXCEEDED`, `OTP_RESEND_THROTTLED` |
 | 503 | `SERVICE_UNAVAILABLE` |
 

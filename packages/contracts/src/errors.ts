@@ -6,8 +6,9 @@ import { IdSchema } from './common.js';
  * Stable machine-readable error codes shared by every endpoint.
  *
  * Clients branch only on these codes, never on message text. This list is the table in
- * `docs/api/overview.md`, including the OTP verification failures from CONTRACT-001-C; a
- * later domain contract that owns more codes adds them here. Transport failures such
+ * `docs/api/overview.md`, including the OTP verification failures from CONTRACT-001-C and
+ * the place-search area failure from CONTRACT-002-A; a later domain contract that owns more
+ * codes adds them here. Transport failures such
  * as timeouts, aborted requests or schema mismatches are not server errors and have no code
  * here; the mobile app models them separately.
  */
@@ -41,6 +42,7 @@ export const ApiErrorCodeSchema = z.enum([
   'INVALID_DEPARTURE',
   'INVALID_TRANSITION',
   'OTP_INVALID',
+  'UNSUPPORTED_AREA',
   // 429
   'RATE_LIMITED',
   'OTP_ATTEMPTS_EXCEEDED',

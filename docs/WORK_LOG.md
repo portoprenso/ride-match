@@ -1380,3 +1380,50 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
   - MEGAsync exclusions.
 - **Ownership:** Released; no active task.
+
+## 2026-10-31 — CONTRACT-002-A: Place search contracts
+
+- **Actor/session:** Claude Code / contract-002-a.
+- **Status:** `Completed`; ownership released. The parent CONTRACT-002 is `Paused` until CONTRACT-002-B.
+- **Working copy:** `main` at `f610059` (CONTRACT-001-C). Committed on top of it at the user's request, with no push. The untracked `.idea/` files were left untouched.
+- **Request/scope:** "Commit and go with next step". Nothing was left to commit (CONTRACT-001-C was already `f610059`), so this is CONTRACT-002-A only, then commit.
+- **Prerequisites:** CONTRACT-001 is `Completed`.
+- **Changes:**
+  - **`src/places.ts` (new):**
+    - **`PlaceSchema`:** `id` (stable across searches, sessions and resets), `label` (1–80), `detail` (1–120 or `null`; the design's secondary line, such as a street), `coordinates`.
+    - **`PlaceSearchAreaSchema`:** `center` as coarse coordinates and `radiusMeters` (whole number, 1,000–50,000).
+    - **`SearchPlacesInputSchema`:** optional `query` (single-line, 1–80), `area`, `limit` (1–20).
+    - **`PlaceSearchResultsSchema`:** an array of at most 20 places, refined so no ID appears twice.
+    - **`PLACE_SEARCH_POLICY`:** the mock limits above.
+  - **`src/location.ts`:** `CoarseCoordinatesSchema`, coordinates refined to at most `LOCATION_POLICY.coarseCoordinateDecimals` (2) decimal places, checked as `Math.round(degrees * 100) / 100 === degrees`.
+  - **`src/errors.ts`:** `UNSUPPORTED_AREA` (422), for 28 codes.
+  - **`src/index.ts`:** re-exports `places.js`.
+  - **Tests:**
+    - `tests/places.test.ts` (new): every limit at its boundary, omitted versus `null` fields, a precise area center, an extra device position, accuracy and user fields rejected, 20 versus 21 results, duplicate places.
+    - `tests/location.test.ts`: coarse coordinates, including values the documented rounding produces and unrounded arithmetic such as `0.1 + 0.2`.
+    - `tests/errors.test.ts`: `UNSUPPORTED_AREA`.
+    - 277 tests (44 new).
+- **Decisions:**
+  - **A coarse center and radius, not a viewport.** Search must work beyond the visible map (the design says "Choose a place in Bishkek"). A center with a radius orders results by distance without more fields. CONTRACT-002-B defines the discovery viewport separately.
+  - **Coarse means two decimal places, enforced.** Place search is anonymous, so the schema stops an exact device position (about 1 m precision) from being sent; two decimals are about 1.1 km. The client must round with the documented expression, because unrounded floating-point results fail.
+  - **The query is optional.** Screen 03 lists "other demo places" beside the matches, and LOCATION-001-B needs named pickup points without GPS. Without a query, the results are the area's places nearest its center. Omitting it is the documented meaning, so `null` fails.
+  - **`detail` as a nullable secondary line**, taken from the design's result rows (street or area). No category or icon field: the design shows none that needs data.
+  - **`UNSUPPORTED_AREA` is a new error code.** The spec lists "unsupported area" as an important error, and the app must tell it apart from an empty result.
+  - **Response length versus `limit`.** The schema caps results at 20. Respecting the request's own limit is the source's job, because it spans two payloads; the TSDoc says so.
+- **Excluded:** the curated dataset, coverage rule and match ordering (MOCK-001-B, DESTINATION-001-A), a reverse lookup for a dropped pickup pin, the discovery viewport and ride schemas (CONTRACT-002-B), and any mobile code.
+- **Verification:**
+  - `pnpm test:contracts`: 6 files, 277 tests pass.
+  - `pnpm build:contracts`, `pnpm typecheck` and `pnpm lint`: all Turbo tasks pass.
+  - Importing the built `packages/contracts/dist/index.js` in Node finds the new exports and 28 error codes.
+  - `git diff --check`: clean. Local Markdown links and anchors in the edited docs resolve.
+  - **Not run:** mobile Jest, both exports and native builds, because no app code changed (the user's standing preference to defer heavy checks).
+- **Docs:**
+  - `api/rides.md`: the place schema table, the coverage error and the endpoint row.
+  - `api/overview.md`: status line, inventory rows, `CoarseCoordinatesSchema` in the location table and policy, the error-code row and the 422 row.
+  - Also updated: `ARCHITECTURE.md` (modules), `MOBILE_IMPLEMENTATION_PLAN.md` (card status), `ROADMAP.md` (progress, CONTRACT-002 `Paused`), `DEVELOPMENT.md`, both READMEs, and `AI_CONTEXT.md`.
+- **TSDoc:** each schema states who may send or see it, its bounds, its ordering and its failure codes; `CoarseCoordinatesSchema` gives the exact rounding a client must use.
+- **Remaining/next:**
+  - CONTRACT-002-B (rides and matches, sized M), when requested.
+  - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
+  - MEGAsync exclusions.
+- **Ownership:** Released; no active task.

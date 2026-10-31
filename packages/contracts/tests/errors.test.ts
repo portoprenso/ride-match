@@ -34,8 +34,8 @@ describe('ApiErrorSchema', () => {
     ).toBe(true);
   });
 
-  it.each(['OTP_INVALID', 'OTP_EXPIRED', 'OTP_ATTEMPTS_EXCEEDED', 'OTP_RESEND_THROTTLED'])(
-    'accepts the OTP code %s',
+  it.each(['OTP_INVALID', 'OTP_EXPIRED', 'OTP_ATTEMPTS_EXCEEDED', 'OTP_RESEND_THROTTLED', 'UNSUPPORTED_AREA'])(
+    'accepts the domain code %s',
     (code) => {
       expect(
         ApiErrorSchema.safeParse({ code, message: 'Request a new code.', requestId: 'req_3' }).success,
