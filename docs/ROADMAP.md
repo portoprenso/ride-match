@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-10-31. **MONO-001 and MOBILE-001 are completed; TOOLCHAIN-001 and UI-001 are paused for deferred native checks; all other implementation tasks are planned.**
+Last updated: 2026-10-31. **MONO-001 and MOBILE-001 are completed; TOOLCHAIN-001, UI-001 and CONTRACT-001 are paused for deferred checks; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,16 @@ Last updated: 2026-10-31. **MONO-001 and MOBILE-001 are completed; TOOLCHAIN-001
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**CONTRACT-001-A — Paused (2026-10-31).**
+
+- **Done:**
+  - Zod 4.6.7 in `packages/contracts`, with strict object schemas and inferred types.
+  - `common.ts`: opaque IDs, UTC timestamps, resource versions, UUID operation IDs, cursors, and the `{ data, meta: { serverTime } }` envelope.
+  - `errors.ts`: the shared error codes, field errors that cannot echo submitted values, and the error body.
+  - A real `pnpm test:contracts` (Vitest 5.0.5): 61 tests in which invalid IDs, timestamps and errors fail. `pnpm test` now runs it too.
+  - Contracts typecheck and lint cover the tests; mobile still type-checks against the built package.
+- **Deferred at the user's request:** the mobile Jest suite and both exports, which confirm that Jest and Metro load Zod through the contracts package, plus running it under Hermes in the native pass. They are needed before CONTRACT-001-A can be `Completed`.
 
 **UI-001-D — Paused (2026-10-31).**
 
@@ -71,7 +81,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | ID | Task | Status |
 | --- | --- | --- |
 | MONO-001 | Workspace foundation | Completed |
-| CONTRACT-001 | Common, location, authentication contracts | Planned |
+| CONTRACT-001 | Common, location, authentication contracts | Paused |
 | CONTRACT-002 | Places, rides, matching contracts | Planned |
 | CONTRACT-003 | Groups, chat, safety contracts | Planned |
 | CONTRACT-004 | Realtime and notification contracts | Planned |

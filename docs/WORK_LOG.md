@@ -1125,3 +1125,64 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - MEGAsync exclusions.
 - **Resume from:** CONTRACT-001-A when requested, or the combined deferred verification.
 - **Ownership:** Released; no active task.
+
+## 2026-10-31 — CONTRACT-001-A: Common and error contracts, Vitest harness
+
+- **Actor/session:** Claude Code / contracts-common.
+- **Status:** `Paused`; ownership released. The schemas, tests and scripts are done. The mobile Jest suite and both exports, which show the app still loads the package, are deferred at the user's request. The parent CONTRACT-001 is `Paused` too.
+- **Working copy:** `main` at `d6909e4` (UI-001-D, committed at the user's request just before this card). CONTRACT-001-A was committed on top of it afterwards at the user's request, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "commit UI-001-D and continue with CONTRACT-001-A".
+- **Prerequisites:** MONO-001 is `Completed`.
+- **Changes:**
+  - **Dependencies (contracts):** `zod` 4.6.7 (runtime), `vitest` 5.0.5 and `vite` 8.3.5 (dev). Vite is Vitest's required peer and is pinned so pnpm does not choose it. All are `latest` and more than a day old; the install passed the strict build-script policy with no ignored builds. Mobile does not declare Zod; it gets it through the contracts package.
+  - **`packages/contracts/tsconfig.json`:** `skipLibCheck: true`.
+    - **Why:** the first typecheck failed with `TS2304: Cannot find name 'URL'` in Zod's `v4/core/schemas.d.cts`. The runtime-neutral `es2022` lib has no `URL`, and adding DOM or Node globals would break that neutrality.
+    - Mobile already has the same setting from `expo/tsconfig.base`. The package's own files are still fully checked.
+  - **`packages/contracts/tests/tsconfig.json`:** extends the package config with `rootDir: ".."`, `noEmit`, and `include: [".", "../src"]`, so typecheck and typed lint cover the tests while the build still emits only `src`.
+  - **`src/common.ts`:**
+    - **`IdSchema`:** 1–64 URL-safe characters, because IDs appear in URL paths.
+    - **`TimestampSchema`:** `z.iso.datetime()`, which requires `Z`, rejects offsets, local times and date-only values, and checks calendar dates.
+    - **`ResourceVersionSchema`:** a safe integer from 1.
+    - **`OperationIdSchema`:** a UUID, created once per user intent and reused on retries.
+    - **`CursorSchema`:** 1–512 RFC 3986 unreserved characters.
+    - **Envelope:** `ResponseMetaSchema` (`serverTime`) and `apiResponseSchema(data)`, the strict `{ data, meta }` success envelope.
+  - **`src/errors.ts`:**
+    - **`ApiErrorCodeSchema`:** the 25 codes of the overview's error table. CONTRACT-001-C adds the OTP verification codes.
+    - **`FieldErrorSchema`:** a dot-path `field`, a `code` (`REQUIRED`, `INVALID_FORMAT`, `TOO_SHORT`, `TOO_LONG`, `OUT_OF_RANGE`, `INVALID_VALUE`) and a `message`. It has no value field, so an error cannot echo submitted data.
+    - **`ApiErrorSchema`:** `code`, a safe `message`, `requestId`, optional `fieldErrors` (1–50) and optional `retryAfterSeconds` (1–86,400).
+  - **`src/index.ts`:** re-exports both modules; its comment records the naming and strict-object conventions.
+  - **Tests:** `tests/common.test.ts` and `tests/errors.test.ts`, 61 tests against `../src/index.js`. Each schema has accepted and rejected examples, including unknown fields and an echoed submitted value.
+  - **Scripts:**
+    - Contracts: `test` is `vitest run --dir tests`, and `typecheck` also runs the tests project.
+    - Root: `test:contracts` is `pnpm --filter @ride-match/contracts test`. The existing `pnpm test` now runs the contracts tests as well.
+  - **`apps/mobile/src/bootstrap/checkContractsPackage.ts`:** comment only. It said the package exports nothing; it now notes that the import loads Zod and builds the schemas.
+  - **Docs:**
+    - `api/overview.md`: the exact rules of the implemented schemas and the strict-object note.
+    - `ARCHITECTURE.md`: the naming and strict-object conventions and the existing modules.
+    - `TOOLCHAIN.md`: dependencies, build-script row, tsconfig notes, contracts test configuration, root script, commands and the verify-later entry.
+    - Also updated: `DEVELOPMENT.md` (commands and harness), `MOBILE_IMPLEMENTATION_PLAN.md` (card status and tooling table), `ROADMAP.md`, both READMEs, and `AI_CONTEXT.md`.
+- **Decisions:**
+  - **Strict object schemas.** Unknown fields fail instead of being stripped, so an accidental extra field, possibly private, is caught in tests. API evolution goes through the reviewed `/v1` contracts.
+  - **JSON-shaped values.** Timestamps stay strings and no schema transforms data, so input and output types are the same.
+  - **Operation IDs are UUIDs.** That gives a testable format that both the mock and a future HTTP client can generate, and that is safe in an `Idempotency-Key` header.
+  - **Field errors carry a code.** Mobile must not branch on message text, so field errors needed a small code vocabulary.
+  - **No error envelope.** The overview does not specify one; the future HTTP adapter decides how to wrap `ApiErrorDto`.
+  - **No HTTP status map in contracts.** The status-to-code table stays in the overview; the mock does not use HTTP.
+  - **No Vitest config file.** `--dir tests` and Vitest's defaults (Node environment, explicit imports) are enough.
+  - **No `@types/node`.** Vitest's declarations need only `@types/chai` and `@types/deep-eql`, which it installs.
+- **Verification** (Node 24.17.0, pnpm 11.28.2):
+  - `pnpm test:contracts` → 2 files, 61 tests passed. `pnpm test:contracts errors` → 1 file, 23 tests, so filters reach Vitest.
+  - `pnpm --filter @ride-match/contracts typecheck` → exit 0, after the `skipLibCheck` fix above.
+  - `pnpm --filter @ride-match/contracts lint` → exit 0; the JSON report lists both `src` modules, `index.ts` and both test files with no problems.
+  - **Compiler file lists:** the guard check prints nothing for `tsconfig.json` or `tests/tsconfig.json`, so nothing comes from outside the repository.
+  - `pnpm build:contracts` → `dist/` holds `common`, `errors` and `index` (`.js` and `.d.ts`).
+  - **Node import:** from `apps/mobile`, `await import('@ride-match/contracts')` listed all 11 exports and parsed a sample error.
+  - `pnpm --filter @ride-match/mobile typecheck` → exit 0.
+  - `pnpm install --frozen-lockfile` → passes.
+  - **Deferred (required before `Completed`):** the mobile Jest suite (`pnpm test:mobile`) and both exports, which show whether Jest and Metro resolve Zod through the contracts package; running it under Hermes belongs to the native pass. Not run: root `pnpm test`, `pnpm lint` and `pnpm typecheck` through Turbo. Their package-level parts ran individually, apart from mobile lint, which this card does not touch.
+- **JSDoc/TSDoc:** every exported schema and `apiResponseSchema`. They cover the ID charset and its reason, the UTC rule and that server time decides expiry, per-resource version comparison and `VERSION_CONFLICT`, operation-ID reuse and its scope, cursor opacity, the envelope, codes as the only branching value, and why field errors never echo values.
+- **Remaining/blockers:**
+  - The deferred mobile Jest and export checks for this card, joined to the pending verification pass for TOOLCHAIN-001-A, UI-001-A, UI-001-C and UI-001-D.
+  - MEGAsync exclusions.
+- **Resume from:** CONTRACT-001-B when requested (its prerequisite CONTRACT-001-A is `Paused` only for the deferred mobile checks), or the combined deferred verification.
+- **Ownership:** Released; no active task.

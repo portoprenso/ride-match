@@ -14,6 +14,7 @@ From MONO-001-B onward, tasks use the versions, commands, and decisions recorded
 | TypeScript | 6.0.3 in every package |
 | Task runner | Turbo 2.11.6; root `turbo.json` with `agentGuidance: false` (MONO-001-E) |
 | Lint | ESLint 9.39.5 (flat config); `typescript-eslint` 8.71.0 for contracts; `eslint-config-expo` 57.0.2 for mobile |
+| Contracts | Zod 4.6.7 (the package's only runtime dependency); tests with Vitest 5.0.5 and its required Vite 8.3.5 peer (CONTRACT-001-A) |
 | Mobile tests | Jest 29.7.0, `jest-expo` 57.0.6, React Native Testing Library 14.0.1 with `test-renderer` 1.2.0 (MOBILE-001-F; see the correction below) |
 | Doctor | `expo-doctor` 1.20.4 as an exact mobile dev dependency |
 | Contracts format | ESM (`"type": "module"`), one `exports` entry with `types` then `default` |
@@ -111,6 +112,7 @@ engineStrict: true
 | --- | --- | --- | --- |
 | *(none)* | | MONO-001-B: the root tree (110 packages) has no `preinstall`/`install`/`postinstall` scripts (scan of `node_modules/.pnpm`), and `pnpm install` passed under the strict default | MONO-001-B |
 | `unrs-resolver` | `false` | The script only downloads a missing native binding; pnpm installs the platform's optional binding package. Mobile `import/no-unresolved` works without it. No other mobile package was blocked by the strict policy | MOBILE-001-A |
+| *(none)* | | Zod, Vitest and Vite installed under the strict default with no ignored builds. Vite's native pieces (`rolldown`, `lightningcss`) come as optional platform packages, not install scripts | CONTRACT-001-A |
 
 ## Direct dependencies
 
@@ -132,8 +134,11 @@ All versions are exact. "Expo range" means `bundledNativeModules.json` in `expo@
 | --- | --- | --- | --- | --- |
 | `typescript` | 6.0.3 | dev | `build`, `dev` (watch), and `typecheck` scripts | MONO-001-C |
 | `eslint` | 9.39.5 | dev | Binary for the package `lint` script | MONO-001-D |
+| `zod` | 4.6.7 | runtime | Runtime schemas and inferred types. `latest`, published 2026-10-12; ESM and CommonJS builds, so Node, Metro and Jest each pick a format through `exports` | CONTRACT-001-A |
+| `vitest` | 5.0.5 | dev | Contracts `test` script. `latest`, published 2026-10-15; engines Node `^22.12.0 \|\| ^24.0.0 \|\| >=26.0.0` | CONTRACT-001-A |
+| `vite` | 8.3.5 | dev | Required peer of `vitest` 5.0.5 (`^6.4.0 \|\| ^7.0.0 \|\| ^8.0.0`), pinned so pnpm does not pick a version. `latest`, published 2026-10-21; engines Node `^20.19.0 \|\| >=22.12.0` | CONTRACT-001-A |
 
-There are no runtime dependencies. Zod arrives with CONTRACT-001.
+Zod is the only runtime dependency. Mobile receives it through the contracts package and does not declare it, because mobile code imports schemas from `@ride-match/contracts`, never from `zod`. Vitest's optional `@types/node` peer is not installed: its declarations need only `@types/chai` and `@types/deep-eql`, which it brings itself.
 
 ### Mobile (`@ride-match/mobile`)
 
@@ -237,6 +242,7 @@ TypeScript 6.0 changed several defaults (from the official tsconfig reference an
     "moduleResolution": "nodenext",
     "types": [],
     "strict": true,
+    "skipLibCheck": true,
     "noUncheckedIndexedAccess": true,
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
@@ -252,12 +258,15 @@ TypeScript 6.0 changed several defaults (from the official tsconfig reference an
 - Relative imports in contracts source use `.js` extensions, as `nodenext` requires.
 - No DOM `lib` and `types: []` keep the package runtime-neutral.
 - There is no `incremental` or `composite`, so no `.tsbuildinfo` is produced.
+- **`skipLibCheck: true` (CONTRACT-001-A):** Zod 4.6.7's internal URL helpers (`v4/core/schemas.d.cts`) name the global `URL`, which the runtime-neutral `es2022` lib does not declare, so typecheck failed with `TS2304: Cannot find name 'URL'` in Zod's declarations. Skipping library declaration checks fixes that without adding DOM or Node globals; the package's own `src` and `tests` are still fully checked. Mobile already gets the same setting from `expo/tsconfig.base`.
+- **`tests/tsconfig.json` (CONTRACT-001-A):** extends this file with `rootDir: ".."`, `noEmit: true`, and `include: [".", "../src"]`. It lets `typecheck` cover the tests and gives typed ESLint a project for them (`projectService` uses the nearest `tsconfig.json`), while the build still emits only `src`.
 
 Package scripts:
 
 - `build`: `tsc -p tsconfig.json`
 - `dev`: `tsc -p tsconfig.json --watch --preserveWatchOutput`
-- `typecheck`: `tsc -p tsconfig.json --noEmit`
+- `typecheck`: `tsc -p tsconfig.json --noEmit && tsc -p tests/tsconfig.json`
+- `test`: `vitest run --dir tests` (CONTRACT-001-A)
 
 ### Mobile `tsconfig.json` (MOBILE-001-A)
 
@@ -346,7 +355,14 @@ If a consumer fails, record the evidence and choose one format that all three lo
 - **Scripts:**
   - Mobile `test`: `jest`. No `--watchAll` and no `passWithNoTests`.
   - Root `test:mobile`: `pnpm build:contracts && pnpm --filter @ride-match/mobile test`. pnpm appends extra arguments to the end, so `--runTestsByPath tests/navigation.test.tsx` (relative to `apps/mobile`) reaches Jest.
-  - Root `test`: `turbo run test`; `turbo.json` has `test` with `dependsOn: ["^build"]`, so contracts are built first. Only mobile defines `test`.
+  - Root `test`: `turbo run test`; `turbo.json` has `test` with `dependsOn: ["^build"]`, so contracts are built first. Since CONTRACT-001-A it runs the contracts and mobile tests.
+
+## Contracts test configuration (CONTRACT-001-A)
+
+- Vitest 5.0.5 runs `packages/contracts/tests/**/*.test.ts`. There is no Vitest config file: the `test` script passes `--dir tests`, and Vitest's defaults (Node environment, no globals) fit pure schemas.
+- Tests import `describe`/`expect`/`it` from `vitest` and the contracts from `../src/index.js`, so they exercise the public entry without a build. Vite maps the `.js` specifier to the `.ts` source, as `nodenext` requires in the source.
+- Root `test:contracts`: `pnpm --filter @ride-match/contracts test`. pnpm appends extra arguments, so `pnpm test:contracts errors` runs only files whose path contains `errors`.
+- Vitest keeps its cache in `packages/contracts/node_modules/.vite/`, which is already ignored.
 
 ## Turbo and development commands
 
@@ -403,6 +419,7 @@ Native and export wrappers run `pnpm build:contracts` first, then call `pnpm --f
 | `export:android` / `export:ios` | `pnpm build:contracts && pnpm --filter @ride-match/mobile export:android` (mobile: `expo export --platform android`); iOS likewise | MOBILE-B |
 | `mobile:android` / `mobile:ios` | `pnpm build:contracts && pnpm --filter @ride-match/mobile android` (mobile: `expo run:android`); iOS likewise with `expo run:ios` | MOBILE-B |
 | `test:mobile` / `test` | See [Test configuration](#test-configuration-mobile-001-f) | MOBILE-F |
+| `test:contracts` | `pnpm --filter @ride-match/contracts test` (contracts: `vitest run --dir tests`). No build first: tests import the source. See [Contracts test configuration](#contracts-test-configuration-contract-001-a) | CONTRACT-001-A |
 
 Mobile `start` and `dev` are both `expo start --dev-client`. Mobile `typecheck` is `tsc --noEmit -p tsconfig.json`.
 
@@ -485,6 +502,17 @@ pnpm doctor:mobile
 # UI-001-A (font files: see "App fonts" below)
 pnpm --filter @ride-match/mobile add --save-exact expo-font@57.0.4
 pnpm doctor:mobile
+
+# CONTRACT-001-A
+pnpm --filter @ride-match/contracts add zod@4.6.7
+pnpm --filter @ride-match/contracts add -D vitest@5.0.5 vite@8.3.5
+pnpm test:contracts
+pnpm --filter @ride-match/contracts typecheck
+pnpm --filter @ride-match/contracts lint
+pnpm --filter @ride-match/contracts exec tsc -p tsconfig.json --listFilesOnly | grep -v "^$(git rev-parse --show-toplevel)/"
+pnpm --filter @ride-match/contracts exec tsc -p tests/tsconfig.json --listFilesOnly | grep -v "^$(git rev-parse --show-toplevel)/"
+pnpm build:contracts
+pnpm --filter @ride-match/mobile typecheck
 ```
 
 ### App fonts (UI-001-A)
@@ -532,7 +560,7 @@ The user chose to keep the home-folder packages (decision 3), so the repository 
 | Hazard | Guard | Check |
 | --- | --- | --- |
 | Corepack obeys the ancestor `yarn@4.18.0` declaration | Root `packageManager: "pnpm@11.28.2"` is written before the first pnpm command | B: `pnpm --version` prints 11.28.2 |
-| TypeScript includes ancestor `@types` (`jest` and `mocha` conflict) | Explicit `types` in every tsconfig (the TS 6 default is also `[]`) | C and MOBILE-001-A: compiler file-list check prints nothing; rerun when tsconfig or dependencies change |
+| TypeScript includes ancestor `@types` (`jest` and `mocha` conflict) | Explicit `types` in every tsconfig (the TS 6 default is also `[]`) | C and MOBILE-001-A: compiler file-list check prints nothing; rerun when tsconfig or dependencies change. CONTRACT-001-A: nothing for both contracts projects (`tsconfig.json` and `tests/tsconfig.json`) |
 | Node, Jest, or Metro fall back to `/Users/home/node_modules` (`react` 18.2.0, `metro`, `@babel/core`) | Each package declares what it imports; pnpm isolated layout; no aliases | MOBILE-001-A, B, F: the `require.resolve` check stays inside the repo. Errors naming `/Users/home/node_modules` are resolution defects, not reasons for resolver overrides. A: passed for `react`, `react-native`, `expo`, `expo-router`, reanimated, worklets, and `react-dom`. F: Jest loaded `@babel/runtime` from there until it was declared; afterwards a logging resolver over the whole suite found no resolution outside the repository |
 | Metro hierarchical lookup reaches parent folders | Expo's automatic monorepo config watches only the workspace root. Whether Metro would bundle a file from the home `node_modules` is unverified | MOBILE-001-B: exports succeed and the resolution check passes. No Metro overrides without a reproduced failure. A: all 1,230 sources in an Android export's source map were under the repository root, and none came from `/Users/home/node_modules` |
 | `/Users/home/app.json` (`{"expo": {}}`) | Run Expo only from `apps/mobile` (`pnpm --filter @ride-match/mobile …` or `cd apps/mobile`), never from the repo root or home folder | Every Expo command |
@@ -614,6 +642,7 @@ These are expectations recorded here, not checked results. The named task confir
 - **MOBILE-001-G:** verified on 2026-10-03; see the Android result above and the gesture-handler correction. One app-config fix: the `expo-status-bar` plugin with `style: 'dark'`, because Android's edge-to-edge status bar otherwise kept white icons on the white screens.
 - **MOBILE-001-H:** verified on 2026-10-30. See the iOS result, the patch-alignment correction, and the `Screen` safe-area section above. The Android checks were rerun on the final files.
 - **TOOLCHAIN-001-A:** the gesture-handler pin passed the quick dependency checks on 2026-10-30. Tests, exports, and the Android and iOS rebuilds are deferred to one later verification pass.
+- **CONTRACT-001-A:** on 2026-10-31, contracts tests (61), typecheck, lint, build, the file-list checks, a frozen install, mobile typecheck, and a Node import of `@ride-match/contracts` from `apps/mobile` (all 11 exports, Zod loaded) passed. Deferred to the combined pass: the mobile Jest suite and both exports, which show whether Jest and Metro resolve Zod through the contracts package, and the native development clients, which run Zod under Hermes.
 - **UI-001-A:** typecheck, lint, doctor (21/21), and the resolved config (both plugins) passed on 2026-10-30. Deferred to the same pass: tests and exports, plus a native inspection after rebuilding both development clients. That inspection checks each Manrope weight, that no sample heading is clipped at default and enlarged text, and that there is no startup font error.
 
 ## Sources (checked 2026-10-03)

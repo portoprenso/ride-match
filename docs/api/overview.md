@@ -1,6 +1,6 @@
 # Future API: conventions, boundaries, and handoff
 
-Status: proposed specification, not an implemented API. Last updated: 2026-10-03.
+Status: proposed specification, not an implemented API. Last updated: 2026-10-31. The shared schemas for [common values and errors](#common-values-and-errors-contract-001-a) exist in `packages/contracts`; the other contracts are still planned.
 
 The mobile mock data source must reproduce these observable operations and rules. A future NestJS backend will implement the reviewed contracts after the mock mobile MVP. No backend implementation belongs to the current milestone.
 
@@ -21,7 +21,7 @@ The mobile mock data source must reproduce these observable operations and rules
 
 ## Shared contract inventory
 
-Schemas live in the future `packages/contracts`, organized as described in [architecture](../ARCHITECTURE.md). Use one Zod definition per shape and infer its TypeScript type. Distinguish input, public, owner, and member schemas.
+Schemas live in `packages/contracts`, organized as described in [architecture](../ARCHITECTURE.md). Use one Zod definition per shape and infer its TypeScript type. Distinguish input, public, owner, and member schemas. Object schemas are strict: unknown fields fail validation.
 
 | Contract | Essential fields / constraints |
 | --- | --- |
@@ -47,9 +47,27 @@ Schemas live in the future `packages/contracts`, organized as described in [arch
 | `BlockUserInput` | Target user ID |
 | `NotificationPayloadDto` | Payload version, notification ID, kind, resource IDs, issuedAt/expiresAt |
 | `DomainEventDto` | Event ID, schema version, type, occurredAt, resource version and payload |
-| `ApiErrorDto` | Code, safe message, request ID, optional field errors/retry delay |
+| `ApiErrorDto` | Code, safe message, request ID, optional field errors/retry delay. Implemented; see below |
 
 Keep enums/status schemas near their domain. Do not export React types, query keys, marker colors, database models, Prisma/PostGIS types, service implementations, or backend-only algorithms.
+
+## Common values and errors (CONTRACT-001-A)
+
+Implemented in `packages/contracts/src/{common,errors}.ts` and covered by `pnpm test:contracts`. These rules make the conventions above exact:
+
+| Schema | Rule |
+| --- | --- |
+| `IdSchema` | 1–64 URL-safe characters (`A–Z`, `a–z`, `0–9`, `_`, `-`), because IDs appear in paths. UUIDs, ULIDs and prefixed IDs fit. Opaque: never parsed |
+| `TimestampSchema` | ISO-8601 with a `Z` suffix; offsets, local times and date-only values fail; calendar dates are checked; fractional seconds optional. Stays a string |
+| `ResourceVersionSchema` | Safe integer from 1, increasing per resource |
+| `OperationIdSchema` | A UUID created once per user intent and reused on every retry of it; the future `Idempotency-Key` |
+| `CursorSchema` | 1–512 RFC 3986 unreserved characters (`A–Z`, `a–z`, `0–9`, `-`, `.`, `_`, `~`), so it needs no encoding in a query string. Opaque |
+| `ResponseMetaSchema`, `apiResponseSchema(data)` | The success envelope `{ data, meta: { serverTime } }`; no other top-level fields |
+| `ApiErrorCodeSchema` | Exactly the codes in the [errors](#errors) table. A domain contract that owns more codes (OTP verification in CONTRACT-001-C) adds them to this list |
+| `FieldErrorSchema` | `{ field, code, message }`. `field` is a dot path (`origin.latitude`, `members.0.userId`); `code` is `REQUIRED`, `INVALID_FORMAT`, `TOO_SHORT`, `TOO_LONG`, `OUT_OF_RANGE` or `INVALID_VALUE`; `message` is 1–200 characters. There is no field for the submitted value, so an error cannot echo it |
+| `ApiErrorSchema` | `code`, `message` (1–500 characters, safe to show), `requestId` (an ID), optional `fieldErrors` (1–50), optional `retryAfterSeconds` (integer, 1–86,400) |
+
+The error body has no envelope of its own in these contracts; how the future HTTP adapter wraps it is decided with that adapter. Transport failures (offline, timeout, aborted request, schema mismatch) have no `ApiErrorCode`; mobile models them separately.
 
 ## Privacy model
 

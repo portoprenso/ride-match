@@ -280,7 +280,7 @@ Reuse C's public exports/build. CONTRACT-001-A introduces Zod and the planned Vi
 
 | ID | Prerequisites | Goal, screens, expected modules and reuse | Observable acceptance and checks | Size / uncertainty | Status |
 | --- | --- | --- | --- | --- | --- |
-| CONTRACT-001-A | MONO-001 | C common/errors plus C/tests and Vitest/root scripts; reuse package boundary. Supports all screens. | Invalid IDs/timestamps/errors fail; real test:contracts command; existing mobile import/build remains valid. | S / test/export integration | Planned |
+| CONTRACT-001-A | MONO-001 | C common/errors plus C/tests and Vitest/root scripts; reuse package boundary. Supports all screens. | Invalid IDs/timestamps/errors fail; real test:contracts command; existing mobile import/build remains valid. | S / test/export integration | Paused: common and error schemas, Zod, Vitest and `test:contracts` done with 61 tests (2026-10-31); mobile Jest and both exports deferred |
 | CONTRACT-001-B | CONTRACT-001-A | C location/users: exact/public/owner/meeting schemas and user projections. 01–05, 15, 19–22. | Strict public schemas reject private fields; location bounds and validation-policy defaults recorded/tested. | S / location policy | Planned |
 | CONTRACT-001-C | CONTRACT-001-B | C auth: challenge/session inputs/results and errors. 07–09, 31, 47–48. | Challenge/resend/expiry/rotation fields represented; credentials never public; mock OTP policy recorded and boundary-tested. | S / mock policy values | Planned |
 | CONTRACT-002-A | CONTRACT-001 | C places: curated search inputs/results. 03, 22. | Query/limit/area bounds; stable place IDs; invalid cases rejected. | S / low | Planned |
@@ -389,13 +389,14 @@ Re-read actual manifests before running commands. The following were available a
 | pnpm typecheck | Workspace static types. |
 | pnpm lint | Existing lint; mock-import restrictions introduced by DATA-001. |
 | pnpm test:mobile | Existing Jest harness; forwards arguments, paths relative to apps/mobile. |
-| pnpm test | Workspace test tasks, currently mobile only. |
+| pnpm test:contracts | Vitest contract suites against the source, no build needed; extra arguments filter files (added by CONTRACT-001-A). |
+| pnpm test | Workspace test tasks: contracts and mobile since CONTRACT-001-A. |
 | pnpm doctor:mobile | Expo/config checks; plain pnpm doctor is a different command. |
 | pnpm export:android / pnpm export:ios | JavaScript export; not native verification. |
 | pnpm mobile:android / pnpm mobile:ios | Local development builds; follow TOOLCHAIN native setup. |
 | git diff --check | Whitespace/error check. |
 
-Not yet available: pnpm test:contracts, Vitest contract suites, pnpm test:e2e, Maestro flows. Their owning cards add real tooling; never add success-only placeholders.
+Not yet available: pnpm test:e2e, Maestro flows. Their owning cards add real tooling; never add success-only placeholders.
 
 Current targeted test example:
 

@@ -10,6 +10,7 @@
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "test": "turbo run test",
+    "test:contracts": "pnpm --filter @ride-match/contracts test",
     "test:mobile": "pnpm build:contracts && pnpm --filter @ride-match/mobile test",
     "dev": "turbo run dev --filter=@ride-match/mobile",
     "dev:mobile": "pnpm build:contracts && pnpm --filter @ride-match/mobile start",

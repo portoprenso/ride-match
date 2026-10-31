@@ -1,6 +1,6 @@
 # Development, testing, and analytics plan
 
-Status: partly implemented. Last updated: 2026-10-30. **Only commands marked implemented exist. The others are specifications for the named tasks, not checks already run.**
+Status: partly implemented. Last updated: 2026-10-31. **Only commands marked implemented exist. The others are specifications for the named tasks, not checks already run.**
 
 ## Workflow and proposed commands
 
@@ -11,10 +11,10 @@ Codex and Claude Code follow the same [shared AI workflow](AI_WORKFLOW.md). Begi
 | `pnpm dev` | Build contracts once, then run contracts watch and Expo development server | Implemented: `turbo run dev --filter=@ride-match/mobile` (MOBILE-001-B) |
 | `pnpm dev:mobile` | Start mobile with contracts prepared | Implemented (MOBILE-001-B) |
 | `pnpm build:contracts` | Emit shared JavaScript and declarations | Implemented: `turbo run build --filter=@ride-match/contracts` (MONO-001-E) |
-| `pnpm typecheck` | Type-check all workspace packages | Implemented: `turbo run typecheck` (MONO-001-E); covers mobile from MOBILE-001-A |
+| `pnpm typecheck` | Type-check all workspace packages | Implemented: `turbo run typecheck` (MONO-001-E); covers mobile from MOBILE-001-A and the contracts tests from CONTRACT-001-A |
 | `pnpm lint` | Lint application/contracts and enforce import boundaries | Implemented: `turbo run lint` (MONO-001-E); covers mobile from MOBILE-001-A. Import-boundary rules are planned (DATA-001/MOCK-001) |
-| `pnpm test` | Run contract and mobile tests once | Implemented: `turbo run test` after dependency builds; mobile only (MOBILE-001-F). Contracts tests from CONTRACT-001 |
-| `pnpm test:contracts` | Vitest contracts; forward file filters | Planned (CONTRACT-001) |
+| `pnpm test` | Run contract and mobile tests once | Implemented: `turbo run test` after dependency builds (MOBILE-001-F); runs the contracts tests too since CONTRACT-001-A |
+| `pnpm test:contracts` | Vitest contracts; forward file filters | Implemented (CONTRACT-001-A): `vitest run --dir tests` in `packages/contracts`, against the source, with no build first. `pnpm test:contracts errors` runs only matching files |
 | `pnpm test:mobile` | Jest mobile; forward `--runTestsByPath` and other test arguments | Implemented (MOBILE-001-F): builds contracts, then runs `jest` in `apps/mobile`; paths are relative to `apps/mobile` |
 | `pnpm test:e2e` | Selected Maestro flows against an installed development build | Planned (QA-001) |
 | `pnpm doctor:mobile` | Expo dependency/configuration checks (`pnpm doctor` is pnpm's built-in) | Implemented (MOBILE-001-B) |
@@ -33,7 +33,7 @@ Each bounded task should leave runnable behavior, focused tests where useful, up
 
 Use [FIRST_STEPS.md](FIRST_STEPS.md) for the 13 small assignments under MONO-001 and MOBILE-001. Assign one child at a time. [TOOLCHAIN.md](TOOLCHAIN.md), recorded by MONO-001-A, pins Node 24.17.0, pnpm 11.28.2 through Corepack, Expo SDK 57, TypeScript 6.0.3, Turbo 2.11.6, and the lint and test packages, with exact per-task install commands and local prerequisites. Use those versions and commands; do not guess independent latest dependency versions while implementing later cards.
 
-Commands become available incrementally. Implemented so far: `pnpm install --frozen-lockfile` (MONO-001-B; setup in the root [README](../README.md)), `build:contracts` (MONO-001-C), and root lint/typecheck (MONO-001-D). MONO-001-E routed all three through Turbo. MOBILE-001-A added mobile `start` (`expo start --dev-client`), `typecheck`, and `lint` package scripts; root typecheck and lint now include mobile. MOBILE-001-B added the root development, doctor, export, and native wrappers. MOBILE-001-G verified the Android native run, and MOBILE-001-H verified iOS and reran Android on the final files. MOBILE-001-F added mobile `test` (`jest`) with root `test:mobile` and `test`. CONTRACT-001 adds actual contract schemas/tests later. Do not create success-only placeholders for unavailable commands.
+Commands become available incrementally. Implemented so far: `pnpm install --frozen-lockfile` (MONO-001-B; setup in the root [README](../README.md)), `build:contracts` (MONO-001-C), and root lint/typecheck (MONO-001-D). MONO-001-E routed all three through Turbo. MOBILE-001-A added mobile `start` (`expo start --dev-client`), `typecheck`, and `lint` package scripts; root typecheck and lint now include mobile. MOBILE-001-B added the root development, doctor, export, and native wrappers. MOBILE-001-G verified the Android native run, and MOBILE-001-H verified iOS and reran Android on the final files. MOBILE-001-F added mobile `test` (`jest`) with root `test:mobile` and `test`. CONTRACT-001-A added the first contract schemas (common values and errors), contracts `test` (Vitest) and root `test:contracts`; the rest of CONTRACT-001 adds location, user and authentication schemas. Do not create success-only placeholders for unavailable commands.
 
 Review workspace setup after MONO-001-E and the shell after MOBILE-001-H. Android and iOS development-build checks are separate required assignments; missing native verification stays unresolved. The shell's auth/private/settings/scenario routes are inert navigation placeholders (MOBILE-001-D/E). Outside development builds (`__DEV__` false), `/dev/scenarios` shows an unavailable state instead of its placeholder. Real session, membership, configuration, and scenario behavior remain in their later roadmap tasks.
 
@@ -82,6 +82,8 @@ Use Vitest for schema/contract checks, Jest with jest-expo and React Native Test
 | Native integration | Permission fallback, map gestures/markers, keyboard/sheets, local notification entry, taxi handoff |
 
 Inject clocks and use deterministic failures. Advance fake time instead of sleeping in unit/integration tests. Test behavior, not copies of implementation details. Avoid exhaustive snapshots of trivial UI.
+
+**Current contracts harness (CONTRACT-001-A):** Vitest 5 runs `packages/contracts/tests/**/*.test.ts` in Node against the source (`../src/index.js`), so `pnpm test:contracts` needs no build. `tests/common.test.ts` covers IDs, timestamps, resource versions, operation IDs, cursors and the success envelope; `tests/errors.test.ts` covers the error body and field errors. 61 tests. Each schema gets accepted and rejected examples, including unknown fields, which strict object schemas reject. `tests/tsconfig.json` makes `pnpm typecheck` and lint cover the tests.
 
 **Current mobile harness (MOBILE-001-F):** Jest 29 with `jest-expo` and Testing Library 14 runs `apps/mobile/tests/**/*.test.ts?(x)`. `tests/navigation.test.tsx` renders the real `app/` routes through `tests/helpers/renderApp.ts` (Expo Router's `renderRouter`), and `tests/ui.test.tsx` covers `Button` (enabled, disabled, busy), `IconButton` (name, hidden icon, 48-point target, disabled, busy), and `Screen`'s safe-area padding (under a `SafeAreaProvider` with fixed `initialMetrics`). `tests/fields.test.tsx` covers the field components' labels, errors and announcements, counter, Clear, digit-only paste, and radio-group selection. `tests/layout.test.tsx` covers the pinned form footer, `SheetHost` (closing requests, the not-dismissible state, focus return on iOS and Android) and `ConfirmAction` (choice, busy, announced error). 41 tests in total. `jest.config.js` sets `clearMocks`, because React Native's preset shares mocks such as `AccessibilityInfo`'s across tests. Route tests run under the fake timers `renderRouter` enables; each one ends with no pending timer. To test non-development behavior, override only `isDevelopmentMode()` (Jest runs with `__DEV__` true). The suites load `@ride-match/contracts` from its built `dist/`, so run them through `pnpm test:mobile` or `pnpm test`, which build it first. Jest cannot check native modal presentation, gestures, keyboards, screen-reader focus, or safe areas; those are native checks (Android in MOBILE-001-G, iOS in MOBILE-001-H).
 
