@@ -1,6 +1,6 @@
 # Mobile product and UX plan
 
-Status: planned. Last updated: 2026-10-03.
+Status: planned. Last updated: 2026-10-31.
 
 Design reference: [Along mobile MVP concept](design/along/README.md) (DESIGN-001). Along is provisional branding only. The saved Figma draft has the brand kit and 20 journey screens; the local package covers 55 illustrative screens. Offline importer 1.0.1 repairs the user's failed native import; the user will retest it, and native visual/prototype verification remains pending. This does not change implemented app capabilities or the lifecycle rules below.
 
@@ -95,7 +95,7 @@ Use Expo Location with foreground permission only. [Expo Location documentation]
 7. Debounce discovery refreshes when the coarse search area changes.
 8. Stop observation in the background and when not needed.
 
-Initial tunable defaults: cached browsing fix up to two minutes old; discovery refresh after roughly 100 metres of movement. Creation requires a recent, sufficiently accurate fix or an explicitly confirmed pickup point. The precise accuracy threshold should be documented when implemented after device checks.
+Initial tunable defaults: cached browsing fix up to two minutes old; discovery refresh after roughly 100 metres of movement. Creation requires a recent, sufficiently accurate fix or an explicitly confirmed pickup point. CONTRACT-001-B chose mock defaults for the creation fix: accuracy of 100 m or better and at most 60 seconds old ([locations and users](api/overview.md#locations-and-users-contract-001-b)); otherwise the user confirms a manual pickup point. Confirm or adjust these after device checks; they are not a production policy.
 
 Published request origins do not automatically move with the device. Exact input coordinates stay out of analytics, logs, and public responses. Discovery uses a coarse viewport; sensitive creation input uses an authenticated body.
 

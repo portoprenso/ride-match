@@ -1,6 +1,6 @@
 # Future API: groups, meeting points, chat, and safety
 
-Status: planned. Last updated: 2026-10-03.
+Status: planned. Last updated: 2026-10-31.
 
 Paths use `/v1`. Common envelopes/errors/idempotency are in [overview](overview.md). `Member` requires current membership; `Coordinator` also requires that role. Retained terminal history is accessible to members authorized at closure, not users who previously left.
 
@@ -76,7 +76,7 @@ On completed/cancelled groups, disable joining and sending. Keep authorized term
 
 The mock source supplies a suggested shared public place after group formation and can emit an update. Members see its distinct map landmark, label, and optional viewer-specific approximate walking estimate. The source returns `null` until available.
 
-Meeting-point coordinates are not a member's live location. Keep them member-only. Walking estimates are supplied values, not client route calculations. Agreement happens through chat and readiness confirmation; no optimization or collaborative point-editing endpoint is needed now.
+`MeetingPointDto` exists since CONTRACT-001-B: ID, coordinates, a 1–80 character label and `walkingMinutes` (0–60 or `null`); see [locations and users](overview.md#locations-and-users-contract-001-b). Meeting-point coordinates are not a member's live location. Keep them member-only. Walking estimates are supplied values, not client route calculations. Agreement happens through chat and readiness confirmation; no optimization or collaborative point-editing endpoint is needed now.
 
 Group destination is a reviewed shared destination/venue. Do not expose members' private exact destinations or silently create multi-stop taxi bookings.
 

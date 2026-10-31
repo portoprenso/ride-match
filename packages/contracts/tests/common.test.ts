@@ -9,6 +9,7 @@ import {
   ResponseMetaSchema,
   TimestampSchema,
   apiResponseSchema,
+  singleLineTextSchema,
 } from '../src/index.js';
 
 const accepts = (schema: z.ZodType, value: unknown) => schema.safeParse(value).success;
@@ -98,6 +99,29 @@ describe('CursorSchema', () => {
     ['a character that needs encoding', 'abc+def/=='],
   ])('rejects %s', (_label, value) => {
     expect(accepts(CursorSchema, value)).toBe(false);
+  });
+});
+
+describe('singleLineTextSchema', () => {
+  const ShortTextSchema = singleLineTextSchema(5);
+
+  it.each(['a', 'a b', 'abcde', 'Алия', '🚕'])('accepts %s', (value) => {
+    expect(accepts(ShortTextSchema, value)).toBe(true);
+  });
+
+  it.each([
+    ['empty', ''],
+    ['too long', 'abcdef'],
+    ['only spaces', '   '],
+    ['a leading space', ' a'],
+    ['a trailing space', 'a '],
+    ['a leading no-break space', ' a'],
+    ['a line break', 'a\nb'],
+    ['a tab', 'a\tb'],
+    ['a control character', 'a\u0007b'],
+    ['a number', 5],
+  ])('rejects %s', (_label, value) => {
+    expect(accepts(ShortTextSchema, value)).toBe(false);
   });
 });
 

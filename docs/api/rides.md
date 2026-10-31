@@ -1,6 +1,6 @@
 # Future API: places, rides, and matching
 
-Status: planned. Last updated: 2026-10-03.
+Status: planned. Last updated: 2026-10-31.
 
 All paths use `/v1`; tables show unwrapped response data. See [overview](overview.md) for common errors and idempotency.
 
@@ -50,7 +50,7 @@ Rules:
 - One live (`active` or `grouped`) request per user.
 - Departure options: Now, +5 minutes, +10 minutes.
 - Active discovery lifetime: 15 minutes from successful creation, controlled by the data source.
-- The source validates departure time and origin recency/accuracy or explicit pickup confirmation.
+- The source validates departure time and origin recency/accuracy or explicit pickup confirmation. The origin is an `ExactLocationInput`: a device fix of at most 100 m accuracy and at most 60 s old (`LOCATION_STALE` otherwise), or a confirmed manual point. Mock defaults: [locations and users](overview.md#locations-and-users-contract-001-b).
 - `expiresAt` controls discovery while active. Once grouped, group lifetime controls the intention; original discovery expiry does not eject a member.
 - Cancelling active request removes its matches/discovery entry. Cancelling a grouped request through this endpoint fails with `USE_LEAVE_GROUP`.
 - Leaving cancels that member's grouped request. Re-search requires explicit creation of a new request.

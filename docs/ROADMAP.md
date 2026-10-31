@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-10-31. **MONO-001, MOBILE-001 and TOOLCHAIN-001 are completed; UI-001 is paused for an Android text fix and screen-reader checks; CONTRACT-001 has A completed; all other implementation tasks are planned.**
+Last updated: 2026-10-31. **MONO-001, MOBILE-001 and TOOLCHAIN-001 are completed; UI-001 is paused for an Android text fix and screen-reader checks; CONTRACT-001 has A and B completed; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,16 @@ Last updated: 2026-10-31. **MONO-001, MOBILE-001 and TOOLCHAIN-001 are completed
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**CONTRACT-001-B — Completed (2026-10-31).**
+
+- **Done:**
+  - `location.ts`: coordinates; the private exact input (a device fix or a confirmed manual point); the owner view; the public area; the member-only meeting point; `LOCATION_POLICY` and `isLocationFixFresh`.
+  - `users.ts`: the public `UserDto` and the private `CurrentUserDto`, neither with phone, credential, session or location fields.
+  - `common.ts`: `singleLineTextSchema` for display names and labels.
+  - Mock location defaults recorded in `api/overview.md`: device fix accuracy at most 100 m and age at most 60 s, public radius 200–5,000 m, walking estimate 0–60 min.
+  - 179 contract tests (118 new), including private fields rejected by every public schema and boundary values of each limit.
+- **Not run (no app code changed):** mobile Jest, exports and native builds. The next native pass should load the package under Hermes again, because `singleLineTextSchema` uses a Unicode property regex; `hermesc` compiles it.
 
 **VERIFY-001 — Completed (2026-10-31).** One verification pass for TOOLCHAIN-001-A, UI-001-A, UI-001-C, UI-001-D and CONTRACT-001-A.
 
@@ -90,7 +100,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | ID | Task | Status |
 | --- | --- | --- |
 | MONO-001 | Workspace foundation | Completed |
-| CONTRACT-001 | Common, location, authentication contracts | Paused (A completed; B and C planned) |
+| CONTRACT-001 | Common, location, authentication contracts | Paused (A and B completed; C planned) |
 | CONTRACT-002 | Places, rides, matching contracts | Planned |
 | CONTRACT-003 | Groups, chat, safety contracts | Planned |
 | CONTRACT-004 | Realtime and notification contracts | Planned |

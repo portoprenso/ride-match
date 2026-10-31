@@ -1,6 +1,6 @@
 # Future API: conventions, boundaries, and handoff
 
-Status: proposed specification, not an implemented API. Last updated: 2026-10-31. The shared schemas for [common values and errors](#common-values-and-errors-contract-001-a) exist in `packages/contracts`; the other contracts are still planned.
+Status: proposed specification, not an implemented API. Last updated: 2026-10-31. The shared schemas for [common values and errors](#common-values-and-errors-contract-001-a) and for [locations and users](#locations-and-users-contract-001-b) exist in `packages/contracts`; the other contracts are still planned.
 
 The mobile mock data source must reproduce these observable operations and rules. A future NestJS backend will implement the reviewed contracts after the mock mobile MVP. No backend implementation belongs to the current milestone.
 
@@ -25,11 +25,12 @@ Schemas live in `packages/contracts`, organized as described in [architecture](.
 
 | Contract | Essential fields / constraints |
 | --- | --- |
-| `CoordinatesDto` | Latitude/longitude with valid ranges; no implied access permission |
-| `ExactLocationInput` | Coordinates, accuracy, captured time; sensitive input |
-| `PublicLocationDto` | Approximate area center, uncertainty radius, optional area label |
-| `UserDto` | ID, display name, optional avatar URL; never phone/session fields |
-| `CurrentUserDto` | User and current request/group references |
+| `CoordinatesDto` | Latitude/longitude with valid ranges; no implied access permission. Implemented; see [locations and users](#locations-and-users-contract-001-b) |
+| `ExactLocationInput` | Device fix (coordinates, accuracy, captured time) or confirmed manual point; sensitive input. Implemented |
+| `OwnerLocationDto` | Owner's own exact point and its source; owner responses only. Implemented |
+| `PublicLocationDto` | Approximate area center, uncertainty radius, optional area label. Implemented |
+| `UserDto` | ID, display name, optional avatar URL; never phone/session fields. Implemented |
+| `CurrentUserDto` | User and current request/group references. Implemented |
 | `OtpChallengeDto` | Challenge ID, expiresAt, resendAvailableAt |
 | `VerifyOtpInput` | Challenge ID, OTP code |
 | `AuthSessionDto` | User, access/refresh credentials and expiry timestamps |
@@ -41,7 +42,7 @@ Schemas live in `packages/contracts`, organized as described in [architecture](.
 | `RideMatchDto` | Target ride/group, match level, optional additional minutes, validity time, version |
 | `RideGroupDto` | ID, coordinator, authorized members, capacity, status, destination, departure, meeting point, expiry, version |
 | `GroupMemberDto` | User summary, joinedAt, linked request ID |
-| `MeetingPointDto` | ID, shared place coordinates, label, optional viewer-specific walking estimate |
+| `MeetingPointDto` | ID, shared place coordinates, label, optional viewer-specific walking estimate. Implemented; group embedding and updates come with CONTRACT-003-A |
 | `ChatMessageDto` | ID, group ID, sender, text, createdAt, group-local sequence, client message ID |
 | `ReportUserInput` | Target, reason, optional bounded details, optional relevant group/message reference |
 | `BlockUserInput` | Target user ID |
@@ -66,8 +67,35 @@ Implemented in `packages/contracts/src/{common,errors}.ts` and covered by `pnpm 
 | `ApiErrorCodeSchema` | Exactly the codes in the [errors](#errors) table. A domain contract that owns more codes (OTP verification in CONTRACT-001-C) adds them to this list |
 | `FieldErrorSchema` | `{ field, code, message }`. `field` is a dot path (`origin.latitude`, `members.0.userId`); `code` is `REQUIRED`, `INVALID_FORMAT`, `TOO_SHORT`, `TOO_LONG`, `OUT_OF_RANGE` or `INVALID_VALUE`; `message` is 1–200 characters. There is no field for the submitted value, so an error cannot echo it |
 | `ApiErrorSchema` | `code`, `message` (1–500 characters, safe to show), `requestId` (an ID), optional `fieldErrors` (1–50), optional `retryAfterSeconds` (integer, 1–86,400) |
+| `singleLineTextSchema(max)` | Builds a short text schema (added by CONTRACT-001-B): 1–`max` characters, no leading or trailing whitespace, no control characters such as line breaks. Nothing is trimmed; unclean text fails |
 
 The error body has no envelope of its own in these contracts; how the future HTTP adapter wraps it is decided with that adapter. Transport failures (offline, timeout, aborted request, schema mismatch) have no `ApiErrorCode`; mobile models them separately.
+
+## Locations and users (CONTRACT-001-B)
+
+Implemented in `packages/contracts/src/{location,users}.ts` and covered by `pnpm test:contracts`. Who may see each shape follows the [privacy model](#privacy-model) below.
+
+| Schema | Visibility | Rule |
+| --- | --- | --- |
+| `CoordinatesSchema` | Depends on the carrying schema | `{ latitude, longitude }` in WGS 84 degrees: latitude −90 to 90, longitude −180 to 180, finite numbers only |
+| `ExactLocationInputSchema` | Private creation input | Union on `source`. `device`: `coordinates`, `accuracyMeters` (0–100) and `capturedAt`, nothing else (no altitude, speed or heading). `manual`: `coordinates` only, for a point the user picked on the map and confirmed |
+| `OwnerLocationSchema` | Owner only | `coordinates` and `source`; the fix's accuracy and capture time are not echoed back |
+| `PublicLocationSchema` | Anyone, including anonymous | `center`, `radiusMeters` (whole number, 200–5,000) and `label` (1–80 characters or `null`). Strict, so exact coordinates, accuracy, capture time, source or user fields fail |
+| `MeetingPointSchema` | Current group members | `id`, `coordinates` of a shared place, `label` (1–80 characters), `walkingMinutes` (whole number 0–60 or `null`). Member and viewer locations fail |
+| `UserSchema` | Anyone | `id`, `displayName` (1–40 characters, one line, no surrounding whitespace) and `avatarUrl` (`https` on a domain name, at most 2,048 characters, no user info, or `null`). Phone, token, session and location fields fail |
+| `CurrentUserSchema` | The signed-in user | `user`, plus `rideRequestId` (current or latest own request) and `groupId` (live group), each an ID or `null`. No phone or credentials, even here |
+
+**Location policy (mock defaults, `LOCATION_POLICY`).** Reviewed values for the mock MVP, not production policy. Revisit them after device checks and before a backend exists.
+
+| Value | Default | Applied by |
+| --- | --- | --- |
+| Worst usable device-fix accuracy | 100 m | The schema. A worse or unknown accuracy, including approximate location permission (about 1–3 km), cannot be a pickup point; the user picks a point on the map instead |
+| Oldest usable device fix | 60 s on the source clock | `isLocationFixFresh(fix, now)`. The source answers an old fix with `LOCATION_STALE`; the app checks first and gets a fresh fix |
+| Fix time ahead of the source clock | Up to 10 s | `isLocationFixFresh`, to absorb error in the client's clock-offset estimate |
+| Public uncertainty radius | 200–5,000 m | The schema. A smaller radius would claim a precise point |
+| Walking estimate to a meeting point | 0–60 min | The schema |
+
+`capturedAt` is on the source's clock: the client shifts the device's fix time by the clock offset it observes from `meta.serverTime`. This keeps freshness meaningful when the device clock is off, and when the development time controls move the mock clock. Manual points do not age, because the confirmation states where the user will be. Browsing defaults in [product](../PRODUCT.md#location-lifecycle) (a cached fix up to two minutes old, refresh after about 100 m) are mobile behavior and are not contract values.
 
 ## Privacy model
 

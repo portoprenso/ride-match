@@ -1277,3 +1277,56 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - MEGAsync exclusions.
   - Otherwise CONTRACT-001-B, when requested.
 - **Ownership:** Released; no active task.
+
+## 2026-10-31 — CONTRACT-001-B: Location and user contracts
+
+- **Actor/session:** Claude Code / contract-001-b.
+- **Status:** `Completed`; ownership released. The parent CONTRACT-001 stays `Paused` until CONTRACT-001-C.
+- **Working copy:** `main` at `a4c9a82` (VERIFY-001). Committed on top of it at the user's request, with no push. The untracked `.idea/` files were left untouched. The one-line `AI_CONTEXT.md` backlog note from the previous turn (UI-001-A and UI-001-D parked by the user) rides along in this commit.
+- **Request/scope:** "Ok, start next step. Commit after completion": CONTRACT-001-B only.
+- **Prerequisites:** CONTRACT-001-A is `Completed` (VERIFY-001).
+- **Changes:**
+  - **`src/location.ts` (new):**
+    - **`CoordinatesSchema`:** WGS 84 latitude −90 to 90 and longitude −180 to 180; Zod 4 rejects NaN and infinity.
+    - **`ExactLocationInputSchema`:** private creation input, a discriminated union on `source`.
+      - `DeviceLocationInputSchema`: `coordinates`, `accuracyMeters` (0–100) and `capturedAt` on the source clock. Sensor extras such as altitude, speed and heading fail.
+      - `ManualLocationInputSchema`: `coordinates` only, for a point the user picked on the map and confirmed (screen 22, and the fallback for denied, old or inaccurate location).
+    - **`OwnerLocationSchema`:** coordinates and source, returned to the owner only; accuracy and capture time are not echoed.
+    - **`PublicLocationSchema`:** `center`, `radiusMeters` (whole number, 200–5,000) and `label` (1–80 characters or `null`).
+    - **`MeetingPointSchema`:** `id`, `coordinates`, `label` and `walkingMinutes` (0–60 or `null`), member-only.
+    - **`LOCATION_POLICY` and `isLocationFixFresh(fix, now)`:** the mock defaults, and the 60-second age check with 10 seconds of tolerance ahead of the source clock. The function fails closed on an unparseable timestamp.
+  - **`src/users.ts` (new):** `DisplayNameSchema` (1–40 characters), `AvatarUrlSchema` (`https`, a domain name, at most 2,048 characters, no user info), `UserSchema`, and `CurrentUserSchema` (user plus `rideRequestId` and `groupId`, each an ID or `null`).
+  - **`src/common.ts`:** `singleLineTextSchema(max)`, shared by labels and display names: no surrounding whitespace and no control characters, without trimming or rewriting.
+  - **`src/index.ts`:** re-exports both new modules.
+  - **Tests:** `tests/location.test.ts` and `tests/users.test.ts` (new), and single-line text cases in `tests/common.test.ts`.
+    - Each limit is tested at its boundary with literal values, so changing a policy value fails a test and forces the docs to change too.
+    - Every public or member schema rejects representative private fields: exact coordinates, accuracy, capture time, source, member or viewer locations, phone numbers, tokens and session data.
+    - 179 tests (118 new).
+- **Decisions:**
+  - **Accuracy is a schema bound; age is a function.** The 100 m limit needs no clock, so an inaccurate fix is plain invalid input (`VALIDATION_FAILED`). Age depends on the source's time, so `isLocationFixFresh` applies it and the source answers `LOCATION_STALE`. Approximate location permission (about 1–3 km) therefore always falls back to a manual point.
+  - **`capturedAt` is on the source's clock.** The client shifts the device's fix time by its observed clock offset. Otherwise device clock error, or the planned development time controls on the mock clock, would make every fix stale or fresh.
+  - **Manual points do not age.** Confirming a point states where the user will be; it is not a measurement.
+  - **Minimum public radius of 200 m.** A schema cannot prove obfuscation, but a radius floor stops a public location from claiming a precise point.
+  - **`MeetingPointDto` lives in `location.ts`.** CONTRACT-003-A embeds it in the group and decides the point-update policy.
+  - **Explicit `null`** for an absent label, avatar, walking estimate or reference, following the overview's convention.
+  - **`\P{Cc}` regex for control characters.** It avoids ESLint's `no-control-regex`, and `hermesc` from the installed `hermes-compiler` compiles it, so Hermes parses it.
+- **Excluded:** an input for `PATCH /me` (display-name change; no card or screen needs it yet, and `DisplayNameSchema` is ready for it), auth schemas (CONTRACT-001-C), places and rides (CONTRACT-002), group embedding of the meeting point (CONTRACT-003-A), production obfuscation, and any mobile code.
+- **Verification:**
+  - `pnpm test:contracts`: 4 files, 179 tests pass.
+  - `pnpm build:contracts`, `pnpm typecheck` and `pnpm lint`: all Turbo tasks pass.
+  - Importing the built `packages/contracts/dist/index.js` in Node lists the new exports, and `isLocationFixFresh` returns `true` for a 30-second-old fix.
+  - `hermesc -emit-binary` compiles the two text regexes.
+  - `git diff --check`: clean.
+  - **Not run:** mobile Jest, both exports and the native builds, because no app code changed and heavy checks are deferred to a later pass (the user's standing preference). The next native pass should confirm the package still loads under Hermes.
+- **Docs:**
+  - `api/overview.md`: a "Locations and users (CONTRACT-001-B)" section with the schema rules and the location policy table; inventory rows marked implemented, plus `OwnerLocationDto`; `singleLineTextSchema` in the common table.
+  - `api/authentication.md`, `api/groups.md` and `api/rides.md`: pointers to the implemented user, meeting-point and origin rules.
+  - `PRODUCT.md`: the chosen mock accuracy and age limits replace "to be documented".
+  - `ARCHITECTURE.md`: the existing modules; its status line no longer says implementation has not started.
+  - Also updated: `MOBILE_IMPLEMENTATION_PLAN.md` (card status and the pending-decisions note), `ROADMAP.md`, `DEVELOPMENT.md`, both READMEs, and `AI_CONTEXT.md`.
+- **TSDoc:** every exported schema and function explains its visibility (private, owner, member or public), its bounds, and its failure behavior. `LOCATION_POLICY` documents each value and why it was chosen.
+- **Remaining/next:**
+  - CONTRACT-001-C (authentication schemas and the mock OTP policy), when requested.
+  - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
+  - MEGAsync exclusions.
+- **Ownership:** Released; no active task.

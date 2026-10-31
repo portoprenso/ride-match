@@ -1,6 +1,6 @@
 # Future API: authentication and users
 
-Status: planned; all MVP authentication is simulated. Last updated: 2026-10-03.
+Status: planned; all MVP authentication is simulated. Last updated: 2026-10-31.
 
 Paths are relative to `/v1`; response conventions and common failures are in [overview](overview.md).
 
@@ -48,6 +48,7 @@ Expired/removed targets must not become successful actions just because authenti
 ## User projections
 
 - Public `UserDto`: opaque ID, display name, optional avatar URL.
+- Implemented with `CurrentUserDto` by CONTRACT-001-B: display names have 1–40 characters on one line, avatars are `https` URLs or `null`, and both schemas reject phone, credential, session and location fields. Exact rules: [locations and users](overview.md#locations-and-users-contract-001-b).
 - Private `CurrentUserDto`: user plus references to the current request/group so the app can restore navigation.
 - Phone numbers, tokens, OTP details, and exact location never appear in public profiles.
 - A lightweight first-session display name may be assigned in the mock; profile completion must not unexpectedly block the specified main flow.

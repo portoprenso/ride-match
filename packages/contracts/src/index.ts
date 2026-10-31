@@ -9,3 +9,5 @@
  */
 export * from './common.js';
 export * from './errors.js';
+export * from './location.js';
+export * from './users.js';

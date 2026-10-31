@@ -61,6 +61,24 @@ export const CursorSchema = z
 export type Cursor = z.infer<typeof CursorSchema>;
 
 /**
+ * Builds the schema of a short single-line text such as a display name or a place label.
+ *
+ * The text has 1 to `maxLength` characters (UTF-16 code units), no leading or trailing
+ * whitespace and no control characters such as line breaks. Nothing is trimmed or
+ * rewritten: a value that is not already clean fails, so input and output stay identical.
+ *
+ * @param maxLength Longest accepted text.
+ */
+export function singleLineTextSchema(maxLength: number) {
+  return z
+    .string()
+    .min(1)
+    .max(maxLength)
+    .regex(/^\S(?:.*\S)?$/, 'Expected no leading or trailing whitespace')
+    .regex(/^\P{Cc}*$/u, 'Expected no control characters');
+}
+
+/**
  * Metadata attached to every successful response.
  *
  * `serverTime` is the source's clock when the response was produced. Clients use it to
