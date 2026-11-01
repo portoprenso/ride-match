@@ -99,6 +99,12 @@ Initial tunable defaults: cached browsing fix up to two minutes old; discovery r
 
 **Implemented controller (LOCATION-001-A):** `apps/mobile/src/platform/location/` holds these rules; no screen uses them yet (LOCATION-001-B adds the explanation and denial UI, MAP-001-A the map).
 
+**Device behavior (VERIFY-002, 2026-11-01):**
+
+- **Services off before denial:** with location services off, iOS reports every app's permission as denied, even when the app's own setting allows it. The controller therefore reads the services state on a denial too, and reports "location services are off" before "denied". The recovery UI should send the user to the services switch first.
+- **Android's "can ask again":** after a second denial, expo-location still reported that the prompt could appear. Only the next request, which showed no dialog, reported that it could not. LOCATION-001-B's denial UI must expect an "Allow" press that shows nothing once, then offer the system settings.
+- **Accuracy seen in the emulator and simulator:** a fresh high-accuracy fix was ±5 m on both; Android's balanced observation reported ±100 m (exactly the pickup limit); approximate permission gave ±11 km on iOS and ±2 km on Android. Before confirming a pickup, request a fresh fix (`refresh`) instead of relying on observation.
+
 - Starting reads the permission without prompting. The OS prompt appears only through `requestPermission()`, which the explanation screen calls.
 - With permission it shows a cached fix up to two minutes old, then asks for a fresh one with high accuracy. An attempt that takes over 15 seconds counts as failed, but a fix that arrives later still applies. A failed attempt rechecks location services. Nothing prompts for device settings.
 - The states it reports: checking, needs permission, denied (and whether the prompt can still appear), unavailable (services off, no fix, or the permission could not be read), locating, and located. A located fix is `fresh` (60 s or less, the pickup limit), `recent` (two minutes or less) or `stale`, and accurate only with precise permission and 100 m or better. Only a fresh, accurate fix may become a pickup point; otherwise the user refreshes or confirms a point on the map.

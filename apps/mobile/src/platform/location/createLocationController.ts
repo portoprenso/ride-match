@@ -22,7 +22,7 @@ export type LocationPermission =
 /** Everything the controller knows, replaced as a whole on every change. */
 export type LocationState = Readonly<{
   permission: LocationPermission;
-  /** The device's location services: `null` until checked with permission, or when the check failed. */
+  /** The device's location services: checked with permission or a denial; `null` before that, or when the check failed. */
   servicesEnabled: boolean | null;
   /** The latest position, cached or fresh. `null` until the device reports one, and cleared when permission ends. */
   fix: LocationFix | null;
@@ -44,7 +44,8 @@ export type LocationState = Readonly<{
  * - `checking`: the permission has not been read yet.
  * - `needs-permission`: never asked. Explain why location helps, then call `requestPermission`.
  * - `denied`: browse manually. When `canAskAgain` is false only the system settings can change it.
- * - `unavailable`: location services are off, no fix could be taken, or the permission could not be read.
+ * - `unavailable`: location services are off (also behind a denial, which is how iOS reports them
+ *   off), no fix could be taken, or the permission could not be read.
  * - `locating`: permitted, with no position yet.
  * - `located`: the latest position with its assessment, while `refreshing` may bring a newer one.
  *
@@ -67,7 +68,10 @@ export function describeLocation(state: LocationState, now: number): LocationSta
     case 'undetermined':
       return { kind: 'needs-permission' };
     case 'denied':
-      return { kind: 'denied', canAskAgain: permission.canAskAgain };
+      // iOS reports a denial for every app while services are off; the app's own setting may be fine.
+      return state.servicesEnabled === false
+        ? { kind: 'unavailable', reason: 'services-off' }
+        : { kind: 'denied', canAskAgain: permission.canAskAgain };
     case 'granted':
       break;
   }
@@ -282,13 +286,21 @@ export function createLocationController(options: LocationControllerOptions = {}
     if (!disposed && generation === fixGeneration) await requestFix();
   }
 
-  /** Applies a permission result: losing permission clears the fix and stops everything; having it checks services and locates. */
+  /**
+   * Applies a permission result: losing permission clears the fix and stops everything; having it
+   * checks services and locates. A denial also checks services, because iOS reports every app as
+   * denied while location services are off.
+   */
   async function applyPermission(permission: LocationPermission, read: number) {
     if (permission.status !== 'granted') {
       fixGeneration += 1;
       pendingFix?.cancel();
       update({ permission, servicesEnabled: null, fix: null, locating: false, fixFailed: false, checkFailed: false });
       syncWatch();
+      if (permission.status === 'denied') {
+        const enabled = await readServices();
+        if (!disposed && read === permissionRead && state.permission.status === 'denied') update({ servicesEnabled: enabled });
+      }
       return;
     }
     const enabled = await readServices();

@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix and screen-reader checks; DATA-001 is completed; MOCK-001 has A and B completed; LOCATION-001-A is implemented and paused for native permission checks; ANALYTICS-001 is completed; all other implementation tasks are planned.**
+Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix and screen-reader checks; DATA-001 is completed; MOCK-001 has A and B completed; LOCATION-001 has A completed (native permission checks passed in VERIFY-002); ANALYTICS-001 is completed; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -13,6 +13,15 @@ This roadmap covers only items 1–2. No backend implementation or real transpor
 
 ## Progress
 
+**VERIFY-002 — Completed (2026-11-01): native pass for LOCATION-001-A; LOCATION-001-A is `Completed`.**
+
+- **Done:**
+  - Both development clients rebuilt from regenerated native folders (iOS: 106 pods, 0 errors; Android: BUILD SUCCESSFUL in 49 s). Both open on the home screen with the mock source composed from `.env`, which also closes DATA-001-A's deferred native check; both exports pass.
+  - The LOCATION-001-A permission checks on the iPhone 17 Pro simulator (iOS 26.5) and the Pixel 9 Pro XL emulator (Android 16): no prompt until requested, the when-in-use text, no "always" option in the prompt, the settings or the manifest, denial, permission granted in the settings picked up on return, approximate location never accurate enough for a pickup, location services off, and observation stopped in the background and resumed on return (iOS `locationd` log, Android's location request list).
+  - **Fix:** iOS reports every app's permission as denied while location services are off, so the controller showed a denial. A denial now also reads the services state, and `describeLocation` reports `services-off` before `denied`. One new test (221 mobile tests).
+- **Finding for LOCATION-001-B:** on Android, expo-location still reported `canAskAgain: true` after the second denial; only a third request, which showed no dialog, returned `false`.
+- **Not done:** UI-001-D's screen-reader checks. The user postponed them and chose not to sign an iPhone build for VoiceOver yet, so UI-001-D stays `Paused`.
+
 **ANALYTICS-001-A — Completed (2026-11-01); ANALYTICS-001 is `Completed`.**
 
 - **Done:**
@@ -20,12 +29,12 @@ This roadmap covers only items 1–2. No backend implementation or real transpor
 - **Parent check:** intent and success events are distinct, sensitive properties are rejected, and mock events are excluded from real-user metrics (all tested).
 - **Not run (no native change):** exports and native builds.
 
-**LOCATION-001-A — Paused (2026-11-01): implemented; native permission checks pending.**
+**LOCATION-001-A — Completed (2026-11-01; native checks in VERIFY-002).**
 
 - **Done:**
   - `expo-location` 57.0.22 with a foreground-only config plugin entry (iOS when-in-use text only; Android coarse and fine location only).
   - `src/platform/location/`: the `LocationServices` port over Expo Location, `createLocationController` (permission without prompting until asked, cached then fresh fixes with a 15-second timeout, services checks, observation only while needed and in the foreground, recheck on return, permission loss clears the fix), `describeLocation` and `assessFix` (fresh, recent or stale; accurate; usable for a pickup), and `LocationProvider` with its hooks. Not mounted yet. 193 mobile tests (25 new).
-- **Pending (deferred, needs rebuilt development clients):** the native permission checks in DEVELOPMENT.md on Android and iOS. The card becomes `Completed` once they pass.
+- **Native checks:** passed on both platforms in VERIFY-002 (above), with the services-off fix.
 
 **MOCK-001-B — Completed (2026-11-01).**
 
@@ -231,7 +240,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | MOCK-001 | Simulator foundation | Paused (A and B completed; C planned) |
 | SYNC-001 | Event synchronization and recovery | Planned |
 | AUTH-001 | Simulated authentication | Planned |
-| LOCATION-001 | Foreground location | Paused (A implemented, native checks pending; B planned) |
+| LOCATION-001 | Foreground location | Paused (A completed; B planned) |
 | MAP-001 | Native map shell | Planned |
 | ANALYTICS-001 | Typed analytics foundation | Completed |
 | MAP-002 | Live nearby activity | Planned |

@@ -251,6 +251,28 @@ describe('fixes', () => {
     expect(status()).toMatchObject({ kind: 'located' });
   });
 
+  it('reports services that are off rather than a denial, since iOS denies every app while they are off', async () => {
+    const { device, appState, controller, status } = setup({ permission: BLOCKED, servicesEnabled: false });
+    controller.start();
+    await settle();
+    expect(status()).toEqual({ kind: 'unavailable', reason: 'services-off' });
+
+    // Services back on while the app setting allowed it all along: located, not denied.
+    appState.change('background');
+    device.servicesEnabled = true;
+    device.permission = GRANTED;
+    appState.change('active');
+    await settle();
+    expect(status()).toEqual({ kind: 'locating' });
+
+    // A real denial with services on stays a denial.
+    appState.change('background');
+    device.permission = BLOCKED;
+    appState.change('active');
+    await settle();
+    expect(status()).toEqual({ kind: 'denied', canAskAgain: false });
+  });
+
   it('reports a fix that does not come in time, and still accepts it when it arrives late', async () => {
     const { device, controller, status } = setup({ permission: GRANTED });
     controller.start();

@@ -1996,3 +1996,49 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - The parked UI-001-D screen-reader pass unblocks the most; the user decides.
   - Deferred verification pass: rebuilt development clients, LOCATION-001-A's native checks and the development-build check.
 - **Ownership:** Released; no active task.
+
+## 2026-11-01 — VERIFY-002: Native pass for LOCATION-001-A
+
+- **Actor/session:** Claude Code / verify-002.
+- **Status:** `Completed`; ownership released. LOCATION-001-A is now `Completed` (parent LOCATION-001 `Paused`: A completed, B planned). UI-001-D stays `Paused`: the user postponed its screen-reader checks.
+- **Working copy:** `main` at `d35a9e6` (ANALYTICS-001-A); the fix and docs are committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** the user chose "One native pass": rebuild both development clients, run LOCATION-001-A's native permission checks and DATA-001-A's deferred development-build check, and the UI-001-D screen-reader checks with the user driving. When asked, the user chose to skip VoiceOver for now (no signed iPhone build) and to do the screen-reader checks later.
+- **Environment:** Node 24.17.0, pnpm 11.28.2; iPhone 17 Pro simulator (iOS 26.5, Xcode 26.6); Android 16 (API 36) `Pixel_9_Pro_XL` emulator.
+- **Native builds:**
+  - `apps/mobile/ios/` and `apps/mobile/android/` were removed (ignored and generated; the old Info.plist had no location text) and rebuilt with the TOOLCHAIN commands.
+  - **iOS:** 106 pods (`ExpoLocation` added), Build Succeeded, 0 errors, the same two warnings. The Info.plist has `NSLocationWhenInUseUsageDescription` and no "always" key or background modes.
+  - **Android:** the old `com.ridematch.dev` was uninstalled first (the emulator had about 440 MB free); BUILD SUCCESSFUL in 49 s, installed, and `pnpm mobile:android` reused the running Metro. The manifest's only location permissions are coarse and fine.
+  - Both apps open on the home screen with the mock source composed from `.env` (no configuration error), which completes DATA-001-A's deferred development-build check.
+- **Temporary sample:** `app/dev/native-check.tsx` (development-only, removed afterwards, never committed). It held:
+  - A location panel on its own `createLocationController()` (started on mount, disposed on unmount): status from `describeLocation`, the permission, services, foreground, observing, locating and fix-failed flags, the fix's accuracy, approximate flag, age and time (never its coordinates), the assessment, and "Ask permission", "Refresh fix" and "Observe"/"Stop observing" buttons.
+  - The UI-001-D sheet sample, as in VERIFY-001: "Open form sheet" and "Open confirmation" buttons with `ref`s passed as `returnFocusRef`, one `SheetHost` switching between a `SheetContent` form ("Switch to confirmation", "Close") and a danger `ConfirmAction` whose confirmation is busy for 3 s (`dismissible={false}`) and then shows a sample error. It was not used, since the screen-reader checks were postponed.
+- **Location checks (both platforms; procedure in DEVELOPMENT.md):**
+  - **No prompt until asked:** `needs-permission` on start.
+  - **Prompt:** iOS shows the configured when-in-use text with Allow Once, Allow While Using App and Don't Allow. Android offers Precise or Approximate, then While using the app, Only this time and Don't allow. Neither prompt, nor either settings page, offers "always".
+  - **Denial:** iOS reports `denied`, can ask again false. Android reports `denied`, can ask again true, after the first and also after the second denial; a third request showed no dialog and returned false (finding below).
+  - **Allowed in the settings:** picked up on return. iOS through Settings → Privacy & Security → Location Services → Ride Match. Android through the app's permission page (the app then reopened from the launcher), and again with `pm grant` while in the background, returning to the same process.
+  - **Approximate:** iOS Precise Location off gave `precise false` and a ±11 km fix; Android with only coarse location gave a ±2 km fix. Both were `accurate false, pickup false`. A fresh precise fix was ±5 m and usable for a pickup on both.
+  - **Services off:** Android reported `unavailable (services-off)`, and "Refresh fix" after turning them back on rechecked them and located. iOS reported a denial (fixed below); after the fix it reported `services-off`, and turning services back on located again.
+  - **Observation:** iOS `locationd` logged `stopLocation_nl` for the app 0.1 s before the app was marked background, then it was suspended. The home screen showed no location indicator, and observation resumed with a fresh fix on return. Android listed the app's `BALANCED_POWER_ACCURACY` 5 s / 20 m watch in Google Play services while the app was in front; it disappeared in the background, including after the emulator moved, and a new one appeared on return.
+- **Fix made during the pass** (user-requested verification; within LOCATION-001-A's own module):
+  - **Problem:** with location services off, iOS reports every app's permission as denied, even when the app's own setting is While Using. The controller showed `denied`, which would send the user to the wrong setting.
+  - **Fix:** `applyPermission` also reads the services state on a denial (a call that needs no permission), and `describeLocation` reports `unavailable (services-off)` before `denied`. A stale read is ignored once a newer permission read or a grant has replaced it.
+  - **Test:** a new case in `tests/locationLifecycle.test.tsx` (denied with services off → `services-off`; services back on with the setting allowed → `locating`; a real denial with services on stays `denied`).
+- **Findings left open (for LOCATION-001-B):**
+  - Android's `canAskAgain` arrives one request late: after the second denial it was still true. The denial UI must expect one "Allow" press that shows nothing, after which it offers the system settings.
+  - Android's balanced observation reported ±100 m, exactly the pickup limit, in the emulator. A pickup should come from a fresh `refresh()` fix, not from observation.
+  - Android links after a cold start through the development client opened home twice before the third opened the route (MOBILE-001-H's limitation, more often than before).
+  - `uiautomator dump` sometimes returned an older tree; screenshots were used to judge state.
+- **JavaScript checks** (run after the fix, before the temporary route was removed):
+  - `pnpm typecheck` passed. `pnpm test` passed: contracts 14 files, mobile 11 suites and 221 tests. `pnpm export:ios` and `pnpm export:android` passed.
+  - `pnpm lint` failed only on the temporary route (`Date.now()` in a render); after removing it, lint passed (rerun before committing).
+- **Side effects outside the repository** (all deliberate):
+  - **Simulator:** Ride Match's location permission reset and later set to While Using; Precise Location and Location Services switched off and back on; a simulated position set in central Bishkek, then cleared; Settings opened StandBy by mistake (nothing changed).
+  - **Emulator:** `com.ridematch.dev` reinstalled; its location permission set and revoked several times and left granted; location services switched off and back on; the developer-menu introduction dismissed; a simulated position set; `adb reverse tcp:8081` added and removed afterwards. Location services are back on.
+  - **Afterwards:** Gradle daemons stopped, Metro stopped, the emulator shut down (it was started for this pass); the simulator, already booted before the pass, was left booted.
+- **Docs:** ROADMAP (VERIFY-002 entry, LOCATION-001-A completed, LOCATION-001 row), MOBILE_IMPLEMENTATION_PLAN (LOCATION-001-A and DATA-001-A rows), DEVELOPMENT (check procedure and results, 221 tests), PRODUCT (device behavior), ARCHITECTURE (the denial reads services), TOOLCHAIN (native rebuild entry), AI_CONTEXT.
+- **JSDoc/comments:** `applyPermission`'s comment, the `servicesEnabled` field and the `LocationStatus` description explain why a denial reads the services state; a comment in `describeLocation` says why services-off comes first.
+- **Remaining/next:**
+  - UI-001-D's screen-reader pass (TalkBack on the emulator or a phone, VoiceOver on a signed iPhone build) when the user is ready; which team signs the iPhone build is the user's choice. The current development builds already contain everything it needs; recreate the temporary sample described above.
+  - Every remaining card still waits on UI-001-D (directly, or through MOCK-001-C and LOCATION-001-B).
+- **Ownership:** Released; no active task.
