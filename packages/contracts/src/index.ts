@@ -17,4 +17,5 @@ export * from './matches.js';
 export * from './nearby.js';
 export * from './places.js';
 export * from './rides.js';
+export * from './safety.js';
 export * from './users.js';

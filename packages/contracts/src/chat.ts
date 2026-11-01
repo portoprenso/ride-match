@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { CursorSchema, IdSchema, OperationIdSchema, TimestampSchema } from './common.js';
+import { CursorSchema, IdSchema, OperationIdSchema, TimestampSchema, multilineTextSchema } from './common.js';
 import { UserSchema } from './users.js';
 
 /**
@@ -24,12 +24,7 @@ export const CHAT_POLICY = {
  * such as `\r` and tabs, are not. Message text never belongs in logs, analytics or
  * notifications.
  */
-export const ChatTextSchema = z
-  .string()
-  .min(1)
-  .max(CHAT_POLICY.maxTextLength)
-  .regex(/^\S(?:[\s\S]*\S)?$/, 'Expected no leading or trailing whitespace')
-  .regex(/^(?:\n|\P{Cc})*$/u, 'Expected no control characters other than line breaks');
+export const ChatTextSchema = multilineTextSchema(CHAT_POLICY.maxTextLength);
 export type ChatText = z.infer<typeof ChatTextSchema>;
 
 /**

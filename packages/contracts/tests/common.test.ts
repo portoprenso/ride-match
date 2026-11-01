@@ -9,6 +9,7 @@ import {
   ResponseMetaSchema,
   TimestampSchema,
   apiResponseSchema,
+  multilineTextSchema,
   singleLineTextSchema,
 } from '../src/index.js';
 
@@ -122,6 +123,28 @@ describe('singleLineTextSchema', () => {
     ['a number', 5],
   ])('rejects %s', (_label, value) => {
     expect(accepts(ShortTextSchema, value)).toBe(false);
+  });
+});
+
+describe('multilineTextSchema', () => {
+  const NoteSchema = multilineTextSchema(7);
+
+  it.each(['a', 'a b', 'a\nb', 'a\n\nb', 'abcdefg', '🚕'])('accepts %j', (value) => {
+    expect(accepts(NoteSchema, value)).toBe(true);
+  });
+
+  it.each([
+    ['empty', ''],
+    ['too long', 'abcdefgh'],
+    ['only line breaks', '\n\n'],
+    ['a leading space', ' a'],
+    ['a trailing line break', 'a\n'],
+    ['a carriage return', 'a\r\nb'],
+    ['a tab', 'a\tb'],
+    ['a control character', 'a\u0007b'],
+    ['a number', 5],
+  ])('rejects %s', (_label, value) => {
+    expect(accepts(NoteSchema, value)).toBe(false);
   });
 });
 

@@ -1,6 +1,6 @@
 # Future API: groups, meeting points, chat, and safety
 
-Status: planned; the group, membership, join, leave and status contracts (CONTRACT-003-A) and the chat contracts (CONTRACT-003-B) exist in `packages/contracts`. Last updated: 2026-11-01.
+Status: planned; the group, membership, join, leave and status contracts (CONTRACT-003-A), the chat contracts (CONTRACT-003-B) and the block and report contracts (CONTRACT-003-C) exist in `packages/contracts`. Last updated: 2026-11-01.
 
 Paths use `/v1`. Common envelopes/errors/idempotency are in [overview](overview.md). `Member` requires current membership; `Coordinator` also requires that role. Retained terminal history is accessible to members authorized at closure, not users who previously left.
 
@@ -15,10 +15,10 @@ Paths use `/v1`. Common envelopes/errors/idempotency are in [overview](overview.
 | `PATCH /groups/{groupId}/status` | Coordinator | `UpdateGroupStatusInput`: requested status, expected version, operation ID | Updated `RideGroupDto` | In this order: `MEMBERSHIP_REQUIRED`, `FORBIDDEN` (a member who is not the coordinator), `GROUP_CLOSED`, `VERSION_CONFLICT`, then `INVALID_TRANSITION` for a transition the current status does not allow, including marking ready without a meeting point |
 | `GET /groups/{groupId}/messages` | Member; a member at closure until `historyExpiresAt` | `ChatHistoryQueryInput`: `beforeCursor` **or** `afterSequence`, limit | `ChatMessagePageDto`: messages, `olderCursor`, `latestSequence` | `MEMBERSHIP_REQUIRED` (as for the group read), `HISTORY_EXPIRED`, `VALIDATION_FAILED` for both positions or a cursor that is malformed or from another group |
 | `POST /groups/{groupId}/messages` | Member | `SendChatMessageInput`: client message ID, text | Stored `ChatMessageDto` | In this order: `VALIDATION_FAILED`, `MEMBERSHIP_REQUIRED` (also for a former member's retry), `HISTORY_EXPIRED`, then the stored message for a client message ID already used (`IDEMPOTENCY_CONFLICT` if the text differs), then `GROUP_CLOSED` |
-| `PUT /me/blocks/{userId}` | User | Operation identity | Block result and membership effects | Cannot block self |
-| `DELETE /me/blocks/{userId}` | User | None | `204` | Idempotent if absent |
-| `GET /me/blocks` | User | Cursor | Blocked-user summaries | Session expired |
-| `POST /reports` | User | Target, reason, optional bounded details/context IDs, operation identity | Report receipt ID | Invalid target/context |
+| `PUT /me/blocks/{userId}` | User | `BlockUserInput`: operation ID | `BlockUserResultDto`: the block and the caller's leave from a shared live group, or `null` | In the order of [blocking](#blocking) |
+| `DELETE /me/blocks/{userId}` | User | None | `204` | None: succeeds whether or not the block exists |
+| `GET /me/blocks` | User | `BlockListQueryInput`: optional cursor, limit | `BlockListPageDto`: blocked users, newest first, and `nextCursor` | `VALIDATION_FAILED` for a malformed cursor |
+| `POST /reports` | User | `ReportUserInput`: operation ID, target user ID, reason, optional details and context (group, message or `null`) | `ReportReceiptDto`: receipt ID and acceptance time | In the order of [reporting](#reporting) |
 
 ## Group model
 
@@ -165,6 +165,61 @@ Blocking is authenticated and idempotent. It filters future authenticated discov
 Apply normal leave/coordinator/cancellation rules, revoke private access, and return membership effects so UI can reconcile. If fewer than two members remain, the group closes with reason `members_left`, which does not reveal the block. Unblock removes future filtering; it does not restore former membership or history access.
 
 Reports accept a bounded reason and optional details with relevant context IDs. Return a receipt only after successful mock acceptance. Validate referenced context access, avoid copying private content into analytics, and allow explicit retry on failure. A receipt is not proof of a moderation outcome. No moderation dashboard or reputation system is part of the MVP.
+
+### Blocking
+
+`PUT /me/blocks/{userId}` takes the rider in the path and an operation ID in the body. The source checks in this order and answers the first failure:
+
+| Check | Answer |
+| --- | --- |
+| The caller already sent this operation ID | The original result, including its leave; `IDEMPOTENCY_CONFLICT` for another rider |
+| The rider is the caller | `VALIDATION_FAILED` |
+| The rider is unknown | `NOT_FOUND` |
+| The rider is already blocked | Success: the existing block, `leftGroup: null` |
+| The caller shares a live group with the rider | Block and leave in one operation; `leftGroup` holds the group ID and the caller's cancelled request |
+| Otherwise | Block; `leftGroup: null` |
+
+A blocked pair never shares a live group, because a block in either direction prevents joins, so a repeated block has nothing to leave. The members who remain see an ordinary leave. A closed group that both can still read until `historyExpiresAt` is not affected. Blocking someone who blocked the caller succeeds and reveals nothing.
+
+`DELETE /me/blocks/{userId}` answers `204` whether or not the block exists. `GET /me/blocks` lists the caller's blocks newest first. A block or unblock while paging changes the first page, so the app reloads from it.
+
+### Reporting
+
+The report form offers four reasons (unsafe behavior, harassment, spam or misleading information, something else) and optional details of up to 500 characters, which may span lines. The context is the group where the reporter met the rider, and the reported message or `null`. It is omitted for a report made outside a group, or once the reporter can no longer read the group. The input carries references only, never copied message text.
+
+The source checks in this order and answers the first failure:
+
+| Check | Answer |
+| --- | --- |
+| The input fails the schema | `VALIDATION_FAILED` |
+| The caller already sent this operation ID | The original receipt, even if the caller lost access to the context since; `IDEMPOTENCY_CONFLICT` if the input differs |
+| The target is the caller | `VALIDATION_FAILED` |
+| The target is unknown | `NOT_FOUND` |
+| The caller cannot read the context group: not a member, a former member, or an unknown group | `MEMBERSHIP_REQUIRED`, as for the group read |
+| The context group's history expired | `HISTORY_EXPIRED` |
+| The target never belonged to the group, or the message is not in it or was not sent by the target | `VALIDATION_FAILED` |
+| Otherwise | A new receipt |
+
+The receipt holds only its ID and acceptance time: no status, outcome or echo of the report. Details stay out of logs, analytics, notifications and receipts. A failure with an unknown outcome (a timeout, a lost response) is retried with the same operation ID, which returns the receipt if the first attempt was accepted; only a known rejection means no report exists. Reporting does not block; the receipt screen offers blocking as a separate step.
+
+## Implemented safety contracts (CONTRACT-003-C)
+
+`packages/contracts/src/safety.ts`, covered by `pnpm test:contracts`:
+
+| Schema | Visibility | Rule |
+| --- | --- | --- |
+| `ReportReasonSchema` | — | `unsafe_behavior`, `harassment`, `spam_or_misleading`, `other`, in the form's order |
+| `ReportDetailsSchema` | Private | 1–500 characters with no surrounding whitespace; `\n` allowed, other control characters fail (`multilineTextSchema`) |
+| `ReportContextSchema` | Private | `groupId` and `messageId` (an ID or `null`). Copied message text fails |
+| `ReportUserInputSchema` | Reporter input | `operationId`, `targetUserId`, `reason`, optional `details` and `context`, omitted rather than `null`. A reporter ID, copied message text and locations fail |
+| `ReportReceiptSchema` | Reporter | `id` and `receivedAt`. A status, outcome, the details or the target fail |
+| `BlockUserInputSchema` | Blocker input | `operationId` only; the rider is in the path. A reason or group fails |
+| `BlockedUserSchema` | Blocker | `user` (public summary) and `blockedAt` |
+| `BlockUserResultSchema` | Blocker | `blockedUser` and `leftGroup` (`LeaveGroupResultSchema` or `null`), never the caller's own request blocked. Nothing about the group after the leave |
+| `BlockListQueryInputSchema` | Blocker input | Optional `cursor`, `limit` 1–50 |
+| `BlockListPageSchema` | Blocker | `blockedUsers` (at most 50, each rider once, newest block first) and `nextCursor` (`null` on the last page; an empty page is the last). No total count |
+
+Mock values, to revisit before a backend exists: `SAFETY_POLICY` holds the 500-character report details and the 50-entry block-list page, both enforced by the schemas. `common.ts` gained `multilineTextSchema(max)`, which chat text now uses too. No error codes were added; `NOT_FOUND` answers a block or report of an unknown user, since user summaries are public anyway.
 
 ## Verification
 

@@ -1,6 +1,6 @@
 # Future API: conventions, boundaries, and handoff
 
-Status: proposed specification, not an implemented API. Last updated: 2026-11-01. The shared schemas for [common values and errors](#common-values-and-errors-contract-001-a), for [locations and users](#locations-and-users-contract-001-b), for [authentication](authentication.md#implemented-contracts-contract-001-c), for [place search](rides.md#places-and-discovery), and for [ride requests, nearby discovery, matches and the public group preview](rides.md#implemented-contracts-contract-002-b) exist in `packages/contracts`; the other contracts are still planned.
+Status: proposed specification, not an implemented API. Last updated: 2026-11-01. The shared schemas for [common values and errors](#common-values-and-errors-contract-001-a), for [locations and users](#locations-and-users-contract-001-b), for [authentication](authentication.md#implemented-contracts-contract-001-c), for [place search](rides.md#places-and-discovery), for [ride requests, nearby discovery, matches and the public group preview](rides.md#implemented-contracts-contract-002-b), for [groups](groups.md#implemented-contracts-contract-003-a), for [chat](groups.md#implemented-chat-contracts-contract-003-b) and for [block and report](groups.md#implemented-safety-contracts-contract-003-c) exist in `packages/contracts`; the realtime and notification contracts are still planned.
 
 The mobile mock data source must reproduce these observable operations and rules. A future NestJS backend will implement the reviewed contracts after the mock mobile MVP. No backend implementation belongs to the current milestone.
 
@@ -52,8 +52,9 @@ Schemas live in `packages/contracts`, organized as described in [architecture](.
 | `MeetingPointDto` | ID, shared place coordinates, label, optional viewer-specific walking estimate. Implemented; the group carries it since CONTRACT-003-A |
 | `ChatMessageDto` | ID, group ID, sender, text, createdAt, group-local sequence (from 1, no gaps), client message ID. Implemented; see [chat contracts](groups.md#implemented-chat-contracts-contract-003-b) |
 | `SendChatMessageInput`, `ChatHistoryQueryInput`, `ChatMessagePageDto` | Client message ID and text (1–1,000); `beforeCursor` or `afterSequence` and a limit (1–50); ascending messages, `olderCursor`, `latestSequence`. Implemented |
-| `ReportUserInput` | Target, reason, optional bounded details, optional relevant group/message reference |
-| `BlockUserInput` | Target user ID |
+| `ReportUserInput`, `ReportReceiptDto` | Operation ID, target user ID, reason (four choices), optional details (1–500, multi-line) and context (group, message or `null`); receipt ID and acceptance time, with no moderation status. Implemented; see [safety contracts](groups.md#implemented-safety-contracts-contract-003-c) |
+| `BlockUserInput`, `BlockUserResultDto` | Operation ID (the target is in the path); the block and the caller's leave from a shared live group, or `null`. Implemented |
+| `BlockedUserDto`, `BlockListQueryInput`, `BlockListPageDto` | Public user summary and block time; optional cursor and limit (1–50); blocks newest first and `nextCursor`. Implemented |
 | `NotificationPayloadDto` | Payload version, notification ID, kind, resource IDs, issuedAt/expiresAt |
 | `DomainEventDto` | Event ID, schema version, type, occurredAt, resource version and payload |
 | `ApiErrorDto` | Code, safe message, request ID, optional field errors/retry delay. Implemented; see below |
@@ -76,6 +77,7 @@ Implemented in `packages/contracts/src/{common,errors}.ts` and covered by `pnpm 
 | `FieldErrorSchema` | `{ field, code, message }`. `field` is a dot path (`origin.latitude`, `members.0.userId`); `code` is `REQUIRED`, `INVALID_FORMAT`, `TOO_SHORT`, `TOO_LONG`, `OUT_OF_RANGE` or `INVALID_VALUE`; `message` is 1–200 characters. There is no field for the submitted value, so an error cannot echo it |
 | `ApiErrorSchema` | `code`, `message` (1–500 characters, safe to show), `requestId` (an ID), optional `fieldErrors` (1–50), optional `retryAfterSeconds` (integer, 1–86,400) |
 | `singleLineTextSchema(max)` | Builds a short text schema (added by CONTRACT-001-B): 1–`max` characters, no leading or trailing whitespace, no control characters such as line breaks. Nothing is trimmed; unclean text fails |
+| `multilineTextSchema(max)` | Builds a longer text schema (added by CONTRACT-003-C for report details; chat text uses it too): as above, but line breaks (`\n`) are allowed inside. `\r`, tabs and other control characters fail |
 
 The error body has no envelope of its own in these contracts; how the future HTTP adapter wraps it is decided with that adapter. Transport failures (offline, timeout, aborted request, schema mismatch) have no `ApiErrorCode`; mobile models them separately.
 

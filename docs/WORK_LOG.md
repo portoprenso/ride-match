@@ -1591,3 +1591,52 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
   - MEGAsync exclusions.
 - **Ownership:** Released; no active task.
+
+## 2026-11-01 — CONTRACT-003-C: Block and report contracts
+
+- **Actor/session:** Claude Code / contract-003-c.
+- **Status:** `Completed`; ownership released. The parent CONTRACT-003 is `Completed`.
+- **Working copy:** `main` at `67d3341` (CONTRACT-003-B). Committed on top of it at the user's request, with no push. The untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start CONTRACT-003-C", then commit (the standing pattern). Contracts, tests and docs only.
+- **Prerequisites:** CONTRACT-003-B is `Completed`.
+- **Changes:**
+  - **`src/safety.ts` (new):**
+    - **`SAFETY_POLICY`:** 500-character report details, 50-entry block-list pages.
+    - **`ReportReasonSchema`:** `unsafe_behavior`, `harassment`, `spam_or_misleading`, `other`, the four choices of screen 41 in order.
+    - **`ReportDetailsSchema`:** `multilineTextSchema(500)`.
+    - **`ReportContextSchema`:** `groupId` and `messageId` (an ID or `null`).
+    - **`ReportUserInputSchema`:** `operationId`, `targetUserId`, `reason`, optional `details` and `context` (omitted, not `null`, as other optional inputs are).
+    - **`ReportReceiptSchema`:** `id`, `receivedAt`.
+    - **`BlockUserInputSchema`:** `operationId`; the rider stays in the path, as the group ID does for leave and status inputs.
+    - **`BlockedUserSchema`:** `user` (`UserSchema`), `blockedAt`.
+    - **`BlockUserResultSchema`:** `blockedUser` and `leftGroup` (`LeaveGroupResultSchema` or `null`), refined so the caller never blocks the rider whose request they cancelled.
+    - **`BlockListQueryInputSchema`:** optional `cursor`, `limit` 1–50.
+    - **`BlockListPageSchema`:** `blockedUsers` (at most 50) and `nextCursor`, refined to each rider once, newest block first (ties allowed), and no cursor on an empty page.
+  - **`src/common.ts`:** `multilineTextSchema(max)`, the chat text rule made reusable. **`src/chat.ts`:** `ChatTextSchema` now calls it; its behavior is unchanged.
+  - **`src/index.ts`:** re-exports `safety.js`.
+  - **Tests:** `tests/safety.test.ts` (new) covers the reasons, details bounds and control characters, context references with copied text rejected, the report input with reporter, message text, location and phone fields rejected, the receipt with status, outcome and echoed details rejected, the block input, blocked user and block result (grouped request, another group, self-block, group details all rejected), the block-list query and each page refinement, and a walkthrough: a report from chat retried with the same operation ID, block-and-leave in a group of two (the remaining member's group closes with `members_left`, and a `blocked` reason fails), the coordinator blocking in a group of three (the earliest remaining member takes over), a repeated block, and the block list before and after unblocking. `tests/common.test.ts` gained multi-line text cases. 699 tests (101 new).
+- **Decisions:**
+  - **Block-and-leave reuses the leave result.** `leftGroup` is exactly what a leave returns (group ID and the cancelled request), so the app reconciles both the same way, and the blocker learns nothing about the group afterwards. The remaining members see an ordinary leave; the closure reason stays `members_left`.
+  - **Block check order:** a used operation ID returns the original result (`IDEMPOTENCY_CONFLICT` for another rider), then self → `VALIDATION_FAILED`, unknown user → `NOT_FOUND`, already blocked → success with the existing block and no leave, then block (and leave a shared live group). A blocked pair cannot share a live group, because a block in either direction prevents joins. A closed group in its history window is unaffected.
+  - **Unblock has no schema:** no body, `204` whether or not the block exists, so retries need no operation ID. It restores no membership or history.
+  - **Report check order:** schema, then a used operation ID returns the original receipt (`IDEMPOTENCY_CONFLICT` if the input differs), then self → `VALIDATION_FAILED`, unknown target → `NOT_FOUND`, context group the caller cannot read → `MEMBERSHIP_REQUIRED`, expired history → `HISTORY_EXPIRED`, a target who never belonged to the group or a message not in it or not theirs → `VALIDATION_FAILED`. Idempotency comes before the access checks, so a retry after the reporter lost access still gets its receipt; this covers screen 52's unknown outcome.
+  - **Context is optional.** A report outside a group (from discovery, or after leaving) omits it, so losing access never prevents reporting. The context holds references only; the source reads the message itself.
+  - **Details optional for every reason,** including `other`, as the design and spec say. 500 characters. Phone numbers and addresses cannot be detected by a schema; the form asks the reporter to leave them out, and details stay out of logs, analytics, notifications and receipts.
+  - **The receipt has no status or outcome,** so it cannot suggest a moderation decision, and it echoes nothing of the report.
+  - **`NOT_FOUND` for an unknown user,** not `TARGET_UNAVAILABLE`: user summaries are public, so existence is not hidden. No error codes were added (still 27); no report rate limit, since none is specified.
+- **Excluded:**
+  - the mock block and report operations, discovery filtering and block-and-leave (SAFETY-001-A);
+  - the report, block and blocked-riders screens (SAFETY-001-B and C);
+  - the subscription revocation that a block causes (CONTRACT-004-A);
+  - any mobile code.
+- **Verification:**
+  - `pnpm test:contracts`: 12 files, 699 tests pass.
+  - A script on the built package confirmed each rejected block-result and block-list case fails only on its own rule's path, and that all 12 new exports are present.
+  - `pnpm build:contracts`, `pnpm typecheck` (contracts, contract tests and mobile) and `pnpm lint`: all Turbo tasks pass.
+  - `git diff --check`: clean. Local Markdown links and anchors in the edited docs resolve.
+  - Not run (no app code changed): mobile Jest, exports and native builds.
+- **Remaining/next:**
+  - CONTRACT-004-A (realtime events and subscriptions), when requested.
+  - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
+  - MEGAsync exclusions.
+- **Ownership:** Released; no active task.

@@ -79,6 +79,26 @@ export function singleLineTextSchema(maxLength: number) {
 }
 
 /**
+ * Builds the schema of a longer text that may span lines, such as a chat message or the
+ * details of a report.
+ *
+ * The text has 1 to `maxLength` characters (UTF-16 code units), no leading or trailing
+ * whitespace, and no control characters other than the line break `\n`, so `\r` and tabs
+ * fail. As with `singleLineTextSchema`, nothing is trimmed or rewritten: the app trims the
+ * text and writes line breaks as `\n` before sending.
+ *
+ * @param maxLength Longest accepted text.
+ */
+export function multilineTextSchema(maxLength: number) {
+  return z
+    .string()
+    .min(1)
+    .max(maxLength)
+    .regex(/^\S(?:[\s\S]*\S)?$/, 'Expected no leading or trailing whitespace')
+    .regex(/^(?:\n|\P{Cc})*$/u, 'Expected no control characters other than line breaks');
+}
+
+/**
  * Metadata attached to every successful response.
  *
  * `serverTime` is the source's clock when the response was produced. Clients use it to

@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001 and CONTRACT-002 are completed; UI-001 is paused for an Android text fix and screen-reader checks; CONTRACT-003 has A and B completed; all other implementation tasks are planned.**
+Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002 and CONTRACT-003 are completed; UI-001 is paused for an Android text fix and screen-reader checks; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,15 @@ Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001 an
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**CONTRACT-003-C — Completed (2026-11-01); CONTRACT-003 is `Completed`.**
+
+- **Done:**
+  - `safety.ts`: the four report reasons, report details (1–500 characters, multi-line), the report context (group, and message or `null`; references only), the report input (operation ID, target user, reason, optional details and context) and the receipt (ID and acceptance time, no moderation status). The block input (operation ID), the block result (the block and the caller's leave from a shared live group, or `null`), the blocked-user summary, and the block-list query and page (newest first, `nextCursor`).
+  - `common.ts`: `multilineTextSchema(max)`, now also behind chat text.
+  - `api/groups.md`: block and report checks in order. A report retry returns the original receipt even after access to the context is lost; a repeated block returns the existing block with no leave; unblock always answers `204`. No error codes were added (`NOT_FOUND` answers an unknown user). 699 contract tests (101 new).
+- **Parent check:** solo-to-group formation, the last-seat conflict, leave, closure and access revocation (by leave, closure, history expiry and block-and-leave) are specified, with a transition and permission table, check orders and tested request/response examples.
+- **Not run (no app code changed):** mobile Jest, exports and native builds.
 
 **CONTRACT-003-B — Completed (2026-11-01).**
 
@@ -150,7 +159,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | MONO-001 | Workspace foundation | Completed |
 | CONTRACT-001 | Common, location, authentication contracts | Completed |
 | CONTRACT-002 | Places, rides, matching contracts | Completed |
-| CONTRACT-003 | Groups, chat, safety contracts | Paused (A and B completed; C planned) |
+| CONTRACT-003 | Groups, chat, safety contracts | Completed |
 | CONTRACT-004 | Realtime and notification contracts | Planned |
 | MOBILE-001 | Expo shell and navigation | Completed |
 | DATA-001 | Data-source and Query foundation | Planned |
@@ -230,7 +239,7 @@ Execution: [MONO-001-A through MONO-001-E](FIRST_STEPS.md#task-cards), assigned 
 
 - **Goal:** Collaboration operations have unambiguous contracts.
 - **Scope:** Atomic joining, group lifecycle, members, meeting points, text messages, block/report.
-- **Expected files/modules:** `C/src/{groups,chat,safety}.ts`, contract tests, `docs/api/groups.md`. CONTRACT-003-A completed `groups.ts`, CONTRACT-003-B `chat.ts`.
+- **Expected files/modules:** `C/src/{groups,chat,safety}.ts`, contract tests, `docs/api/groups.md`. CONTRACT-003-A completed `groups.ts`, CONTRACT-003-B `chat.ts` and CONTRACT-003-C `safety.ts`.
 - **Dependencies:** CONTRACT-002.
 - **Acceptance criteria:** Solo-to-group formation, last-seat conflict, leave, closure, and access revocation are specified.
 - **Verification:** `pnpm test:contracts`; review transition/permission table and request/response examples.
