@@ -145,6 +145,8 @@ Requirements:
 
 Avoid abstract base classes, dependency-injection containers, generic factories, and duplicate service/repository layers. Keep business transition simulation in mock operation modules and presentation logic in features.
 
+**Implemented (LOCATION-001-A):** `src/platform/location/` is the first platform boundary. `locationServices.ts` wraps Expo Location's foreground calls in a small `LocationServices` port (permission, services, cached, current and watched positions; never altitude, speed or heading). `createLocationController` owns the lifecycle and reports a frozen `LocationState`, which `describeLocation(state, now)` turns into what the UI may show and `assessFix` judges for freshness and accuracy (`locationFix.ts`). `LocationProvider`, `useLocationController()` and `useLocationState()` (`useSyncExternalStore`) hand it to React. It reads and writes no app data, so it cannot move a published request. The root layout does not create it yet; LOCATION-001-B decides where it is created, started and disposed. Rules: [location lifecycle](PRODUCT.md#location-lifecycle).
+
 ## Contracts package shape
 
 ```text

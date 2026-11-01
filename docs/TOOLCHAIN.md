@@ -160,6 +160,7 @@ Zod is the only runtime dependency. Mobile receives it through the contracts pac
 | `react-native-worklets` | 0.10.1 | runtime | Required peer of reanimated 4.5.1 (`0.10.x`); optional peer of `expo-modules-core` (`^0.7.4` … `^0.10.0`) | Expo `0.10.1` | MOBILE-001-A |
 | `react-dom` | 19.2.3 | runtime | Required peer of `expo-router`'s web dependencies (`vaul`, Radix); must match `react` | Expo `19.2.3`; peer `react ^19.2.3` | MOBILE-001-A |
 | `@ride-match/contracts` | `workspace:*` | runtime | Shared package | Fixed decision | MOBILE-001-B |
+| `expo-location` | 57.0.22 | runtime | Foreground permission, cached and fresh fixes, and throttled observation (`src/platform/location/`); its config plugin writes the permission entries | Expo `~57.0.22`, the version SDK 57's `bundledNativeModules.json` lists and doctor checks. Published 2026-10-21, so younger than the two weeks used for other packages: the SDK's version takes precedence | LOCATION-001-A |
 | `@tanstack/react-query` | 5.104.5 | runtime | Query cache for data-source reads (with `@tanstack/query-core` 5.104.5) | Pure JavaScript, not in Expo's `bundledNativeModules.json`; peers `react ^18 \|\| ^19`. Published 2026-10-19, the newest release at least two weeks old; 5.105.0 (2026-10-26) not selected yet | DATA-001-B |
 | `typescript` | 6.0.3 | dev | Typecheck | Expo `~6.0.3` | MOBILE-001-A |
 | `@types/react` | 19.2.18 | dev | React types | Expo `~19.2.4` | MOBILE-001-A |
@@ -516,6 +517,12 @@ pnpm --filter @ride-match/contracts exec tsc -p tsconfig.json --listFilesOnly | 
 pnpm --filter @ride-match/contracts exec tsc -p tests/tsconfig.json --listFilesOnly | grep -v "^$(git rev-parse --show-toplevel)/"
 pnpm build:contracts
 pnpm --filter @ride-match/mobile typecheck
+
+# LOCATION-001-A
+pnpm --filter @ride-match/mobile add --save-exact expo-location@57.0.22
+pnpm install --frozen-lockfile
+pnpm peers check
+pnpm doctor:mobile
 ```
 
 ### App fonts (UI-001-A)
@@ -656,6 +663,7 @@ These are expectations recorded here, not checked results. The named task confir
 - **TOOLCHAIN-001-A:** the gesture-handler pin passed the quick dependency checks on 2026-10-30, and VERIFY-001 (2026-10-31) confirmed the rest: tests, both exports, online doctor (21/21), and clean Android and iOS rebuilds. `RNGestureHandler` 2.32.0 is in the generated Podfile's linked modules and the Android build.
 - **CONTRACT-001-A:** on 2026-10-31, contracts tests (61), typecheck, lint, build, the file-list checks, a frozen install, mobile typecheck, and a Node import of `@ride-match/contracts` from `apps/mobile` (all 11 exports, Zod loaded) passed. VERIFY-001 then confirmed the app side: the mobile Jest suite loads Zod through the package, both exports bundle it (the iOS Hermes bytecode contains the contracts' and Zod's strings), and both development builds start with it under Hermes.
 - **DATA-001-B:** on 2026-11-01, `pnpm --filter @ride-match/mobile add --save-exact @tanstack/react-query@5.104.5` added two lockfile packages; a frozen install, online doctor (21/21), the mobile suite (105), typecheck and lint passed. Doctor's output also showed Expo's env loader reading `apps/mobile/.env` and exporting the three `EXPO_PUBLIC_` variables. Query clients in tests set `gcTime: Infinity`: the default five-minute garbage-collection timer otherwise kept Jest from exiting.
+- **LOCATION-001-A:** on 2026-11-01, `pnpm --filter @ride-match/mobile add --save-exact expo-location@57.0.22` added one lockfile package (`expo-location`; its `@expo/image-utils` dependency was already present). A frozen install, `pnpm peers check`, online doctor (21/21), typecheck, lint and the mobile suite (193) passed. `expo config --type introspect` shows only `NSLocationWhenInUseUsageDescription` on iOS (no "always" or motion descriptions, no `location` background mode) and only `ACCESS_COARSE_LOCATION` and `ACCESS_FINE_LOCATION` on Android. **Open:** the development clients have not been rebuilt with the module, so the native permission checks are pending (see DEVELOPMENT.md).
 - **UI-001-A:** typecheck, lint, doctor (21/21), and the resolved config (both plugins) passed on 2026-10-30. VERIFY-001 (2026-10-31) rebuilt both development clients: each Manrope weight renders distinctly, there is no startup font error, and nothing clips on iOS at the default and XXXL text sizes. **Open:** on Android, line heights grow less than font sizes under the system's nonlinear font scaling. At 150% the `section` style (24/30) cuts off descenders on its last line; at 200% a `section` line is 38 dp, and `heading` and `subheading` are tight too.
 
 ## Sources (checked 2026-10-03)

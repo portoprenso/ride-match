@@ -1916,3 +1916,46 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
   - MEGAsync exclusions.
 - **Ownership:** Released; no active task.
+
+## 2026-11-01 — LOCATION-001-A: Foreground location controller
+
+- **Actor/session:** Claude Code / location-001-a.
+- **Status:** `Paused`: implemented and unit-tested; the native permission checks are pending on rebuilt development clients, deferred to the later verification pass as the user prefers. Ownership released. The parent LOCATION-001 is `Paused` (A implemented; B planned).
+- **Working copy:** `main` at `ef0ae37` (MOCK-001-B). Committed on top of it, with no push: the user asked for a commit after each step. The untracked `.idea/` files were left untouched.
+- **Request/scope:** "Ok, go with cards that could be started now, like location-001-a or else". LOCATION-001-A first, then ANALYTICS-001-A. Scope: the platform controller, its dependency and native configuration, tests and docs. No permission UI, map or composition change.
+- **Prerequisites:** MOBILE-001 is `Completed`.
+- **Changes:**
+  - `expo-location` 57.0.22 (exact; SDK 57's `~57.0.22`), one lockfile package.
+  - `app.config.ts`: the `expo-location` plugin with a when-in-use description and the "always" and motion descriptions removed. Background location and the Android foreground service are off.
+  - New in `apps/mobile/src/platform/location/`:
+    - `locationServices.ts`: `LocationPermissionResult`, `DevicePosition`, `LocationServices` and `expoLocationServices`. Precision comes from iOS `accuracy` and Android `accuracy`. Positions keep only latitude, longitude, accuracy and time. No call prompts for device settings.
+    - `locationFix.ts`: `LocationFix`, `BROWSING_FIX_MAX_AGE_MS`, `FixAssessment`, `assessFix`.
+    - `createLocationController.ts`: `LocationPermission`, `LocationState`, `LocationStatus`, `describeLocation`, `AppStateSource`, `LocationControllerOptions`, `LocationController`, `createLocationController`, `FIX_TIMEOUT_MS`.
+    - `LocationProvider.tsx`: `LocationProvider`, `useLocationController`, `useLocationState`.
+  - **Tests:** `tests/locationLifecycle.test.tsx` (25), with a fake device and app state. 193 mobile tests.
+- **Decisions:**
+  - **No prompt without explanation:** `start()` only reads the permission; `requestPermission()` is for the explanation screen (LOCATION-001-B). It resolves once services are checked, without waiting for a fix.
+  - **Cached then fresh:** a cached fix up to two minutes old shows at once (docs/PRODUCT.md). A fresh high-accuracy fix follows. One attempt runs at a time with a 15-second timeout; a late fix still applies, because it is real. A failure rechecks location services.
+  - **Assessment, not filtering:** stale and inaccurate fixes are shown and labelled. Only a fresh (60 s) and accurate (100 m, precise permission) fix is usable for a pickup, the CONTRACT-001-B limits on the device clock. The source rechecks the age on its own clock.
+  - **Observation by reference count:** it runs while at least one caller observes and the app has permission, services and the foreground. It stops on `background`. iOS `inactive` (OS dialogs, app switcher) does not stop it, to avoid churn around the permission prompt. Returning to the foreground rechecks the permission and services (settings changes), refreshes the fix and resumes.
+  - **Honest failures:** permission loss clears the fix and drops late results. A failed permission read is a state of its own, retried on return. A failed services read counts as unknown and lets a fix attempt decide. Nothing invents a position.
+  - **Cannot move a published request:** the controller reads and writes no app data, and fixes are frozen, so a captured pickup never changes.
+  - **A small injected port** (`LocationServices`, `AppStateSource`) keeps the controller testable without native modules; the Expo adapter is thin and tested for its mapping.
+  - **Not mounted yet:** LOCATION-001-B decides where the controller is created, started and disposed, together with the explanation and denial UI.
+- **Excluded:**
+  - the explanation, denial and recovery UI and the manual pickup (LOCATION-001-B);
+  - the map, user dot and recenter (MAP-001-A); converting a fix to the creation input on the source clock (RIDE-001-B);
+  - background location of any kind.
+- **Verification:**
+  - `npx jest tests/locationLifecycle.test.tsx` (in `apps/mobile`): 25 pass. Two first-run failures were test issues and were fixed: an unresolved first fix made the foreground return reuse that attempt, which is correct, and React's scheduler timers needed flushing after unmount.
+  - `pnpm test:mobile`: 10 suites, 193 tests pass, and Jest exits.
+  - `pnpm typecheck`, `pnpm lint`: pass.
+  - `pnpm install --frozen-lockfile`, `pnpm peers check` (no issues), `npx expo-doctor` (21/21): pass.
+  - `npx expo config --type introspect`: iOS has only `NSLocationWhenInUseUsageDescription` and no `location` background mode. Android has only `ACCESS_COARSE_LOCATION` and `ACCESS_FINE_LOCATION`.
+  - `git diff --check`: clean. Local Markdown links and anchors in the edited docs resolve.
+  - Not run (deferred): rebuilt development clients and the native permission checks in DEVELOPMENT.md (prompt text, denial and settings recovery, approximate and reduced precision, services off, no background location). These are what complete the card.
+- **Remaining/next:**
+  - ANALYTICS-001-A, which the user asked for next.
+  - The native checks of this card in the later verification pass, with the deferred development-build check.
+  - LOCATION-001-B also needs UI-001-D.
+- **Ownership:** Released; no active task.

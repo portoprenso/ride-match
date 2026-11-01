@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix and screen-reader checks; DATA-001 is completed; MOCK-001 has A and B completed; all other implementation tasks are planned.**
+Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix and screen-reader checks; DATA-001 is completed; MOCK-001 has A and B completed; LOCATION-001-A is implemented and paused for native permission checks; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,13 @@ Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**LOCATION-001-A — Paused (2026-11-01): implemented; native permission checks pending.**
+
+- **Done:**
+  - `expo-location` 57.0.22 with a foreground-only config plugin entry (iOS when-in-use text only; Android coarse and fine location only).
+  - `src/platform/location/`: the `LocationServices` port over Expo Location, `createLocationController` (permission without prompting until asked, cached then fresh fixes with a 15-second timeout, services checks, observation only while needed and in the foreground, recheck on return, permission loss clears the fix), `describeLocation` and `assessFix` (fresh, recent or stale; accurate; usable for a pickup), and `LocationProvider` with its hooks. Not mounted yet. 193 mobile tests (25 new).
+- **Pending (deferred, needs rebuilt development clients):** the native permission checks in DEVELOPMENT.md on Android and iOS. The card becomes `Completed` once they pass.
 
 **MOCK-001-B — Completed (2026-11-01).**
 
@@ -217,7 +224,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | MOCK-001 | Simulator foundation | Paused (A and B completed; C planned) |
 | SYNC-001 | Event synchronization and recovery | Planned |
 | AUTH-001 | Simulated authentication | Planned |
-| LOCATION-001 | Foreground location | Planned |
+| LOCATION-001 | Foreground location | Paused (A implemented, native checks pending; B planned) |
 | MAP-001 | Native map shell | Planned |
 | ANALYTICS-001 | Typed analytics foundation | Planned |
 | MAP-002 | Live nearby activity | Planned |
@@ -362,10 +369,10 @@ Execution: [MOBILE-001-A through MOBILE-001-H](FIRST_STEPS.md#mobile-001-a--crea
 
 - **Goal:** The app presents honest usable location states.
 - **Scope:** Permission, cached/fresh fix, manual fallback, foreground observation, stale/accuracy handling and cleanup.
-- **Expected files/modules:** `M/src/platform/location/`, permission UI and tests.
+- **Expected files/modules:** `M/src/platform/location/`, permission UI and tests. LOCATION-001-A added the controller and `tests/locationLifecycle.test.tsx`.
 - **Dependencies:** MOBILE-001.
 - **Acceptance criteria:** Allow/deny/unavailable/stale/recovery paths work; observation stops in background; a published request is not silently moved.
-- **Verification:** `pnpm test:mobile --runTestsByPath src/platform/location/locationLifecycle.test.ts`; device permission/settings/background checks.
+- **Verification:** `pnpm test:mobile --runTestsByPath tests/locationLifecycle.test.tsx`; device permission/settings/background checks.
 - **Non-goals:** Background tracking, real route calculation, automatic ride-origin updates.
 
 ## MAP-001 — Native map shell

@@ -97,6 +97,15 @@ Use Expo Location with foreground permission only. [Expo Location documentation]
 
 Initial tunable defaults: cached browsing fix up to two minutes old; discovery refresh after roughly 100 metres of movement. Creation requires a recent, sufficiently accurate fix or an explicitly confirmed pickup point. CONTRACT-001-B chose mock defaults for the creation fix: accuracy of 100 m or better and at most 60 seconds old ([locations and users](api/overview.md#locations-and-users-contract-001-b)); otherwise the user confirms a manual pickup point. Confirm or adjust these after device checks; they are not a production policy.
 
+**Implemented controller (LOCATION-001-A):** `apps/mobile/src/platform/location/` holds these rules; no screen uses them yet (LOCATION-001-B adds the explanation and denial UI, MAP-001-A the map).
+
+- Starting reads the permission without prompting. The OS prompt appears only through `requestPermission()`, which the explanation screen calls.
+- With permission it shows a cached fix up to two minutes old, then asks for a fresh one with high accuracy. An attempt that takes over 15 seconds counts as failed, but a fix that arrives later still applies. A failed attempt rechecks location services. Nothing prompts for device settings.
+- The states it reports: checking, needs permission, denied (and whether the prompt can still appear), unavailable (services off, no fix, or the permission could not be read), locating, and located. A located fix is `fresh` (60 s or less, the pickup limit), `recent` (two minutes or less) or `stale`, and accurate only with precise permission and 100 m or better. Only a fresh, accurate fix may become a pickup point; otherwise the user refreshes or confirms a point on the map.
+- Observation (a new position after about 20 m, at most every 5 s on Android, balanced accuracy) runs only while something needs it, with permission and services, and in the foreground. Going to the background stops it; returning rechecks the permission and services, refreshes the fix and resumes. iOS `inactive` (an OS dialog or the app switcher) counts as foreground.
+- Losing permission clears the fix. Fixes are frozen, so a position captured for a request never changes when the device moves.
+- Native configuration is foreground-only: iOS has only the when-in-use description, Android only coarse and fine location.
+
 Published request origins do not automatically move with the device. Exact input coordinates stay out of analytics, logs, and public responses. Discovery uses a coarse viewport; sensitive creation input uses an authenticated body.
 
 ## User flows
