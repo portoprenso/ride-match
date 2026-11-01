@@ -40,7 +40,7 @@ Rechecking after delay enables actual last-seat and expired-target conflicts. Us
 
 ## Scenario controls
 
-`EXPO_PUBLIC_MOCK_SCENARIO` selects the initial fixture. A minimal development/preview picker offers scenario selection, reset, simulated connectivity, fail-next-operation, and time advancement. Controls stay out of feature components and production API mode.
+`EXPO_PUBLIC_MOCK_SCENARIO` selects the initial fixture. The build configuration (DATA-001-A) requires it with the mock data source and checks only its format; the simulator must reject a key it does not know. A minimal development/preview picker offers scenario selection, reset, simulated connectivity, fail-next-operation, and time advancement. Controls stay out of feature components and production API mode.
 
 A clear demo indicator identifies synthetic data. Empty scenarios remain empty. Mock data-source outage and basemap tile outage are distinct states.
 

@@ -1731,3 +1731,44 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
   - MEGAsync exclusions.
 - **Ownership:** Released; no active task.
+
+## 2026-11-01 — DATA-001-A: Data-source boundary and build configuration
+
+- **Actor/session:** Claude Code / data-001-a.
+- **Status:** `Completed`; ownership released. The parent DATA-001 is `Paused` (A completed; B planned).
+- **Working copy:** `main` at `743e7f3` (CONTRACT-004-B). Committed on top of it, with no push: the user asked for a commit after each completed step. The untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start DATA-001-A". Mobile configuration, data boundary, bootstrap composition, tests and docs. No mock data, transport, Query provider, error model or lint rule.
+- **Prerequisites:** MOBILE-001 and CONTRACT-004 are `Completed`.
+- **Changes:**
+  - **`apps/mobile/.env` (new, committed):** `EXPO_PUBLIC_APP_ENV=development`, `EXPO_PUBLIC_DATA_SOURCE=mock`, `EXPO_PUBLIC_MOCK_SCENARIO=active-neighborhood`, with comments; `.env.local` (already ignored) overrides it.
+  - **`src/config/appConfig.ts` (new):** `APP_ENVIRONMENTS`, `DATA_SOURCE_KINDS`, the `AppConfig`/`DataSourceConfig` types, `AppConfigError` (with `problems`), `parseAppConfig(env)` and `readAppConfig()`, which names each `process.env.EXPO_PUBLIC_*` read so Expo can inline it.
+  - **`src/data/AppDataSource.ts` (new):** the interface. `auth` (`requestOtp`, `verifyOtp`, `refreshSession`, `logout`, `getCurrentUser`), `places` (`search`), `rides` (`getNearby`, `getRide`, `getOwnRequest`, `create`, `cancel`, `getMatches`), `groups` (`join`, `getPreview`, `getGroup`, `leave`, `updateStatus`), `chat` (`getHistory`, `send`), `safety` (`report`, `block`, `unblock`, `listBlocks`), `devices` (`register`, `remove`), `events` (`subscribe`, `watchConnection`). `ReadOptions`, `EventForRequest`, `EventSubscription`, `ConnectionState`.
+  - **`src/data/createDataSource.ts`, `errors.ts`, `createUnavailableDataSource.ts`, `DataSourceProvider.tsx` (new):** the central selection with `DataSourceFactories`, `DataSourceUnavailableError`, the rejecting stand-in, and the context with `useDataSource()`.
+  - **`src/bootstrap/composeAppDataSource.ts`, `ConfigurationErrorScreen.tsx` (new):** the composition root (returns `ready` or `failed`, rethrowing unexpected errors) and the error screen.
+  - **`app/_layout.tsx`:** composes once (`useState`), wraps the stack in `DataSourceProvider`, or renders `ConfigurationErrorScreen` instead of any route. The contracts smoke import stays.
+  - **`src/config/isDevelopmentMode.ts`:** comment updated; the scenario route still uses it (MOCK-001-C decides on config-based gating).
+  - **Tests:** `jest.config.js` adds `setupFiles` with `tests/setup/publicEnvironment.ts` (the development values). `tests/dataSource.test.tsx` (new) covers configuration validation, selection, the stand-in's eight namespaces and 26 rejecting operations, composition, `useDataSource()`, and the root layout for mock, `api` and a missing scenario. 69 mobile tests (27 new).
+- **Decisions:**
+  - **No configuration defaults.** Every variable is required, so a missing value fails rather than choosing a data source; the committed `.env` makes development work out of the box. Empty values count as unset; the scenario is ignored with `api`.
+  - **`api` is a known kind that fails at composition,** with a message naming the variable, rather than an unknown value. It never reaches the simulator factory, which a test asserts.
+  - **A configuration failure replaces every route** with a screen that has no action, instead of crashing or showing a map that cannot work. Only `AppConfigError` and `DataSourceUnavailableError` are caught; other errors are rethrown.
+  - **The interface mirrors the documented endpoints:** contract types, path IDs as separate arguments, no tokens except the refresh token that the auth contracts carry. The session mechanism is left to AUTH-001-B. `PATCH /me` has no contract and is not included.
+  - **Signals on reads only;** mutations rely on operation IDs for unknown outcomes.
+  - **Subscriptions last one connection,** matching the contract's per-connection subscription IDs; the app resubscribes and rereads after reconnecting (SYNC-001-B). Listeners are typed by subscription kind.
+  - **Factories are injected into `createDataSource`,** so the data layer imports no implementation; the composition root wires them. Until MOCK-001, the mock slot is a stand-in in which everything rejects with "Mock data is not available yet." and the connection is `disconnected`: no data or riders, so nothing passes for activity. The simulator can reuse it for operations that later cards add.
+  - **No Zod in the mobile app:** the three variables are checked by hand, avoiding a new dependency.
+- **Excluded:**
+  - the Query provider and keys, the error model, read cancellation wiring and the import-restriction lint rule (DATA-001-B);
+  - the simulator, scenarios and dev controls (MOCK-001), session handling (AUTH-001-B), synchronization (SYNC-001);
+  - removing the contracts smoke import (no runtime contract consumer yet; DATA-001-B).
+- **Verification:**
+  - `pnpm test:mobile --runTestsByPath tests/dataSource.test.tsx`: 27 tests pass. `pnpm --filter @ride-match/mobile test`: 5 suites, 69 tests pass.
+  - `pnpm typecheck` and `pnpm lint`: all Turbo tasks pass. `tsc` also passes without the generated, ignored `expo-env.d.ts`.
+  - `git diff --check`: clean. Local Markdown links and anchors in the edited docs resolve.
+  - Not run (deferred to the later verification pass the user asked for): a development build or export confirming that Metro reads `apps/mobile/.env` and the app opens on the map rather than the configuration error screen. Contract tests were not rerun; no contract changed.
+- **Remaining/next:**
+  - DATA-001-B (Query provider and keys, error model, read cancellation, import restriction), when requested.
+  - The deferred `.env` check above, in the later verification pass.
+  - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
+  - MEGAsync exclusions.
+- **Ownership:** Released; no active task.

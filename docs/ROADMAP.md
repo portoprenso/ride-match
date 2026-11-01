@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix and screen-reader checks; all other implementation tasks are planned.**
+Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix and screen-reader checks; DATA-001 has A completed; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,15 @@ Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**DATA-001-A — Completed (2026-11-01).**
+
+- **Done:**
+  - `src/config/appConfig.ts`: validates `EXPO_PUBLIC_APP_ENV`, `EXPO_PUBLIC_DATA_SOURCE` (`mock` or `api`) and, for `mock`, `EXPO_PUBLIC_MOCK_SCENARIO`, with no defaults and every problem named. `apps/mobile/.env` holds the development values.
+  - `src/data/`: the `AppDataSource` interface with its eight typed namespaces (one operation per documented endpoint, signals on reads only, typed event subscriptions and connection state), `createDataSource` (the one branch on the kind: `api` fails with `DataSourceUnavailableError`, never falling back to the simulator), `DataSourceProvider`/`useDataSource()`, and an unavailable stand-in for the mock slot until MOCK-001.
+  - `src/bootstrap/`: one composition per launch; the root layout provides the data source or shows a "This build can’t start" screen. 69 mobile tests (27 new).
+- **Parent check (partial):** unsupported API mode fails clearly. Query keys with identity and parameters, the error model, read cancellation and the import restriction (B) remain.
+- **Not run (deferred to the later verification pass):** a development build or export confirming the app reads `apps/mobile/.env` and opens on the map. No native configuration changed.
 
 **CONTRACT-004-B — Completed (2026-11-01); CONTRACT-004 is `Completed`.**
 
@@ -178,7 +187,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | CONTRACT-003 | Groups, chat, safety contracts | Completed |
 | CONTRACT-004 | Realtime and notification contracts | Completed |
 | MOBILE-001 | Expo shell and navigation | Completed |
-| DATA-001 | Data-source and Query foundation | Planned |
+| DATA-001 | Data-source and Query foundation | Paused (A completed; B planned) |
 | MOCK-001 | Simulator foundation | Planned |
 | SYNC-001 | Event synchronization and recovery | Planned |
 | AUTH-001 | Simulated authentication | Planned |
@@ -287,7 +296,7 @@ Execution: [MOBILE-001-A through MOBILE-001-H](FIRST_STEPS.md#mobile-001-a--crea
 
 - **Goal:** Features can call typed asynchronous operations through one boundary.
 - **Scope:** AppDataSource, central selection, Query provider/keys, error normalization, read cancellation, config validation, import restrictions.
-- **Expected files/modules:** `M/src/data/`, `M/src/config/`, bootstrap providers.
+- **Expected files/modules:** `M/src/data/`, `M/src/config/`, bootstrap providers. DATA-001-A completed the interface, central selection, configuration and data-source provider.
 - **Dependencies:** MOBILE-001, CONTRACT-004.
 - **Acceptance criteria:** Features cannot import mock fixtures; unsupported API mode fails clearly; identity/parameters are represented in relevant query keys.
 - **Verification:** `pnpm test:mobile --runTestsByPath src/data/dataSource.test.ts`; verify lint restriction with a controlled invalid import test/check.
