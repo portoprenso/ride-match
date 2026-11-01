@@ -15,6 +15,7 @@ export * from './groups.js';
 export * from './location.js';
 export * from './matches.js';
 export * from './nearby.js';
+export * from './notifications.js';
 export * from './places.js';
 export * from './realtime.js';
 export * from './rides.js';

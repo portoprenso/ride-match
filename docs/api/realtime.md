@@ -1,6 +1,6 @@
 # Future API: realtime and notifications
 
-Status: planned; the event and subscription contracts (CONTRACT-004-A) exist in `packages/contracts`, and the notification contracts are still planned. Last updated: 2026-11-01. The mobile MVP uses an in-process event emitter and local notifications, not a Socket.IO server or remote push backend.
+Status: planned; the event and subscription contracts (CONTRACT-004-A) and the notification and push-device contracts (CONTRACT-004-B) exist in `packages/contracts`. Last updated: 2026-11-01. The mobile MVP uses an in-process event emitter and local notifications, not a Socket.IO server or remote push backend.
 
 ## Event envelope
 
@@ -73,22 +73,22 @@ The future Socket.IO client lives inside the real data-source implementation. Co
 | `SubscriptionRequestSchema` | Union on `kind`: `nearby` with a `MapViewportSchema` viewport, `user`, `group` with `groupId`. A caller-chosen user, a room name, an exact or oversized viewport and a destination fail |
 | `SubscriptionAckSchema`, `UnsubscribeInputSchema` | `subscriptionId` with the accepted `subscription`; `subscriptionId` only |
 
-No error codes were added. The notification payloads and device registration below remain planned (CONTRACT-004-B).
+No error codes were added. The notification payloads and device registration below are implemented by CONTRACT-004-B.
 
 ## Notification payloads
 
-Use a versioned discriminated payload with notification ID, kind, relevant resource IDs, issuedAt, and expiresAt. Kinds:
+Use a versioned discriminated payload with notification ID, kind, relevant resource IDs, issuedAt, and expiresAt. Every payload has `id`, `schemaVersion` (1), `kind`, `issuedAt` and `expiresAt`: after `issuedAt`, at most one hour later, and no later than the named resource stops being readable. Kinds:
 
-| Kind | Resource identifiers | Expected entry |
-| --- | --- | --- |
-| `matches.available` | Own request ID, optional target reference | Revalidated request/match on map |
-| `group.member_joined` | Group ID | Current group detail |
-| `group.ready` | Group ID | Ready group/meeting point |
-| `chat.message_created` | Group ID, message ID | Authorized chat after history sync |
+| Kind | Resource identifiers | Recipients | Expected entry |
+| --- | --- | --- | --- |
+| `matches.available` | `rideRequestId` (own request); `target` (ride or group) for one new match, `null` for several | The request's owner; expires no later than the request | Revalidated request/match on map |
+| `group.member_joined` | `groupId` | The members already in the group, never the rider who joined | Current group detail |
+| `group.ready` | `groupId` | The members other than the coordinator who confirmed | Ready group/meeting point |
+| `chat.message_created` | `groupId`, `messageId` | The members other than the sender | Authorized chat after history sync |
 
-No exact coordinates, phone numbers, credentials, or private message bodies in push payloads/lock-screen copy. Use generic text such as “A person nearby is travelling in your direction.” Local mock notifications use the same payload shape.
+No exact coordinates, phone numbers, credentials, or private message bodies in push payloads/lock-screen copy. Use generic text such as “A person nearby is travelling in your direction.” Local mock notifications use the same payload shape. The payload carries no display text at all, not even a name: the title and body are fixed generic copy for each kind, never built from resource data, and the strict schemas reject text, names, coordinates, meeting points, phone numbers, tokens, match details and links.
 
-Notifications are hints, not permission grants or authoritative state. Validate payload/version, deduplicate notification taps, resolve authentication, fetch current resource, then navigate. Expired/removed/inaccessible resources produce an unavailable result. A cold start must wait for session/navigation readiness; duplicate callbacks must not stack screens.
+Notifications are hints, not permission grants or authoritative state. Validate payload/version, deduplicate notification taps, resolve authentication, fetch current resource, then navigate. Expired/removed/inaccessible resources produce an unavailable result. A cold start must wait for session/navigation readiness; duplicate callbacks must not stack screens. A payload that fails validation (such as a newer schema version) or has expired gets the generic unavailable notice without a read; otherwise the app reads the current resource with the signed-in session, so a notification for another user, a closed group or a removed target reveals nothing.
 
 ## Push-device registration specification
 
@@ -96,14 +96,36 @@ Paths use `/v1` and require an authenticated user.
 
 | Method/path | Request | Response | Errors |
 | --- | --- | --- | --- |
-| `PUT /me/push-devices/{installationId}` | Expo push token, platform, notification permission state | Registration receipt | Invalid token, unauthenticated |
+| `PUT /me/push-devices/{installationId}` | Expo push token, platform, notification permission state | Registration receipt: installation ID and registration time | `VALIDATION_FAILED` (such as an invalid token), `UNAUTHENTICATED` or `SESSION_EXPIRED` |
 | `DELETE /me/push-devices/{installationId}` | None | `204`; idempotent | Session errors |
 
 Upsert replaces a rotated token/permission state for that installation. Registration associates the current authenticated user; logout/account switches remove or reassign the association without leaking another user's notifications. Push tokens are sensitive operational data and must not be logged.
 
+- `installationId` is a UUID the app creates once per installation and keeps locally, never a hardware or advertising identifier; a reinstall creates a new one.
+- The app registers once it has a token, and again when the token rotates or the permission changes. The source sends nothing to an installation whose permission is not `granted`.
+- The upsert needs no operation ID: a retry replaces the same registration. Another user signing in on the installation takes it over, and a token registered for another installation moves to this one, so a token never reaches two users.
+- The app removes the registration before signing out, and the source also drops the association when the registering session ends. The receipt echoes neither the token nor the user.
+
 During MVP, these operations store inert mock receipts. Do not register real remote push delivery or require backend push credentials. Ask notification permission contextually after a useful action rather than blocking initial browsing. Simulate notification entry with Expo local notifications in development builds. [Expo Notifications](https://docs.expo.dev/versions/latest/sdk/notifications/)
 
 No background GPS or headless background workflow is required. Local scheduled notifications and foreground events are enough to exercise navigation and lifecycle behavior.
+
+## Implemented notification contracts (CONTRACT-004-B)
+
+`packages/contracts/src/notifications.ts`, covered by `pnpm test:contracts`:
+
+| Schema | Rule |
+| --- | --- |
+| `NOTIFICATION_SCHEMA_VERSION`, `NOTIFICATION_POLICY` | `1`, and any other `schemaVersion` fails; `maxLifetimeSeconds` 3,600 |
+| `MatchesAvailableNotificationSchema`, `GroupMemberJoinedNotificationSchema`, `GroupReadyNotificationSchema`, `ChatMessageCreatedNotificationSchema` | `id`, `schemaVersion`, `kind`, `issuedAt`, `expiresAt` (after issue, within the lifetime; failures on `expiresAt`) and the resource IDs above. Text, titles, bodies, names, the recipient, coordinates, meeting points, phone numbers, tokens, matches, match levels and links fail |
+| `NotificationPayloadSchema` | Union on `kind` of the four; `NotificationKind` is its kind. The realtime type `chat.message.created` is not a notification kind |
+| `InstallationIdSchema` | UUID |
+| `ExpoPushTokenSchema` | `ExponentPushToken[…]` or `ExpoPushToken[…]` with URL-safe characters inside, at most 256 characters; raw device tokens and the legacy UUID form fail. Secret |
+| `PushPlatformSchema`, `NotificationPermissionSchema` | `ios`, `android`; `granted`, `denied`, `undetermined` |
+| `RegisterPushDeviceInputSchema` | `pushToken`, `platform`, `permission`. The installation (in the path), a user, device details and locations fail |
+| `PushDeviceReceiptSchema` | `installationId`, `registeredAt`. An echoed token, the user, the permission or a delivery status fail |
+
+No error codes were added. Removal (`DELETE`) has no schema and always answers `204`.
 
 ## Verification
 

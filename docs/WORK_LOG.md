@@ -1690,3 +1690,44 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
   - MEGAsync exclusions.
 - **Ownership:** Released; no active task.
+
+## 2026-11-01 — CONTRACT-004-B: Notification and push-device contracts
+
+- **Actor/session:** Claude Code / contract-004-b.
+- **Status:** `Completed`; ownership released. The parent CONTRACT-004 is `Completed`.
+- **Working copy:** `main` at `5e53494` (CONTRACT-004-A). Committed on top of it, with no push: the user asked for a commit after each completed step. The untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start CONTRACT-004-B". Contracts, tests and docs only.
+- **Prerequisites:** CONTRACT-004-A is `Completed`.
+- **Changes:**
+  - **`src/notifications.ts` (new):**
+    - **`NOTIFICATION_SCHEMA_VERSION`:** 1. **`NOTIFICATION_POLICY`:** `maxLifetimeSeconds` 3,600.
+    - **Fields on every payload:** `id`, `schemaVersion`, `kind`, `issuedAt`, `expiresAt`, refined so the expiry is after issue and within the lifetime (failures on `expiresAt`).
+    - **Payloads:** `MatchesAvailableNotificationSchema` (`rideRequestId`, `target`: a `JoinTargetSchema` or `null`), `GroupMemberJoinedNotificationSchema` (`groupId`), `GroupReadyNotificationSchema` (`groupId`), `ChatMessageCreatedNotificationSchema` (`groupId`, `messageId`), and their union `NotificationPayloadSchema` with the `NotificationKind` type.
+    - **Push devices:** `InstallationIdSchema` (UUID), `ExpoPushTokenSchema` (`ExponentPushToken[…]` or `ExpoPushToken[…]`, URL-safe inside, at most 256 characters), `PushPlatformSchema` (`ios`, `android`), `NotificationPermissionSchema` (`granted`, `denied`, `undetermined`), `RegisterPushDeviceInputSchema` (`pushToken`, `platform`, `permission`) and `PushDeviceReceiptSchema` (`installationId`, `registeredAt`).
+  - **`src/index.ts`:** re-exports `notifications.js`.
+  - **Tests:** `tests/notifications.test.ts` (new) covers each payload accepted, the four kinds listed, envelope failures (unknown kind, the realtime type name, schema version 2, missing or malformed ID, missing expiry, offset time), lifetime boundaries for every kind, private content rejected (message text, sender, title, body, meeting point, coordinates, who joined, the recipient, phone number, push and access tokens, matches, match level, deep link), wrong resource IDs per kind, the installation ID, token, platform and permission, the registration input and receipt, and a registration and match → chat walkthrough whose serialized payloads hold no private text. 860 tests (79 new).
+- **Decisions:**
+  - **No display text in payloads.** The title and body are fixed generic copy per kind, chosen by whoever presents the notification, never built from resource data. A schema cannot detect private content in free text, so the payload has none, and strict schemas reject `title`, `body` and any text field. The copy itself is UI and stays out of the contracts.
+  - **No recipient in payloads.** Unlike events, a notification names no user: a tap always reads the current resource with the signed-in session, so a notification for another user, a closed group or a removed target ends in the generic unavailable notice and reveals nothing.
+  - **Flat payloads** (resource IDs beside the envelope fields), which fit push `data` directly. `matches.available` names the target for one new match and uses `null` for several, the known-absence convention.
+  - **Recipients per kind:** the owner for matches; the members already in the group for a join (never the joiner, and not who joined); the members other than the coordinator for ready; the members other than the sender for chat.
+  - **One-hour maximum lifetime,** as long as a closed group's chat stays readable, and the source sets each expiry no later than the resource stops being readable. An expired or invalid payload (including a newer schema version) gets the unavailable notice without a read.
+  - **Kind names follow the spec** (`chat.message_created`), distinct from the realtime type `chat.message.created`; a test keeps the event name out of the notification union.
+  - **Registration is an upsert by installation** with no operation ID. Another user signing in on the installation takes it over, a token registered for another installation moves to this one (so a token never reaches two users), the app removes the registration before signing out, and the source drops it when the registering session ends. Removal has no schema and always answers `204`. The installation ID is an app-created UUID, never a hardware or advertising identifier.
+  - **The receipt echoes neither token nor user,** and carries no delivery status; in the mock it is inert. The source sends nothing to an installation whose permission is not `granted`. The token format follows Expo's bracketed form; the legacy UUID form and raw device tokens fail.
+  - **No new error codes:** `VALIDATION_FAILED`, `UNAUTHENTICATED`, `SESSION_EXPIRED`.
+- **Excluded:**
+  - the local-notification adapter, mock device registration and payload generation (NOTIFICATION-001-A/B);
+  - the tap coordinator, deduplication and startup ordering in code (NOTIFICATION-001-C);
+  - the generic copy strings, and any mobile code.
+- **Verification:**
+  - `pnpm test:contracts`: 14 files, 860 tests pass.
+  - A script on the built package confirmed that private-content cases fail as unknown keys, lifetime failures land on `expiresAt`, an unknown kind fails on `kind` and version 2 on `schemaVersion`, and that all 13 new exports are present.
+  - `pnpm build:contracts`, `pnpm typecheck` (contracts, contract tests and mobile) and `pnpm lint`: all Turbo tasks pass.
+  - `git diff --check`: clean. Local Markdown links and anchors in the edited docs resolve.
+  - Not run (no app code changed): mobile Jest, exports and native builds.
+- **Remaining/next:**
+  - DATA-001-A (the `AppDataSource` interface and config validation), when requested.
+  - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
+  - MEGAsync exclusions.
+- **Ownership:** Released; no active task.
