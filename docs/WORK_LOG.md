@@ -2042,3 +2042,16 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - UI-001-D's screen-reader pass (TalkBack on the emulator or a phone, VoiceOver on a signed iPhone build) when the user is ready; which team signs the iPhone build is the user's choice. The current development builds already contain everything it needs; recreate the temporary sample described above.
   - Every remaining card still waits on UI-001-D (directly, or through MOCK-001-C and LOCATION-001-B).
 - **Ownership:** Released; no active task.
+
+## 2026-11-01 — UI-001-D: Screen-reader checks waived by the user
+
+- **Actor/session:** Claude Code / ui-001-d-waiver.
+- **Status:** UI-001-D is `Completed` by user decision; ownership released. UI-001 stays `Paused` for UI-001-A.
+- **Working copy:** `main` at `803aff1` (VERIFY-002); docs only, committed on top, with no push.
+- **Request:** "Mark talkback and voiceover as tested. It's ok, we will additionaly test them in the very final, when everything, including backend will work."
+- **Decision and wording:** the checks were not run, so the docs record them as waived (accepted untested by the user), not as passed: focus returning to the opener after a sheet closes (TalkBack and VoiceOver), the VoiceOver escape gesture, and the announced confirmation error. Jest covers these calls; VERIFY-001 verified the rest of UI-001-D natively. The user will test TalkBack and VoiceOver in the final device testing, once everything including the backend works.
+- **Effect:** MOCK-001-C and LOCATION-001-B now have all their prerequisites. MAP-001-A follows LOCATION-001-B; AUTH-001-A and SYNC-001-A follow MOCK-001-C.
+- **Docs:** MOBILE_IMPLEMENTATION_PLAN (UI-001-D row), ROADMAP (header, new entry, VERIFY-002 note, UI-001-D entry), AI_CONTEXT (status, next steps, final device testing item), docs/README.
+- **Checks:** documentation only; links and statuses reviewed. No application checks were needed.
+- **Remaining/next:** the user chooses the next card (MOCK-001-C or LOCATION-001-B). The final device testing must include the waived screen-reader checks.
+- **Ownership:** Released; no active task.

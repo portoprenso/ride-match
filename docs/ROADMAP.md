@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix and screen-reader checks; DATA-001 is completed; MOCK-001 has A and B completed; LOCATION-001 has A completed (native permission checks passed in VERIFY-002); ANALYTICS-001 is completed; all other implementation tasks are planned.**
+Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 has A and B completed; LOCATION-001 has A completed (native permission checks passed in VERIFY-002); ANALYTICS-001 is completed; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -13,6 +13,11 @@ This roadmap covers only items 1–2. No backend implementation or real transpor
 
 ## Progress
 
+**UI-001-D — Completed (2026-11-01, user waiver).**
+
+- **Decision:** the user marked the TalkBack and VoiceOver checks as accepted without running them, and will test them in the final device testing, once everything including the backend works. They were not run: focus returning to the opener after a sheet closes, the VoiceOver escape gesture, and the announced confirmation error. Jest covers the calls; VERIFY-001 verified the rest natively.
+- **Unblocked:** MOCK-001-C and LOCATION-001-B now have all their prerequisites; MAP-001-A follows LOCATION-001-B, and AUTH-001-A and SYNC-001-A follow MOCK-001-C.
+
 **VERIFY-002 — Completed (2026-11-01): native pass for LOCATION-001-A; LOCATION-001-A is `Completed`.**
 
 - **Done:**
@@ -20,7 +25,7 @@ This roadmap covers only items 1–2. No backend implementation or real transpor
   - The LOCATION-001-A permission checks on the iPhone 17 Pro simulator (iOS 26.5) and the Pixel 9 Pro XL emulator (Android 16): no prompt until requested, the when-in-use text, no "always" option in the prompt, the settings or the manifest, denial, permission granted in the settings picked up on return, approximate location never accurate enough for a pickup, location services off, and observation stopped in the background and resumed on return (iOS `locationd` log, Android's location request list).
   - **Fix:** iOS reports every app's permission as denied while location services are off, so the controller showed a denial. A denial now also reads the services state, and `describeLocation` reports `services-off` before `denied`. One new test (221 mobile tests).
 - **Finding for LOCATION-001-B:** on Android, expo-location still reported `canAskAgain: true` after the second denial; only a third request, which showed no dialog, returned `false`.
-- **Not done:** UI-001-D's screen-reader checks. The user postponed them and chose not to sign an iPhone build for VoiceOver yet, so UI-001-D stays `Paused`.
+- **Not done:** UI-001-D's screen-reader checks. The user postponed them and chose not to sign an iPhone build for VoiceOver yet; later the same day the user waived them until final device testing (entry above).
 
 **ANALYTICS-001-A — Completed (2026-11-01); ANALYTICS-001 is `Completed`.**
 
@@ -173,7 +178,7 @@ This roadmap covers only items 1–2. No backend implementation or real transpor
   - Contracts typecheck and lint cover the tests; mobile still type-checks against the built package.
 - **Deferred at the user's request:** the mobile Jest suite and both exports, which confirm that Jest and Metro load Zod through the contracts package, plus running it under Hermes in the native pass. They are needed before CONTRACT-001-A can be `Completed`.
 
-**UI-001-D — Paused (2026-10-31).**
+**UI-001-D — Completed (2026-11-01; native checks in VERIFY-001, screen-reader checks waived by the user).**
 
 - **Done:**
   - `SheetHost`: one bottom sheet per flow on React Native's `Modal`, over a dimmed screen. Only the flow closes it, after a background tap, Android back, or the VoiceOver escape gesture. It can refuse to close while an operation runs, and returns screen-reader focus to the control that opened it.
@@ -181,7 +186,7 @@ This roadmap covers only items 1–2. No backend implementation or real transpor
   - `ConfirmAction` and `ActionFooter`: a confirmation with a heading, consequence text, a confirm action (primary or danger) and a way back, plus busy and announced-error states.
   - No sheet library: `@gorhom/bottom-sheet` was checked and not adopted (see the implementation plan).
   - 41 mobile tests, typecheck, and lint pass.
-- **Deferred at the user's request:** native checks on both platforms for Android back, iOS dismissal and escape, keyboard-safe actions, and restored focus.
+- **Native checks:** VERIFY-001 verified Android back, background dismissal, busy refusal and keyboard-safe actions on both platforms. The screen-reader checks (restored focus, VoiceOver escape, announced error) were waived by the user on 2026-11-01 until final device testing.
 
 **UI-001-C — Paused (2026-10-30).**
 
@@ -263,7 +268,7 @@ These additions are recorded separately from the original 25-parent graph. They 
 | ID | Task | Prerequisites / execution | Status |
 | --- | --- | --- | --- |
 | TOOLCHAIN-001 | Resolve recorded gesture-handler compatibility decision | MOBILE-001-H; TOOLCHAIN-001-A in the implementation plan. Changes require its explicit assignment. | Completed |
-| UI-001 | Along tokens, controls, inputs and layouts | MOBILE-001-H; gesture-dependent UI-001-D also requires TOOLCHAIN-001-A. Execute UI-001-A through D individually. | Paused |
+| UI-001 | Along tokens, controls, inputs and layouts | MOBILE-001-H; gesture-dependent UI-001-D also requires TOOLCHAIN-001-A. Execute UI-001-A through D individually. | Paused (B, C and D completed; A's Android line-height fix open) |
 
 ## Task rules
 
