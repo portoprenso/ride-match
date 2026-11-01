@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; MAP-001 is paused with A implemented and its native checks pending; all other implementation tasks are planned.**
+Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is paused with A's mock operations completed; LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; MAP-001 is paused with A implemented and its native checks pending; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,15 @@ Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**AUTH-001-A — Completed (2026-11-01).**
+
+- **Done:**
+  - `src/data/mock/auth.ts` behind the mock source's `auth` namespace: one-time code challenges for demo numbers only (Ofcom's fiction range, +44 7700 900000–900999), the demo code `123456`, a synthetic rider per number, sessions with rotating refresh tokens, idempotent logout and the current user. `AUTH_POLICY`'s resend interval, challenge lifetime, attempt limit and token lifetimes apply on the simulated clock.
+  - An `AccessTokenSource` port lets an implementation send the session's access token; the app stays anonymous until AUTH-001-B's session controller supplies it. The simulator's errors can now carry field errors and a retry delay.
+  - 284 mobile tests (16 new): every boundary of the policy, used and replaced challenges, rotated and revoked tokens, field errors that repeat no input, determinism and reset.
+- **Not covered here:** the session controller, secure storage and the sign-in screens (AUTH-001-B to D). Nothing in the app calls these operations yet.
+- **Next available:** AUTH-001-B (session controller and secure storage) and SYNC-001-A. MAP-001-B follows MAP-001-A's native checks.
 
 **MOCK-001-C — Completed (2026-11-01); MOCK-001 is `Completed`.**
 
@@ -272,7 +281,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | DATA-001 | Data-source and Query foundation | Completed |
 | MOCK-001 | Simulator foundation | Completed |
 | SYNC-001 | Event synchronization and recovery | Planned |
-| AUTH-001 | Simulated authentication | Planned |
+| AUTH-001 | Simulated authentication | Paused (A completed; B–D planned) |
 | LOCATION-001 | Foreground location | Completed |
 | MAP-001 | Native map shell | Paused (A implemented, native checks pending; B planned) |
 | ANALYTICS-001 | Typed analytics foundation | Completed |
@@ -408,7 +417,7 @@ Execution: [MOBILE-001-A through MOBILE-001-H](FIRST_STEPS.md#mobile-001-a--crea
 
 - **Goal:** Protected actions authenticate while preserving context.
 - **Scope:** Mock OTP/session operations, phone/code screens, bootstrap/refresh/logout, credential boundary, pending-action continuation.
-- **Expected files/modules:** `M/src/features/auth/`, storage adapter, mock auth operations.
+- **Expected files/modules:** `M/src/features/auth/`, storage adapter, mock auth operations. AUTH-001-A added the mock operations (`M/src/data/mock/auth.ts`) and `tests/mockAuth.test.ts`.
 - **Dependencies:** MOCK-001.
 - **Acceptance criteria:** Anonymous browsing remains usable; create/join/send are gated; cancelled auth returns to browsing; refresh failures clear private data.
 - **Verification:** `pnpm test:mobile --runTestsByPath src/features/auth/authFlow.test.tsx`; manually verify invalid/expired code, preserved draft, and refresh failure.

@@ -20,12 +20,12 @@ import { distanceMeters } from '../src/data/mock/geometry';
 import { isMockScenarioKey, MOCK_SCENARIO_KEYS, type MockScenarioKey } from '../src/data/mock/scenarios';
 import type { Simulator } from '../src/data/mock/simulator';
 import type { MockWorld } from '../src/data/mock/world';
+import { MOCK_LATENCY_MS, settle } from './helpers/mockSource';
 
 const START = Date.parse('2026-11-01T09:00:00.000Z');
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
-// A fixed, short latency, so reads barely move simulated time and never reach a timed event by accident.
-const LATENCY_MS = 10;
+const LATENCY_MS = MOCK_LATENCY_MS;
 
 /** The whole covered city, within the 0.5° span limit. */
 const CITY: MapViewport = { southWest: { latitude: 42.75, longitude: 74.4 }, northEast: { latitude: 43.1, longitude: 74.8 } };
@@ -40,17 +40,6 @@ function source(scenario: MockScenarioKey = 'active-neighborhood') {
   return { simulator, dataSource: createMockDataSource(simulator) };
 }
 
-/** Runs a data-source call through its simulated latency and settles like it. */
-async function settle<Value>(call: Promise<Value>): Promise<Value> {
-  const outcome = call.then(
-    (value) => ({ ok: true as const, value }),
-    (error: unknown) => ({ ok: false as const, error }),
-  );
-  await jest.advanceTimersByTimeAsync(LATENCY_MS);
-  const settled = await outcome;
-  if (settled.ok) return settled.value;
-  throw settled.error;
-}
 
 const sourceError = (code: ApiErrorCode) => expect.objectContaining({ kind: 'source', body: expect.objectContaining({ code }) });
 
@@ -474,8 +463,7 @@ describe('operations without a mock yet', () => {
     const { dataSource } = source();
 
     await expect(dataSource.rides.getOwnRequest()).rejects.toThrow(DataSourceUnavailableError);
-    await expect(dataSource.groups.getGroup('group_1')).rejects.toThrow(DataSourceUnavailableError);
-    await expect(dataSource.auth.getCurrentUser()).rejects.toThrow(
+    await expect(dataSource.groups.getGroup('group_1')).rejects.toThrow(
       'The mock data source does not support this operation yet.',
     );
   });

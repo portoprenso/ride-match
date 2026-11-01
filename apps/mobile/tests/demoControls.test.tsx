@@ -12,10 +12,11 @@ import type { Simulator } from '../src/data/mock/simulator';
 import type { MockWorld } from '../src/data/mock/world';
 import { DemoScenariosScreen } from '../src/features/demo/DemoScenariosScreen';
 import { openHome, press, wait } from './helpers/locationDevice';
+import { MOCK_LATENCY_MS, settle } from './helpers/mockSource';
 import { flushTimersAndRestore, renderApp } from './helpers/renderApp';
 
 const START = Date.parse('2026-11-01T09:00:00.000Z');
-const LATENCY_MS = 10;
+const LATENCY_MS = MOCK_LATENCY_MS;
 const CITY: MapViewport = { southWest: { latitude: 42.75, longitude: 74.4 }, northEast: { latitude: 43.1, longitude: 74.8 } };
 const AREA = { center: { latitude: 42.87, longitude: 74.6 }, radiusMeters: 10_000 };
 
@@ -27,17 +28,6 @@ function setup(scenario: MockScenarioKey = 'active-neighborhood') {
   return { simulator, dataSource: createMockDataSource(simulator), controls: createMockDevControls(simulator, scenario) };
 }
 
-/** Runs a data-source call through its simulated latency and settles like it. */
-async function settle<Value>(call: Promise<Value>): Promise<Value> {
-  const outcome = call.then(
-    (value) => ({ ok: true as const, value }),
-    (error: unknown) => ({ ok: false as const, error }),
-  );
-  await jest.advanceTimersByTimeAsync(LATENCY_MS);
-  const settled = await outcome;
-  if (settled.ok) return settled.value;
-  throw settled.error;
-}
 
 const nearbyIds = async (dataSource: AppDataSource) =>
   (await settle(dataSource.rides.getNearby({ viewport: CITY, limit: 100 }))).items.map((item) => item.id);

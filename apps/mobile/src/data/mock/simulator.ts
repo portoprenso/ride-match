@@ -1,4 +1,4 @@
-import { EVENT_SCHEMA_VERSION, type ApiErrorCode, type DomainEventDto } from '@ride-match/contracts';
+import { EVENT_SCHEMA_VERSION, type ApiErrorCode, type ApiErrorDto, type DomainEventDto } from '@ride-match/contracts';
 
 import type { ConnectionState } from '../AppDataSource';
 import { DataError, DataSourceUnavailableError } from '../errors';
@@ -42,13 +42,19 @@ export type WorkContext<State> = {
   emit(event: DomainEventDto): void;
   /** A new event ID, the schema version and the current time. */
   eventEnvelope(): EventEnvelope;
-  /** A source refusal with a fresh request ID, for the work to throw. */
-  sourceError(code: ApiErrorCode, message: string): DataError;
+  /**
+   * A source refusal with a fresh request ID, for the work to throw. `details` adds the rejected
+   * fields or the minimum wait before a retry, as the error contract allows.
+   */
+  sourceError(code: ApiErrorCode, message: string, details?: SourceErrorDetails): DataError;
   /** Runs `work` at simulated time `dueAt`, such as a new record's expiry; see {@link Simulator.schedule}. */
   schedule(dueAt: number, work: Work<State, void>): () => void;
 };
 
 export type Work<State, Result> = (context: WorkContext<State>) => Result;
+
+/** Optional parts of a source error body beyond its code and message. */
+export type SourceErrorDetails = Pick<ApiErrorDto, 'fieldErrors' | 'retryAfterSeconds'>;
 
 /** What a seed function receives to build the starting world. */
 export type SeedContext = { now: number; ids: IdGenerator; random: SeededRandom };
@@ -160,8 +166,8 @@ export function createSimulator<State>(options: SimulatorOptions<State>): Simula
   let connection: ConnectionState = 'connected';
   let disposed = false;
 
-  const sourceError = (code: ApiErrorCode, message: string) =>
-    DataError.fromSource({ code, message, requestId: ids.next('req') });
+  const sourceError = (code: ApiErrorCode, message: string, details?: SourceErrorDetails) =>
+    DataError.fromSource({ code, message, requestId: ids.next('req'), ...details });
   const receipts = createReceiptStore(() =>
     sourceError('IDEMPOTENCY_CONFLICT', 'This operation ID was already used for a different request.'),
   );

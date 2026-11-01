@@ -21,9 +21,9 @@ import { isDiscoverableRide, isLiveGroup, type MockWorld } from './world';
 /*
  * Public reads: curated place search, nearby discovery, and one ride's or group's public view,
  * as the future source answers them (docs/api/rides.md, docs/api/groups.md). They are open to
- * anonymous callers. The mock has no sessions yet, so every caller is anonymous; once sessions
- * exist (AUTH-001-A), discovery must also leave out the viewer's own request and group and
- * anyone either side blocked.
+ * anonymous callers and are read anonymously for now. Sessions exist since AUTH-001-A, but a
+ * signed-in viewer has no request, group or blocks until RIDE-001-A and SAFETY-001; those cards
+ * make discovery leave out the viewer's own request and group and anyone either side blocked.
  *
  * Each runs as simulator work: the source validates the input itself, because a caller may send
  * anything, and answers with contract errors.

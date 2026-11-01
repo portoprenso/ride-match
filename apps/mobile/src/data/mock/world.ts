@@ -79,8 +79,52 @@ export type GroupRecord = {
 };
 
 /**
+ * A one-time code challenge. `wrongCodes` counts rejected codes; a challenge ends `used` by a
+ * successful verification or `replaced` by a newer one for the same number, and also stops
+ * working at `expiresAt`.
+ */
+export type OtpChallengeRecord = {
+  id: string;
+  phoneNumber: string;
+  expiresAt: number;
+  resendAvailableAt: number;
+  wrongCodes: number;
+  status: 'open' | 'used' | 'replaced';
+};
+
+/** A signed-in session; logging out revokes it, and with it every token it issued. */
+export type SessionRecord = {
+  id: string;
+  userId: string;
+  revoked: boolean;
+};
+
+/** A refresh token. Refreshing marks it `rotated`, after which it never works again. */
+export type RefreshTokenRecord = {
+  sessionId: string;
+  expiresAt: number;
+  status: 'current' | 'rotated';
+};
+
+/**
+ * Everything authentication holds. It is private: phone numbers, codes and tokens never reach a
+ * public DTO, an event or a log, and only `auth.ts` reads them.
+ */
+export type AuthRecords = {
+  /** The synthetic rider each demo phone number signs in as, kept across sign-outs until a reset. */
+  accounts: Map<string, string>;
+  challenges: Map<string, OtpChallengeRecord>;
+  /** The newest challenge for each phone number, which a new request replaces. */
+  latestChallenges: Map<string, string>;
+  sessions: Map<string, SessionRecord>;
+  /** Access tokens and when each expires; a token works only while its session is not revoked. */
+  accessTokens: Map<string, { sessionId: string; expiresAt: number }>;
+  refreshTokens: Map<string, RefreshTokenRecord>;
+};
+
+/**
  * The mock source's world. Curated places are not part of it: they are a fixed catalog shared by
- * every scenario (`places.ts`). Later cards add their own records, such as sessions or messages.
+ * every scenario (`places.ts`). Later cards add their own records, such as messages.
  */
 export type MockWorld = {
   /** Simulated time the scenario was activated; its timed events count from here. */
@@ -88,11 +132,26 @@ export type MockWorld = {
   users: Map<string, UserRecord>;
   rides: Map<string, RideRecord>;
   groups: Map<string, GroupRecord>;
+  /** Starts empty in every scenario, so a reset signs everyone out. */
+  auth: AuthRecords;
 };
 
 /** A world with nothing in it yet, activated at `now`. */
 export function createEmptyWorld(now: number): MockWorld {
-  return { activatedAt: now, users: new Map(), rides: new Map(), groups: new Map() };
+  return {
+    activatedAt: now,
+    users: new Map(),
+    rides: new Map(),
+    groups: new Map(),
+    auth: {
+      accounts: new Map(),
+      challenges: new Map(),
+      latestChallenges: new Map(),
+      sessions: new Map(),
+      accessTokens: new Map(),
+      refreshTokens: new Map(),
+    },
+  };
 }
 
 /** Whether a group is live (`forming` or `ready`), the only kind discovery shows. */

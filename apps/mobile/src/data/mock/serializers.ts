@@ -1,5 +1,7 @@
 import {
   GROUP_POLICY,
+  type AuthSessionDto,
+  type CurrentUserDto,
   type GroupChangeReason,
   type GroupChangedEventDto,
   type GroupPreviewDto,
@@ -8,16 +10,26 @@ import {
   type NearbyRemovalReason,
   type NearbyRemovedEventDto,
   type NearbyUpsertedEventDto,
+  type OtpChallengeDto,
   type PlaceDto,
   type PublicLocationDto,
   type RideChangedEventDto,
   type RideRequestDto,
+  type SessionCredentialsDto,
   type UserDto,
 } from '@ride-match/contracts';
 
 import { findPlace } from './places';
 import type { EventEnvelope } from './simulator';
-import { isDiscoverableRide, isLiveGroup, type GroupRecord, type MockWorld, type RideRecord, type UserRecord } from './world';
+import {
+  isDiscoverableRide,
+  isLiveGroup,
+  type GroupRecord,
+  type MockWorld,
+  type OtpChallengeRecord,
+  type RideRecord,
+  type UserRecord,
+} from './world';
 
 /*
  * Safe serializers: the only way records leave the mock source. Each one builds a new DTO field
@@ -48,6 +60,48 @@ function toPublicLocationDto(area: PublicLocationDto): PublicLocationDto {
     radiusMeters: area.radiusMeters,
     label: area.label,
   };
+}
+
+/** A challenge as its requester sees it: never the code or the phone number. */
+export function toOtpChallengeDto(challenge: OtpChallengeRecord): OtpChallengeDto {
+  return {
+    id: challenge.id,
+    expiresAt: toTimestamp(challenge.expiresAt),
+    resendAvailableAt: toTimestamp(challenge.resendAvailableAt),
+  };
+}
+
+/** Tokens just issued to a session, with their expiry times in simulated milliseconds. */
+export type IssuedCredentials = {
+  accessToken: string;
+  accessTokenExpiresAt: number;
+  refreshToken: string;
+  refreshTokenExpiresAt: number;
+};
+
+export function toSessionCredentialsDto(credentials: IssuedCredentials): SessionCredentialsDto {
+  return {
+    accessToken: credentials.accessToken,
+    accessTokenExpiresAt: toTimestamp(credentials.accessTokenExpiresAt),
+    refreshToken: credentials.refreshToken,
+    refreshTokenExpiresAt: toTimestamp(credentials.refreshTokenExpiresAt),
+  };
+}
+
+/** A new session for its own user: the public summary and the credentials, no phone number. */
+export function toAuthSessionDto(user: UserRecord, credentials: IssuedCredentials): AuthSessionDto {
+  return { user: toUserDto(user), ...toSessionCredentialsDto(credentials) };
+}
+
+/**
+ * The signed-in user with references to their live request and its group, so the app can
+ * restore navigation. Only the user themself receives it.
+ */
+export function toCurrentUserDto(world: MockWorld, user: UserRecord): CurrentUserDto {
+  const ride = [...world.rides.values()].find(
+    (candidate) => candidate.userId === user.id && (candidate.status === 'active' || candidate.status === 'grouped'),
+  );
+  return { user: toUserDto(user), rideRequestId: ride?.id ?? null, groupId: ride?.groupId ?? null };
 }
 
 function requireUser(world: MockWorld, userId: string): UserRecord {

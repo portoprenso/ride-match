@@ -2145,3 +2145,30 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** the port and its types, the provider and hook, `createMockDevControls`, `Simulator.reset(next)`, `DemoScenariosScreen`, `ScreenHeader`, the composition gate.
 - **Remaining/next:** available cards are AUTH-001-A and SYNC-001-A; MAP-001-B follows MAP-001-A's native checks. The next native pass rebuilds both clients, runs the map checks and opens LOCATION-001-B's screens and the demo controls.
 - **Ownership:** Released; no active task.
+
+## 2026-11-01 — AUTH-001-A: Mock auth operations
+
+- **Actor/session:** Claude Code / auth-001-a.
+- **Status:** `Completed`; ownership released. Parent AUTH-001 is `Paused` (B–D planned).
+- **Working copy:** `main` at `90ac4e2` (MOCK-001-C); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start AUTH-001-A": the mock challenge, verify, refresh, logout and current-user operations, with synthetic identities only, the expiry, resend and attempt bounds, and used challenges and rotated credentials rejected.
+- **Changes:**
+  - `src/data/mock/auth.ts`: `requestOtp`, `verifyOtp`, `refreshSession`, `logout`, `readCurrentUser`, `DEMO_OTP_CODE`, `isDemoPhoneNumber`; field errors built from the schema issues without echoing input; seeded opaque tokens.
+  - `src/data/mock/world.ts`: `AuthRecords` (accounts, challenges, latest challenge per number, sessions, access tokens, refresh tokens) in every world. `serializers.ts`: `toOtpChallengeDto`, `toSessionCredentialsDto`, `toAuthSessionDto`, `toCurrentUserDto`.
+  - `src/data/mock/simulator.ts`: `sourceError(code, message, details?)` with `fieldErrors` and `retryAfterSeconds` (`SourceErrorDetails`).
+  - `src/data/AppDataSource.ts`: `AccessTokenSource`; the boundary's doc now says implementations read it per call. `src/data/mock/createMockDataSource.ts`: the `auth` namespace and the `accessToken` option (anonymous by default). Comments in `discovery.ts` updated: discovery stays anonymous until viewers can have requests, groups or blocks.
+  - Tests: `tests/mockAuth.test.ts` (16), `tests/helpers/mockSource.ts` (shared `settle`); `tests/mockDataSource.test.ts` no longer expects `auth.getCurrentUser` to be unavailable.
+- **Decisions:**
+  - Only Ofcom's fiction range (+44 7700 900000–900999) can sign in, which makes "synthetic identity only" enforceable: no real number can be collected or sent to.
+  - One demo code, `123456`, documented here and in the API doc; never in a response.
+  - The resend interval counts from the number's latest challenge whatever its state, so signing out and back in within 30 seconds waits too.
+  - Refresh rotates the refresh token only; earlier access tokens live out their 15 minutes, as stateless tokens would. Logout revokes the whole session, so all its tokens stop at once. A rotated token presented again is refused but does not revoke the session (no reuse detection), which the spec does not require.
+  - The data source reads the access token from an `AccessTokenSource` when each call starts; the composition root passes none until AUTH-001-B, so nothing in the app changes yet.
+  - Auth records live in the mock world, so a reset or scenario switch from the demo controls signs everyone out, as the spec requires of a scenario reset.
+- **Checks:**
+  - `pnpm typecheck` and `pnpm lint` passed; `pnpm test:mobile`: 16 suites, 284 tests passed (16 new), no React `act` warnings.
+  - **Not run:** native builds or exports (no screen or native change; deferred per the user's preference).
+- **Docs:** api/authentication (implemented mock), MOCK_SCENARIOS (status, `auth.ts`, discovery and subscription notes), ARCHITECTURE (`AccessTokenSource`), DEVELOPMENT (tests, 284), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, AUTH-001 paused), AI_CONTEXT.
+- **JSDoc:** the auth operations with their error rules, the demo constants, the auth records, the serializers, `AccessTokenSource`, `SourceErrorDetails` and the adapter's `accessToken` option.
+- **Remaining/next:** AUTH-001-B adds secure storage and the session controller that supplies the access token, one shared refresh and logout cleanup; SYNC-001-A is also available. MAP-001-B follows MAP-001-A's native checks.
+- **Ownership:** Released; no active task.

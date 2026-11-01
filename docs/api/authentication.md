@@ -1,6 +1,6 @@
 # Future API: authentication and users
 
-Status: planned; all MVP authentication is simulated. Last updated: 2026-10-31.
+Status: planned API; all MVP authentication is simulated, and the mock operations exist ([AUTH-001-A](#implemented-mock-auth-001-a)). Last updated: 2026-11-01.
 
 Paths are relative to `/v1`; response conventions and common failures are in [overview](overview.md).
 
@@ -66,6 +66,24 @@ Error semantics the mock (AUTH-001-A) implements:
 | Refresh token lifetime | 30 days, renewed on each rotation |
 
 The demo code itself is a mock fixture that AUTH-001-A documents; it is never part of a challenge response.
+
+## Implemented mock (AUTH-001-A)
+
+`apps/mobile/src/data/mock/auth.ts`, through the mock data source's `auth` namespace and covered by `tests/mockAuth.test.ts`. It applies `AUTH_POLICY` and the error table above on the simulated clock.
+
+| Rule | Mock behavior |
+| --- | --- |
+| Demo numbers | Only Ofcom's range for fiction, `+447700900000` to `+447700900999` (+44 7700 900000–900999), so no real number is ever collected. Any other valid number fails with `VALIDATION_FAILED` and an `INVALID_VALUE` field error for `phoneNumber`; a malformed one with `INVALID_FORMAT`, a missing one with `REQUIRED`. No message repeats the number |
+| Demo code | `123456` for every challenge (`DEMO_OTP_CODE`). No SMS is sent, and no response contains the code |
+| Identity | Each demo number signs in as its own synthetic rider, created on its first sign-in and named "Demo rider" plus the number's last three digits, without an avatar. The same number gets the same rider until the scenario starts over |
+| Challenges | Valid until just before `expiresAt`; a new one is refused until the previous one's `resendAvailableAt`, even if that one was used, with `retryAfterSeconds` rounded up. A new challenge replaces the number's previous one |
+| Tokens | Opaque `demo-access.…` and `demo-refresh.…` strings from the scenario's seeded randomness, so the same steps give the same tokens. An access token lives 15 minutes (never past its refresh token), a refresh token 30 days from each rotation |
+| Current user | `UNAUTHENTICATED` without a token, with an unknown one or after logout; `SESSION_EXPIRED` from the access token's deadline. A signed-in demo rider has no request or group yet (RIDE-001) |
+| Refresh | Rotates both tokens; the refresh token sent stops working. Access tokens already issued keep working until they expire, as stateless tokens would |
+| Logout | Revokes the whole session, so its access and refresh tokens stop working at once; repeating it, or sending a rotated or unknown token, still succeeds |
+| Reset | The auth records live in the mock world, so restarting or switching the scenario (demo controls) signs everyone out |
+
+The data source sends the access token it reads from an `AccessTokenSource` (`src/data/AppDataSource.ts`) when each call starts. The composition root does not pass one yet, so the app runs anonymous until the session controller (AUTH-001-B) supplies it. Every auth call goes through the simulator, so latency, queued failures and the connection apply: a request lost on the way leaves the challenge untouched.
 
 ## Session lifecycle
 

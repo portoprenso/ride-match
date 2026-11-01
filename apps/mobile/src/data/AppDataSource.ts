@@ -55,6 +55,14 @@ export type ReadOptions = {
   signal?: AbortSignal;
 };
 
+/**
+ * Returns the access token authenticated operations send, or `null` while signed out. An
+ * implementation calls it when each operation starts, as an HTTP client sets the header of each
+ * request. The auth session controller (AUTH-001-B) provides it; tokens never pass through
+ * feature code.
+ */
+export type AccessTokenSource = () => string | null;
+
 /** Sign-in, session renewal and the signed-in user (`docs/api/authentication.md`). */
 export type AuthOperations = {
   /** Sends or resends a one-time code (`POST /auth/otp/challenges`). The mock sends no SMS. */
@@ -180,9 +188,10 @@ export type EventOperations = {
  * - Inputs and results are the shared contract types, and implementations return values that
  *   satisfy the contract schemas. Path parameters such as a group ID are separate arguments.
  * - Operations reject on failure. DATA-001-B turns rejections into the mobile error model.
- * - Authenticated operations act as the session the implementation holds, which the auth
- *   session controller supplies (AUTH-001-B). Feature code never passes access tokens; only
- *   `auth.refreshSession` and `auth.logout` take the refresh token, as their contracts say.
+ * - Authenticated operations act as the session whose access token the implementation reads
+ *   from its {@link AccessTokenSource}, which the auth session controller supplies (AUTH-001-B).
+ *   Feature code never passes access tokens; only `auth.refreshSession` and `auth.logout` take
+ *   the refresh token, as their contracts say.
  *
  * Composition selects the implementation once (`createDataSource`); features reach it through
  * `useDataSource()` and never import an implementation, fixtures or simulator internals.

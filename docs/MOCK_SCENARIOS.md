@@ -1,6 +1,6 @@
 # Mock simulator and scenarios
 
-Status: partly implemented: the simulator foundation (MOCK-001-A), the discovery world, seeds and public reads that the app runs on (MOCK-001-B), and the demo controls (MOCK-001-C); the other operations and scenarios are planned. Last updated: 2026-11-01.
+Status: partly implemented: the simulator foundation (MOCK-001-A), the discovery world, seeds and public reads that the app runs on (MOCK-001-B), the demo controls (MOCK-001-C), and sign-in and sessions (AUTH-001-A); the other operations and scenarios are planned. Last updated: 2026-11-01.
 
 ## Purpose
 
@@ -71,11 +71,12 @@ Rechecking after delay enables actual last-seat and expired-target conflicts. Us
 | `scenarios.ts` | The implemented keys and their seeds. Riders are invented first names without avatars; each public area is a district around the rider's exact origin |
 | `lifecycle.ts` | Deadlines. An active ride expires at its `expiresAt`: it becomes `expired`, discovery removes it (`expired`) and its owner is told. A live group is cancelled at its `expiresAt`: closure `expired` dated at the deadline even after background time, history for one hour, members' requests cancelled; discovery removes it, and members and owners are told. `admitRide` adds another rider's new request with its deadline |
 | `discovery.ts` | `places.search`, `rides.getNearby`, `rides.getRide`, `groups.getPreview` and accepting a nearby subscription, validating every input as the source would |
+| `auth.ts` (AUTH-001-A) | Demo-number challenges, the demo code, sessions, rotation, logout and the current user, with the world's private `auth` records (accounts, challenges, sessions, tokens); rules in [authentication](api/authentication.md#implemented-mock-auth-001-a) |
 | `createMockDataSource.ts` | `createMockSimulator(scenario)` and the `AppDataSource` adapter. Each implemented call goes through `Simulator.run` (latency, failure controls, connection); every other operation rejects at once with `DataSourceUnavailableError` |
 
 - **Place search:** the curated places inside the area's circle, at most `limit`. Without a query, nearest the center first; with one (ignoring case), a label that starts with the text, then a label word that does, then a label or detail that contains it, each rank by distance. An area that does not reach the coverage box fails with `UNSUPPORTED_AREA`, and an invalid input with `VALIDATION_FAILED` (without field errors for now).
-- **Discovery:** active solo rides and live groups whose public area's center lies in the viewport, nearest the viewport's center first, at most `limit`, with `truncated`. A grouped request never appears on its own: its group stands for it once, and its public read answers `TARGET_UNAVAILABLE`. Previews stay empty, since no implemented scenario supplies matches yet (DESTINATION-001-A); a destination must still name a curated place. A viewport outside the coverage fails with `UNSUPPORTED_AREA`. Every caller is anonymous until sessions exist (AUTH-001-A), so nothing is filtered by viewer yet.
-- **Nearby subscriptions:** accepted after the simulated round trip; each delivers the public events about items in its viewport, and a removal is routed by the removed record's area. Delivery starts once the acknowledgement arrives, so a lost acknowledgement leaves no listener. `user` and `group` subscriptions are unavailable until sessions exist.
+- **Discovery:** active solo rides and live groups whose public area's center lies in the viewport, nearest the viewport's center first, at most `limit`, with `truncated`. A grouped request never appears on its own: its group stands for it once, and its public read answers `TARGET_UNAVAILABLE`. Previews stay empty, since no implemented scenario supplies matches yet (DESTINATION-001-A); a destination must still name a curated place. A viewport outside the coverage fails with `UNSUPPORTED_AREA`. Discovery reads anonymously: sessions exist since AUTH-001-A, but a signed-in viewer has no request, group or blocks until RIDE-001-A and SAFETY-001, so nothing is filtered by viewer yet.
+- **Nearby subscriptions:** accepted after the simulated round trip; each delivers the public events about items in its viewport, and a removal is routed by the removed record's area. Delivery starts once the acknowledgement arrives, so a lost acknowledgement leaves no listener. `user` and `group` subscriptions stay unavailable until the operations whose events they carry exist.
 
 | Scenario | World at activation | Timed |
 | --- | --- | --- |
