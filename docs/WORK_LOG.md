@@ -2116,3 +2116,32 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** `MapLayout`, `Icon`, `isMapProviderConfigured`, `HomeMap`, `useHomeCamera`, `MapHomeScreen`, `useLocationStatus` and the panel's new props, covering provider choice, why the controller draws the dot, camera rules, the key's path and the stand-in map.
 - **Remaining/next:** the native pass: rebuild both clients, run the map shell checks, and open LOCATION-001-B's screens. Android rendering needs a restricted Google Maps key from the user; until then, check the notice. MAP-001-B follows those checks; MOCK-001-C is available.
 - **Ownership:** Released; no active task.
+
+## 2026-11-01 — MOCK-001-C: Demo controls
+
+- **Actor/session:** Claude Code / mock-001-c.
+- **Status:** `Completed`; ownership released. Parent MOCK-001 is `Completed`.
+- **Working copy:** `main` at `7d8182b` (MAP-001-A); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start MOCK-001-C": the existing demo route with an injected dev-control port (screen 50): reset, connectivity, fail-next and time controls, only implemented scenarios enabled, unavailable in production, no fixture imports.
+- **Changes:**
+  - `src/data/DevControls.ts` (the port: scenarios with availability, a snapshot with subscription, `selectScenario`, `reset`, `setConnection`, `failNext`, `advanceTime`) and `src/data/DevControlsProvider.tsx` (`useDevControls()`; `null` in builds without controls).
+  - `src/data/mock/createMockDevControls.ts`: the 14 scenarios of MOCK_SCENARIOS.md with their labels, available when the key is implemented; actions drive the app's one simulator; the snapshot follows the connection through `watchConnection` and counts the clock's advance.
+  - `src/data/mock/simulator.ts`: `reset(next?: SimulatorScenario)` starts another scenario (seed, world, activation) in the same simulator and keeps it for later resets.
+  - `src/data/createDataSource.ts` takes `{ devControls }` and `ComposedDataSource` carries `devControls`; `src/bootstrap/composeAppDataSource.ts` allows them unless `appEnv` is `production`; `app/_layout.tsx` provides them.
+  - `src/features/demo/DemoScenariosScreen.tsx` (screen 50: badge, heading, controls, scenario radio list, production note; announced notices; cancels and resets the Query cache when a scenario starts), `app/dev/scenarios.tsx` (the screen, or an unavailable state without controls), `app/index.tsx` and `MapHomeScreen` (the Demo badge becomes a "Demo scenarios" button when controls exist).
+  - `src/ui/ScreenHeader.tsx` and the `back` and `sliders` icons. `src/config/isDevelopmentMode.ts` removed.
+  - Tests: `tests/demoControls.test.tsx` (12 tests), composition gate cases in `tests/dataSource.test.tsx`; the old dev-route tests left `tests/navigation.test.tsx`.
+- **Decisions:**
+  - The gate is the build's `EXPO_PUBLIC_APP_ENV` with the mock source, not `__DEV__`, since preview builds are release builds that the docs give the controls. Production never creates the controls object.
+  - A scenario switch resets the existing simulator rather than building another, so the `AppDataSource` and the app's connection watchers stay valid.
+  - All documented scenarios are listed, the unbuilt ones disabled, as the acceptance and the design's list suggest; later cards enable theirs by implementing the key.
+  - Failures apply to the next request of any kind, with two outcomes: no answer (`network`) and refused (`SERVICE_UNAVAILABLE`). Per-operation targeting can come with the operations that need it.
+  - Location choices survive a scenario switch: places are the same in every scenario. There are no demo credentials yet.
+  - Home's Demo badge is the entry, since a deep link is awkward on a device.
+- **Checks:**
+  - `pnpm typecheck` and `pnpm lint` (including the simulator import boundary) passed; `pnpm test:mobile`: 15 suites, 268 tests passed (12 new, 2 old dev-route tests replaced), no React `act` warnings.
+  - **Not run (JavaScript only; deferred):** opening the screen on a device or simulator. The current development clients also lack MAP-001-A's native libraries, so the next native pass rebuilds them first.
+- **Docs:** MOCK_SCENARIOS (status, reset with another scenario, implemented controls), ARCHITECTURE (the port, module list), PRODUCT (route behavior), DEVELOPMENT (gate, production test setup, tests, `EXPO_PUBLIC_APP_ENV`), MOBILE_IMPLEMENTATION_PLAN (row, `ScreenHeader`, icons), ROADMAP (entry, MOCK-001 completed), AI_CONTEXT, root README.
+- **JSDoc:** the port and its types, the provider and hook, `createMockDevControls`, `Simulator.reset(next)`, `DemoScenariosScreen`, `ScreenHeader`, the composition gate.
+- **Remaining/next:** available cards are AUTH-001-A and SYNC-001-A; MAP-001-B follows MAP-001-A's native checks. The next native pass rebuilds both clients, runs the map checks and opens LOCATION-001-B's screens and the demo controls.
+- **Ownership:** Released; no active task.

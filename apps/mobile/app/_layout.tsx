@@ -6,6 +6,7 @@ import { ConfigurationErrorScreen } from '../src/bootstrap/ConfigurationErrorScr
 import { composeAppDataSource } from '../src/bootstrap/composeAppDataSource';
 import { createQueryClient } from '../src/bootstrap/createQueryClient';
 import { DataSourceProvider } from '../src/data/DataSourceProvider';
+import { DevControlsProvider } from '../src/data/DevControlsProvider';
 import { LocationChoicesProvider } from '../src/features/location/LocationChoicesProvider';
 import { createLocationController } from '../src/platform/location/createLocationController';
 import { LocationProvider } from '../src/platform/location/LocationProvider';
@@ -36,16 +37,18 @@ export default function RootLayout() {
 
   return (
     <DataSourceProvider dataSource={composition.dataSource}>
-      <QueryClientProvider client={queryClient}>
-        <LocationProvider controller={location}>
-          <LocationChoicesProvider>
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="index" />
-              <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
-            </Stack>
-          </LocationChoicesProvider>
-        </LocationProvider>
-      </QueryClientProvider>
+      <DevControlsProvider controls={composition.devControls}>
+        <QueryClientProvider client={queryClient}>
+          <LocationProvider controller={location}>
+            <LocationChoicesProvider>
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="index" />
+                <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
+              </Stack>
+            </LocationChoicesProvider>
+          </LocationProvider>
+        </QueryClientProvider>
+      </DevControlsProvider>
     </DataSourceProvider>
   );
 }

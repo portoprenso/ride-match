@@ -1,6 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { useLocationController } from '../../platform/location/LocationProvider';
 import { AppText } from '../../ui/AppText';
@@ -26,8 +26,10 @@ import { useHomeCamera } from './mapCamera';
  * @param onSignIn - Opens the sign-in placeholder. This always-visible entry is temporary:
  *   the product asks for sign-in only when a protected action needs it, and AUTH-001
  *   replaces this button with that gating.
+ * @param onOpenDemo - Opens the demo controls; given only in builds that have them, where the
+ *   Demo badge becomes a button.
  */
-export function MapHomeScreen({ onSignIn }: { onSignIn: () => void }) {
+export function MapHomeScreen({ onSignIn, onOpenDemo }: { onSignIn: () => void; onOpenDemo?: () => void }) {
   const controller = useLocationController();
   const { pickup } = useLocationChoices();
   const status = useLocationStatus();
@@ -56,7 +58,19 @@ export function MapHomeScreen({ onSignIn }: { onSignIn: () => void }) {
               along
             </AppText>
           </View>
-          <Badge label="Demo" />
+          {onOpenDemo ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Demo scenarios"
+              hitSlop={spacing.md}
+              onPress={onOpenDemo}
+              style={({ pressed }) => pressed && styles.pressed}
+            >
+              <Badge label="Demo" />
+            </Pressable>
+          ) : (
+            <Badge label="Demo" />
+          )}
         </View>
       }
       controls={
@@ -108,5 +122,8 @@ const styles = StyleSheet.create({
   },
   intro: {
     gap: spacing.sm,
+  },
+  pressed: {
+    opacity: 0.8,
   },
 });

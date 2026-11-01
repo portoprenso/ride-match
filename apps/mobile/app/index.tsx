@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 
+import { useDevControls } from '../src/data/DevControlsProvider';
 import { useLocationIntro } from '../src/features/location/HomeLocation';
 import { LocationIntroScreen } from '../src/features/location/LocationIntroScreen';
 import { MapHomeScreen } from '../src/features/map/MapHomeScreen';
@@ -7,6 +8,7 @@ import { MapHomeScreen } from '../src/features/map/MapHomeScreen';
 export default function HomeRoute() {
   const router = useRouter();
   const intro = useLocationIntro();
+  const devControls = useDevControls();
 
   if (intro.visible) {
     return (
@@ -18,5 +20,10 @@ export default function HomeRoute() {
       />
     );
   }
-  return <MapHomeScreen onSignIn={() => router.push('/auth/phone')} />;
+  return (
+    <MapHomeScreen
+      onSignIn={() => router.push('/auth/phone')}
+      onOpenDemo={devControls === null ? undefined : () => router.push('/dev/scenarios')}
+    />
+  );
 }

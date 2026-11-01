@@ -1,6 +1,6 @@
 # Mock simulator and scenarios
 
-Status: partly implemented: the simulator foundation (MOCK-001-A), and the discovery world, seeds and public reads that the app runs on (MOCK-001-B); the other operations and the scenario controls are planned. Last updated: 2026-11-01.
+Status: partly implemented: the simulator foundation (MOCK-001-A), the discovery world, seeds and public reads that the app runs on (MOCK-001-B), and the demo controls (MOCK-001-C); the other operations and scenarios are planned. Last updated: 2026-11-01.
 
 ## Purpose
 
@@ -55,7 +55,7 @@ Rechecking after delay enables actual last-seat and expired-target conflicts. Us
 - **Failure controls:** `failNext(failure, operation?)` queues explicit failures, matched in order to the named operation or to any. `network` means no answer: by default nothing changed; with `afterCommit` the change was made and only the answer is lost, so a retry with the same operation ID must find the original result. `source` refuses with a chosen error code and a fresh request ID. No random failures.
 - **Connection:** `setConnection('disconnected')` fails new operations with `network`, makes operations in flight fail after their latency, and ends every event subscription (a subscription lasts one connection). `watchConnection` reports the state at once and on changes.
 - **Time:** `advanceTime(ms)` moves simulated time and runs due tasks; `resume()` catches up on foreground return (SYNC-001-B calls it).
-- **Reset:** pending operations fail with `network` ("reset"), scheduled tasks, event subscriptions, receipts and queued failures are cleared, the clock offset, IDs and both random streams restart, the world is rebuilt and `activate` runs again, and the connection is restored. Connection watchers stay, since the app owns them. Repeated resets leave the same counts (`stats()`) and timers.
+- **Reset:** `reset(next?)` starts the scenario over, or `next` (its seed, world and activation) in its place, which later resets keep (MOCK-001-C); the data source and connection watchers stay the same. Pending operations fail with `network` ("reset"), scheduled tasks, event subscriptions, receipts and queued failures are cleared, the clock offset, IDs and both random streams restart, the world is rebuilt and `activate` runs again, and the connection is restored. Connection watchers stay, since the app owns them. Repeated resets leave the same counts (`stats()`) and timers.
 - **Disposal:** releases everything, connection watchers included; pending and later operations fail with `DataSourceUnavailableError`; it is idempotent.
 - **Scheduling from work (MOCK-001-B):** work also gets `schedule(dueAt, work)`, so a transition can schedule a new record's deadline.
 
@@ -87,6 +87,14 @@ Tests check that every output and every event of a full 31-minute run validates 
 ## Scenario controls
 
 `EXPO_PUBLIC_MOCK_SCENARIO` selects the initial fixture. The build configuration (DATA-001-A) requires it with the mock data source and checks only its format; the composition root rejects a key the simulator does not know, which the configuration error screen shows (MOCK-001-B). A minimal development/preview picker offers scenario selection, reset, simulated connectivity, fail-next-operation, and time advancement. Controls stay out of feature components and production API mode.
+
+**Implemented controls (MOCK-001-C):** `/dev/scenarios` (screen 50), reached from home's Demo badge or a deep link.
+
+- **Port and gate:** features see the `DevControls` port (`src/data/DevControls.ts`) through `useDevControls()`. The composition root creates it (`createMockDevControls`) only for the mock data source in `development` and `preview` builds (`EXPO_PUBLIC_APP_ENV`); a `production` build never creates it, so home's Demo badge is plain text and the route shows "Demo scenarios are only available in development and preview builds that use mock data", without redirecting. It replaced the `__DEV__` check (`isDevelopmentMode`, removed).
+- **Scenarios:** all 14 scenarios above (A to N) are listed as radio buttons; only implemented keys are enabled, the rest say "not built yet". Choosing one resets the app's one simulator into that scenario from its own seed (`reset(next)`), so the same data source and connection watchers serve the new world.
+- **Controls:** restart the running scenario; Online and Offline (`setConnection`); move the source's clock ahead by 30 seconds, 5 or 15 minutes (`advanceTime`; the screen shows how far ahead it runs, back to real time on every reset); and queue a failure for the next request of any kind: no answer (`network`, nothing changed) or refused (`SERVICE_UNAVAILABLE`).
+- **App caches:** starting a scenario, or the same one over, cancels and resets the app's cached reads (TanStack Query), so nothing from the old world stays on screen. The location choices (introduction set aside, confirmed pickup) stay, since places are the same in every scenario. There are no demo credentials yet (AUTH-001).
+- **Feedback:** every action shows a notice and is announced to screen readers.
 
 A clear demo indicator identifies synthetic data. Empty scenarios remain empty. Mock data-source outage and basemap tile outage are distinct states.
 

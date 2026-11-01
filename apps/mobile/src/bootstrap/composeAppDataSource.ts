@@ -2,7 +2,9 @@ import { AppConfigError, readAppConfig, type AppConfig } from '../config/appConf
 import type { AppDataSource } from '../data/AppDataSource';
 import { createDataSource, type DataSourceFactories } from '../data/createDataSource';
 import { DataSourceUnavailableError } from '../data/errors';
+import type { DevControls } from '../data/DevControls';
 import { createMockDataSource, createMockSimulator } from '../data/mock/createMockDataSource';
+import { createMockDevControls } from '../data/mock/createMockDevControls';
 import { isMockScenarioKey, MOCK_SCENARIO_KEYS } from '../data/mock/scenarios';
 
 /**
@@ -10,11 +12,11 @@ import { isMockScenarioKey, MOCK_SCENARIO_KEYS } from '../data/mock/scenarios';
  * configuration cannot run.
  */
 export type AppComposition =
-  | { status: 'ready'; dataSource: AppDataSource; dispose: () => void }
+  | { status: 'ready'; dataSource: AppDataSource; dispose: () => void; devControls: DevControls | null }
   | { status: 'failed'; error: AppConfigError | DataSourceUnavailableError };
 
 const factories: DataSourceFactories = {
-  mock({ scenario }) {
+  mock({ scenario, devControls }) {
     // The configuration checks only the key's format; the simulator knows which scenarios exist.
     if (!isMockScenarioKey(scenario)) {
       throw new AppConfigError([
@@ -22,13 +24,20 @@ const factories: DataSourceFactories = {
       ]);
     }
     const simulator = createMockSimulator(scenario);
-    return { dataSource: createMockDataSource(simulator), dispose: () => simulator.dispose() };
+    return {
+      dataSource: createMockDataSource(simulator),
+      dispose: () => simulator.dispose(),
+      devControls: devControls ? createMockDevControls(simulator, scenario) : null,
+    };
   },
 };
 
 /**
  * The composition root: reads the build configuration and builds the one data source, once per
  * app launch. The mock data source starts its scenario at once, timed events included.
+ *
+ * Demo controls exist only in development and preview builds on the mock data source; a
+ * production build never creates them, so nothing in it can reach the simulator's controls.
  *
  * An invalid configuration, an unknown scenario or the unavailable API data source becomes a
  * `failed` composition, which the root layout shows instead of the app; any other error is a bug
@@ -39,7 +48,8 @@ const factories: DataSourceFactories = {
 export function composeAppDataSource(readConfig: () => AppConfig = readAppConfig): AppComposition {
   try {
     const config = readConfig();
-    return { status: 'ready', ...createDataSource(config.dataSource, factories) };
+    const devControls = config.appEnv !== 'production';
+    return { status: 'ready', ...createDataSource(config.dataSource, factories, { devControls }) };
   } catch (error) {
     if (error instanceof AppConfigError || error instanceof DataSourceUnavailableError) {
       return { status: 'failed', error };

@@ -71,19 +71,19 @@ describe('parseAppConfig', () => {
 });
 
 describe('createDataSource', () => {
-  it('builds the simulator with the configured scenario', () => {
-    const simulator = { dataSource: createUnavailableDataSource('test simulator'), dispose: jest.fn() };
+  it('builds the simulator with the configured scenario, passing on whether demo controls are allowed', () => {
+    const simulator = { dataSource: createUnavailableDataSource('test simulator'), dispose: jest.fn(), devControls: null };
     const mock = jest.fn(() => simulator);
 
-    expect(createDataSource({ kind: 'mock', scenario: 'empty-neighborhood' }, { mock })).toBe(simulator);
-    expect(mock).toHaveBeenCalledWith({ scenario: 'empty-neighborhood' });
+    expect(createDataSource({ kind: 'mock', scenario: 'empty-neighborhood' }, { mock }, { devControls: true })).toBe(simulator);
+    expect(mock).toHaveBeenCalledWith({ scenario: 'empty-neighborhood', devControls: true });
   });
 
   it('refuses the API kind clearly and never falls back to the simulator', () => {
-    const mock = jest.fn(() => ({ dataSource: createUnavailableDataSource('test simulator'), dispose: jest.fn() }));
+    const mock = jest.fn(() => ({ dataSource: createUnavailableDataSource('test simulator'), dispose: jest.fn(), devControls: null }));
 
-    expect(() => createDataSource({ kind: 'api' }, { mock })).toThrow(DataSourceUnavailableError);
-    expect(() => createDataSource({ kind: 'api' }, { mock })).toThrow(
+    expect(() => createDataSource({ kind: 'api' }, { mock }, { devControls: true })).toThrow(DataSourceUnavailableError);
+    expect(() => createDataSource({ kind: 'api' }, { mock }, { devControls: true })).toThrow(
       'EXPO_PUBLIC_DATA_SOURCE is "api", but the API data source is not available in this build. Use "mock".',
     );
     expect(mock).not.toHaveBeenCalled();
@@ -141,6 +141,19 @@ describe('composeAppDataSource', () => {
     composition.dispose();
     expect(jest.getTimerCount()).toBe(0);
     jest.useRealTimers();
+  });
+
+  it.each([
+    ['development', true],
+    ['preview', true],
+    ['production', false],
+  ] as const)('gives the %s build demo controls: %s', (appEnv, offered) => {
+    const composition = composeAppDataSource(() => ({ appEnv, dataSource: { kind: 'mock', scenario: 'empty-neighborhood' } }));
+    expect(composition.status).toBe('ready');
+    if (composition.status !== 'ready') return;
+
+    expect(composition.devControls !== null).toBe(offered);
+    composition.dispose();
   });
 
   it('fails the composition for a scenario the simulator does not know', () => {

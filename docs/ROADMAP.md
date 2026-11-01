@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 has A and B completed; LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; MAP-001 is paused with A implemented and its native checks pending; all other implementation tasks are planned.**
+Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; MAP-001 is paused with A implemented and its native checks pending; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,16 @@ Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**MOCK-001-C — Completed (2026-11-01); MOCK-001 is `Completed`.**
+
+- **Done:**
+  - The `DevControls` port (`src/data/DevControls.ts`, `useDevControls()`), created by the composition root with the mock source only in development and preview builds; production builds never create it.
+  - `/dev/scenarios` (screen 50), opened from home's Demo badge: the 14 documented scenarios with only the two implemented ones selectable, restart, Online/Offline, moving the source's clock ahead, and a failure for the next request (no answer or refused). Starting a scenario resets the one simulator into it, so the data source stays the same, and clears the app's cached reads. Production builds show an unavailable state and no entry on home.
+  - `ScreenHeader` and two more design icons. 268 mobile tests (12 new).
+- **Parent check:** reset is repeatable and leaves no timers or listeners (A's tests, and a scenario switch leaves the same counts as a fresh simulator); public outputs contain no exact private locations (B).
+- **Not run (JavaScript only, deferred):** opening the screen on a device. The next native pass needs rebuilt clients anyway (MAP-001-A).
+- **Next available:** AUTH-001-A and SYNC-001-A (both need the whole MOCK-001). MAP-001-B follows MAP-001-A's native checks.
 
 **MAP-001-A — Paused (2026-11-01): implemented, native checks pending.**
 
@@ -260,7 +270,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | CONTRACT-004 | Realtime and notification contracts | Completed |
 | MOBILE-001 | Expo shell and navigation | Completed |
 | DATA-001 | Data-source and Query foundation | Completed |
-| MOCK-001 | Simulator foundation | Paused (A and B completed; C planned) |
+| MOCK-001 | Simulator foundation | Completed |
 | SYNC-001 | Event synchronization and recovery | Planned |
 | AUTH-001 | Simulated authentication | Planned |
 | LOCATION-001 | Foreground location | Completed |
@@ -378,7 +388,7 @@ Execution: [MOBILE-001-A through MOBILE-001-H](FIRST_STEPS.md#mobile-001-a--crea
 
 - **Goal:** Deterministic mock operations and timed events work.
 - **Scope:** State, injected clock, scheduled events, safe serialization, latency/failure controls, minimal active/empty seeds, reset cleanup.
-- **Expected files/modules:** `M/src/data/mock/`, simulator behavior tests. MOCK-001-A completed the foundation modules and `tests/simulator.test.ts`; MOCK-001-B added the world, seeds, serializers, public reads and the adapter, with `tests/mockDataSource.test.ts`.
+- **Expected files/modules:** `M/src/data/mock/`, simulator behavior tests. MOCK-001-A completed the foundation modules and `tests/simulator.test.ts`; MOCK-001-B added the world, seeds, serializers, public reads and the adapter, with `tests/mockDataSource.test.ts`; MOCK-001-C added the demo controls (`createMockDevControls`, `src/features/demo/`) with `tests/demoControls.test.tsx`.
 - **Dependencies:** DATA-001.
 - **Acceptance criteria:** Reset is repeatable; timers/listeners do not accumulate; public outputs contain no exact private locations.
 - **Verification:** `pnpm test:mobile --runTestsByPath src/data/mock/simulator.test.ts`; repeat resets and advance fake time.

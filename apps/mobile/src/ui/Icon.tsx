@@ -8,6 +8,7 @@ import { colors, type ColorName } from './tokens';
  * that table, when a screen first needs it.
  */
 const ICONS = {
+  back: <Path d="m14 5-7 7 7 7" />,
   /** Recenter on the device position. */
   locate: (
     <>
@@ -16,6 +17,8 @@ const ICONS = {
       <Path d="M12 1v5m0 12v5M1 12h5m12 0h5" />
     </>
   ),
+  /** Settings and demo scenarios. */
+  sliders: <Path d="M5 3v4m0 4v10M12 3v10m0 4v4M19 3v4m0 4v10M2 7h6m1 10h6m1-10h6" />,
 };
 
 export type IconName = keyof typeof ICONS;

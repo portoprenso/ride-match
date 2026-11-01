@@ -66,6 +66,9 @@ export type SimulatorOptions<State> = {
   readTime?: () => number;
 };
 
+/** What a reset can start in place of the current scenario: its seed, world and activation. */
+export type SimulatorScenario<State> = Pick<SimulatorOptions<State>, 'seed' | 'createState' | 'activate'>;
+
 /** Counts of what the simulator holds, which must return to zero after disposal. */
 export type SimulatorStats = {
   pendingOperations: number;
@@ -126,8 +129,11 @@ export type Simulator<State> = {
    * subscriptions, receipts and queued failures are cleared, the clock offset, IDs and random
    * sequences restart, the world is rebuilt and activated, and the connection is restored.
    * Connection watchers stay, since the app owns them.
+   *
+   * @param next Starts this scenario instead, from its own seed, and keeps it for later resets.
+   *   The same simulator, and so the same data source, serves the new world.
    */
-  reset(): void;
+  reset(next?: SimulatorScenario<State>): void;
   /** Releases everything, connection watchers included. Later operations fail; calling it again does nothing. */
   dispose(): void;
   stats(): SimulatorStats;
@@ -143,8 +149,9 @@ export function createSimulator<State>(options: SimulatorOptions<State>): Simula
 
   const clock = createSimulatedClock(options.readTime);
   const ids = createIdGenerator();
-  const latencyRandom = createSeededRandom(`${options.seed}:latency`);
-  const worldRandom = createSeededRandom(`${options.seed}:world`);
+  let scenario: SimulatorScenario<State> = options;
+  let latencyRandom = createSeededRandom(`${scenario.seed}:latency`);
+  let worldRandom = createSeededRandom(`${scenario.seed}:world`);
   const scheduler = createScheduler(clock);
   const events = createEmitter<DomainEventDto>();
   const watchers = createEmitter<ConnectionState>();
@@ -169,7 +176,7 @@ export function createSimulator<State>(options: SimulatorOptions<State>): Simula
   let state = buildState();
 
   function buildState(): State {
-    return options.createState({ now: clock.now(), ids, random: worldRandom });
+    return scenario.createState({ now: clock.now(), ids, random: worldRandom });
   }
 
   /** Runs work with a context, then publishes the events it queued, only if it completed. */
@@ -281,7 +288,7 @@ export function createSimulator<State>(options: SimulatorOptions<State>): Simula
 
     resume: () => scheduler.processDue(),
 
-    reset() {
+    reset(next) {
       if (disposed) return;
       cancelPending(() => new DataError('network', 'The mock data source was reset.'));
       scheduler.clear();
@@ -290,10 +297,16 @@ export function createSimulator<State>(options: SimulatorOptions<State>): Simula
       failures.length = 0;
       clock.reset();
       ids.reset();
-      latencyRandom.reset();
-      worldRandom.reset();
+      if (next === undefined) {
+        latencyRandom.reset();
+        worldRandom.reset();
+      } else {
+        scenario = next;
+        latencyRandom = createSeededRandom(`${scenario.seed}:latency`);
+        worldRandom = createSeededRandom(`${scenario.seed}:world`);
+      }
       state = buildState();
-      options.activate?.(simulator);
+      scenario.activate?.(simulator);
       setConnection('connected');
     },
 
@@ -318,6 +331,6 @@ export function createSimulator<State>(options: SimulatorOptions<State>): Simula
     }),
   };
 
-  options.activate?.(simulator);
+  scenario.activate?.(simulator);
   return simulator;
 }

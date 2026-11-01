@@ -1,6 +1,5 @@
 import { screen, userEvent } from '@testing-library/react-native';
 
-import * as developmentMode from '../src/config/isDevelopmentMode';
 import { flushTimersAndRestore, renderApp } from './helpers/renderApp';
 
 afterEach(async () => {
@@ -97,24 +96,5 @@ describe('inert routes', () => {
     await press('Go to map');
     expect(app.getPathname()).toBe('/');
     expect(screen.getByTestId('home-map')).toBeOnTheScreen();
-  });
-
-  it('/dev/scenarios shows the inert scenario placeholder in development mode', async () => {
-    await renderApp('/dev/scenarios');
-
-    expect(screen.getByRole('header', { name: 'Mock scenarios' })).toBeOnTheScreen();
-    expect(screen.getByText(/no scenario is running/)).toBeOnTheScreen();
-  });
-
-  it('/dev/scenarios shows an unavailable state, not a redirect, outside development mode', async () => {
-    jest.spyOn(developmentMode, 'isDevelopmentMode').mockReturnValue(false);
-    const app = await renderApp('/dev/scenarios');
-
-    expect(app.getPathname()).toBe('/dev/scenarios');
-    expect(screen.getByText('This page is only available in development builds.')).toBeOnTheScreen();
-    expect(screen.queryByText('Mock scenarios')).not.toBeOnTheScreen();
-
-    await press('Go to map');
-    expect(app.getPathname()).toBe('/');
   });
 });
