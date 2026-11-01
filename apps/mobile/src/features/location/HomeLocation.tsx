@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 
 import { describeLocation, type LocationStatus } from '../../platform/location/createLocationController';
@@ -49,6 +49,16 @@ export function useLocationIntro() {
   };
 }
 
+/**
+ * The location status at the current time. While a fix is shown it is aged again every
+ * {@link AGE_TICK_MS}, so a position is labelled stale without waiting for a new fix.
+ */
+export function useLocationStatus(): LocationStatus {
+  const state = useLocationState();
+  const now = useNow(state.fix === null ? null : AGE_TICK_MS);
+  return describeLocation(state, now);
+}
+
 function useNow(intervalMs: number | null): number {
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
@@ -59,20 +69,26 @@ function useNow(intervalMs: number | null): number {
   return now;
 }
 
+type HomeLocationPanelProps = {
+  /** From {@link useLocationStatus}, which the map reads too. */
+  status: LocationStatus;
+  /** Shown instead of the location card while location needs no explanation. */
+  fallback: ReactNode;
+};
+
 /**
- * Home's location state (screen 21 and its siblings) and the confirmed pickup point.
+ * Home's location state (screen 21 and its siblings) and the confirmed pickup point, as the
+ * content of the map's sheet.
  *
  * Whatever the permission, services or fix, the user can browse and choose a pickup point by
  * name; nothing here presents a chosen place as the device position. The second action fits the
  * cause: ask again, open the settings, or retry a fix. A failed action is explained in the card
  * it came from.
  */
-export function HomeLocationPanel() {
+export function HomeLocationPanel({ status, fallback }: HomeLocationPanelProps) {
   const controller = useLocationController();
   const state = useLocationState();
   const { pickup } = useLocationChoices();
-  const now = useNow(state.fix === null ? null : AGE_TICK_MS);
-  const status = describeLocation(state, now);
   const card = describeLocationCard(status, Platform.OS);
 
   const cardOpener = useRef<View>(null);
@@ -118,7 +134,7 @@ export function HomeLocationPanel() {
       {card ? (
         <View style={styles.card}>
           <Badge label={card.badge.label} tone={card.badge.tone} />
-          <AppText variant="subheading" accessibilityRole="header">
+          <AppText variant="section" accessibilityRole="header">
             {card.title}
           </AppText>
           <AppText color="muted">{card.message}</AppText>
@@ -138,9 +154,11 @@ export function HomeLocationPanel() {
             Location is only used while the app is open.
           </AppText>
         </View>
-      ) : null}
+      ) : (
+        fallback
+      )}
       {pickup !== null ? (
-        <View style={styles.card}>
+        <View style={styles.pickup}>
           <AppText variant="small" color="muted">
             Pickup point
           </AppText>
@@ -167,10 +185,11 @@ const styles = StyleSheet.create({
   },
   card: {
     gap: spacing.md,
-    padding: spacing.xl,
-    borderRadius: radii.lg,
-    backgroundColor: colors.paper,
-    borderWidth: 1,
-    borderColor: colors.line,
+  },
+  pickup: {
+    gap: spacing.sm,
+    padding: spacing.lg,
+    borderRadius: radii.md,
+    backgroundColor: colors.soft,
   },
 });

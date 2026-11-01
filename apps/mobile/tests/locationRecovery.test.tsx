@@ -1,6 +1,6 @@
 import type { PlaceDto } from '@ride-match/contracts';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, cleanup, render, screen, userEvent } from '@testing-library/react-native';
+import { cleanup, render, screen, userEvent } from '@testing-library/react-native';
 import * as Location from 'expo-location';
 import type { ReactNode } from 'react';
 import { Linking } from 'react-native';
@@ -13,49 +13,8 @@ import { describeLocationCard } from '../src/features/location/locationCard';
 import { PickupPlaceSheet } from '../src/features/location/PickupPlaceSheet';
 import type { LocationStatus } from '../src/platform/location/createLocationController';
 import { assessFix, type LocationFix } from '../src/platform/location/locationFix';
-import { flushTimersAndRestore, renderApp } from './helpers/renderApp';
-
-type PermissionStatus = 'granted' | 'denied' | 'undetermined';
-
-function permission(status: PermissionStatus, canAskAgain: boolean, accuracy: 'full' | 'reduced' = 'full') {
-  return {
-    status,
-    granted: status === 'granted',
-    canAskAgain,
-    expires: 'never',
-    ios: { accuracy },
-  } as unknown as Location.LocationPermissionResponse;
-}
-
-const GRANTED = permission('granted', true);
-const UNDETERMINED = permission('undetermined', true);
-const DENIED_CAN_ASK = permission('denied', true);
-const BLOCKED = permission('denied', false);
-
-/** What the device answers when the app reads or requests the permission. */
-function device(setup: { permission: Location.LocationPermissionResponse; answer?: Location.LocationPermissionResponse; servicesEnabled?: boolean }) {
-  jest.mocked(Location.getForegroundPermissionsAsync).mockResolvedValue(setup.permission);
-  jest.mocked(Location.requestForegroundPermissionsAsync).mockResolvedValue(setup.answer ?? setup.permission);
-  jest.mocked(Location.hasServicesEnabledAsync).mockResolvedValue(setup.servicesEnabled ?? true);
-}
-
-/** Runs timers and the promises they release, such as the mock source's latency. */
-async function wait(ms = 0) {
-  await act(async () => {
-    await jest.advanceTimersByTimeAsync(ms);
-  });
-}
-
-async function press(name: string | RegExp) {
-  await userEvent.press(screen.getByRole('button', { name }));
-  await wait();
-}
-
-async function openHome() {
-  const app = await renderApp('/');
-  await wait();
-  return app;
-}
+import { BLOCKED, DENIED_CAN_ASK, GRANTED, UNDETERMINED, device, openHome, permission, press, wait } from './helpers/locationDevice';
+import { flushTimersAndRestore } from './helpers/renderApp';
 
 /** The device position is never read: nothing could stand in for the user's location. */
 function expectNoDevicePosition() {
@@ -84,7 +43,7 @@ describe('home location', () => {
 
     expect(Location.requestForegroundPermissionsAsync).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('header', { name: 'Find a ride, together.' })).not.toBeOnTheScreen();
-    expect(screen.getByText('Map coming soon')).toBeOnTheScreen();
+    expect(screen.getByTestId('home-map')).toBeOnTheScreen();
     // Precise, fresh and accurate: nothing to explain.
     expect(screen.queryByText('Location is only used while the app is open.')).not.toBeOnTheScreen();
   });

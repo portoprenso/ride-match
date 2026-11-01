@@ -1,8 +1,8 @@
 import { useRouter } from 'expo-router';
 
-import { HomeLocationPanel, useLocationIntro } from '../src/features/location/HomeLocation';
+import { useLocationIntro } from '../src/features/location/HomeLocation';
 import { LocationIntroScreen } from '../src/features/location/LocationIntroScreen';
-import { MapPlaceholderScreen } from '../src/features/map/MapPlaceholderScreen';
+import { MapHomeScreen } from '../src/features/map/MapHomeScreen';
 
 export default function HomeRoute() {
   const router = useRouter();
@@ -18,9 +18,5 @@ export default function HomeRoute() {
       />
     );
   }
-  return (
-    <MapPlaceholderScreen onSignIn={() => router.push('/auth/phone')}>
-      <HomeLocationPanel />
-    </MapPlaceholderScreen>
-  );
+  return <MapHomeScreen onSignIn={() => router.push('/auth/phone')} />;
 }

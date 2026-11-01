@@ -204,7 +204,7 @@ describe('root layout', () => {
   it('opens the app on the mock configuration', async () => {
     await renderApp('/');
 
-    expect(screen.getByText('Map coming soon')).toBeOnTheScreen();
+    expect(screen.getByTestId('home-map')).toBeOnTheScreen();
   });
 
   it('shows why the API data source cannot run, instead of any route', async () => {
@@ -215,7 +215,7 @@ describe('root layout', () => {
     expect(
       screen.getByText('EXPO_PUBLIC_DATA_SOURCE is "api", but the API data source is not available in this build. Use "mock".'),
     ).toBeOnTheScreen();
-    expect(screen.queryByText('Map coming soon')).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('home-map')).not.toBeOnTheScreen();
     expect(screen.queryByRole('button')).not.toBeOnTheScreen();
   });
 

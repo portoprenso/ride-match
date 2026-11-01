@@ -2084,3 +2084,35 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** the public functions, hooks and components above, covering prompting rules, privacy of the confirmed pickup, per-launch storage, settings fallbacks and focus return.
 - **Remaining/next:** the next native pass opens the introduction, the cards and the settings links on both platforms. Available cards: MAP-001-A and MOCK-001-C; the user chooses.
 - **Ownership:** Released; no active task.
+
+## 2026-11-01 — MAP-001-A: Native map shell
+
+- **Actor/session:** Claude Code / map-001-a.
+- **Status:** `Paused`: implemented, native checks pending; ownership released. Parent MAP-001 is `Paused`.
+- **Working copy:** `main` at `5d0218b` (LOCATION-001-B); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Continue with MAP-001-A": replace `MapPlaceholderScreen` with the native map, camera, recenter and overlays, plus the app's native configuration. No domain markers.
+- **Changes:**
+  - Dependencies: `react-native-maps` 1.27.2 and `react-native-svg` 15.15.4, the versions Expo SDK 57 lists (14 lockfile packages).
+  - `app.config.ts`: `android.config.googleMaps.apiKey` from `GOOGLE_MAPS_ANDROID_API_KEY` when set, and `extra.googleMapsAndroidConfigured`. `apps/mobile/.env` says the key belongs only in `.env.local` or the shell.
+  - `src/config/isMapProviderConfigured.ts`: true on iOS; on Android, whether the build recorded a key.
+  - `src/ui/MapLayout.tsx` (map behind a floating header, right-hand controls and a fixed, scrolling bottom sheet at most 60% of the window; reports the covered space for the map's padding) and `src/ui/Icon.tsx` (the design's `locate` path, hidden from screen readers).
+  - `src/features/map/`: `MapHomeScreen.tsx` (the "along" title, the Demo badge, "Show my location" while there is a position, the sheet, observation through `useFocusEffect`), `HomeMap.tsx` (react-native-maps with the platform default provider, light, flat, north-up, no provider dot, button or toolbar; the controller's dot and accuracy circle, muted when stale and circle only when approximate; the pickup pin; a notice instead of the map without the Android key), `mapCamera.ts` (`useHomeCamera`, `DEMO_CITY_REGION` on `DEFAULT_BROWSE_AREA`'s center, `streetRegion`, moves queued until the map is ready). `MapPlaceholderScreen.tsx` was removed.
+  - `src/features/location/HomeLocation.tsx`: `useLocationStatus()` (the 15-second aging moved here) and `HomeLocationPanel({ status, fallback })`, now sheet content without its own card frame, the pickup in a soft box and the card title at `section` size, as in screen 21.
+  - Tests: `tests/setup/reactNativeMaps.ts` (third setup file), `tests/mapHome.test.tsx` (11 tests), `tests/mapProvider.test.ts` (2), `tests/helpers/locationDevice.ts` (steps shared with `tests/locationRecovery.test.tsx`); home assertions in the navigation, data-source and location tests now look for the map.
+- **Decisions:**
+  - The Android key goes through Expo's `android.config.googleMaps.apiKey`, not react-native-maps' plugin options: `expo config --type public` contained the key with the plugin option and does not with Expo's setting.
+  - Without a key Google Maps stops the Android app as soon as a map appears, so the build records only whether a key was set and the app shows a notice instead; the sheet and the named pickup still work.
+  - The device position is drawn from the location controller, not the provider's own dot: the iOS dot would prompt for permission, and the controller's fix is the one the app judges (frozen, stale, approximate).
+  - The camera moves only for a cause: the first position (unless the user touched the map), a recenter and the fix it requests, a newly confirmed pickup. `isGesture` exists only on Google Maps and `onPanDrag` needs scrolling off on iOS, so any touch on the map counts as the user taking over.
+  - Icons: react-native-svg with the design's own paths (the plan left the choice to the first card that draws icons).
+  - The sheet is fixed, not draggable; MAP-002-A decides the draggable discovery sheet. Place search keeps the fixed demo-city area; narrowing it to the visible region is left to MAP-001-B.
+  - The title sits on a white surface, a small departure from the design's bare text, so it stays legible over any map.
+- **Checks:**
+  - `pnpm typecheck` and `pnpm lint` passed; `pnpm test:mobile`: 14 suites, 256 tests passed (13 new), no React `act` warnings.
+  - `pnpm install --frozen-lockfile`, `pnpm peers check` and online `pnpm doctor:mobile` (21/21) passed.
+  - `expo config`: with a synthetic `GOOGLE_MAPS_ANDROID_API_KEY` the introspected Android manifest has `com.google.android.geo.API_KEY` and the public configuration does not contain the value; without it neither has a key and the flag is false.
+  - **Not run (deferred to the next native pass per the user's preference):** regenerating the native folders, both development builds, exports, and DEVELOPMENT's map shell checks. The current development clients lack both native libraries, so they must be rebuilt before opening this JavaScript.
+- **Docs:** PRODUCT (implemented map shell; recovery now in the sheet; search area), ARCHITECTURE (map implementation, module list, home route), DEVELOPMENT (the key variable and its setup, tests, map shell checks), TOOLCHAIN (two dependencies, the third setup file, commands, verification), MOBILE_IMPLEMENTATION_PLAN (row, icon and layout decisions, key handling), ROADMAP (entry, MAP-001 paused), AI_CONTEXT (state, next steps; also removed a stray fragment in its next-step list), root README (status).
+- **JSDoc:** `MapLayout`, `Icon`, `isMapProviderConfigured`, `HomeMap`, `useHomeCamera`, `MapHomeScreen`, `useLocationStatus` and the panel's new props, covering provider choice, why the controller draws the dot, camera rules, the key's path and the stand-in map.
+- **Remaining/next:** the native pass: rebuild both clients, run the map shell checks, and open LOCATION-001-B's screens. Android rendering needs a restricted Google Maps key from the user; until then, check the notice. MAP-001-B follows those checks; MOCK-001-C is available.
+- **Ownership:** Released; no active task.

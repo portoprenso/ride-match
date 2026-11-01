@@ -1,5 +1,10 @@
 import type { ExpoConfig } from 'expo/config';
 
+// Google Maps key for Android, restricted to this app in Google Cloud. It is a credential, so it
+// comes only from the environment (for example the ignored `apps/mobile/.env.local`, which Expo
+// CLI loads), never from a tracked file. iOS uses Apple Maps and needs no key.
+const googleMapsAndroidApiKey = process.env.GOOGLE_MAPS_ANDROID_API_KEY?.trim() || undefined;
+
 // Provisional local development identity. These are not registered release identifiers.
 const config: ExpoConfig = {
   name: 'Ride Match',
@@ -10,6 +15,15 @@ const config: ExpoConfig = {
   },
   android: {
     package: 'com.ridematch.dev',
+    // react-native-maps draws Google Maps on Android and Apple Maps on iOS. Expo writes this key
+    // into the Android manifest and leaves `android.config` out of the public configuration the
+    // app can read, unlike react-native-maps' own plugin options.
+    config: googleMapsAndroidApiKey ? { googleMaps: { apiKey: googleMapsAndroidApiKey } } : undefined,
+  },
+  extra: {
+    // Without a key, Google Maps stops the Android app as soon as a map appears, so the app reads
+    // this flag (never the key) and shows a notice instead (src/config/isMapProviderConfigured.ts).
+    googleMapsAndroidConfigured: googleMapsAndroidApiKey !== undefined,
   },
   plugins: [
     // Screens have light backgrounds, so the status bar needs dark icons. Without a style,

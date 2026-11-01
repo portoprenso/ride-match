@@ -6,9 +6,10 @@ import { useDataSource } from '../../data/DataSourceProvider';
 import { placeSearchQuery } from '../../data/queries';
 
 /**
- * The area place searches cover until the map supplies its own region (MAP-001-A): the demo
- * city with a radius that reaches its outskirts and airport. It is a fixed public area, coarse as
- * `PlaceSearchAreaSchema` requires, and never derived from the device position.
+ * The area place searches cover: the demo city with a radius that reaches its outskirts and
+ * airport. It is a fixed public area, coarse as `PlaceSearchAreaSchema` requires, and never
+ * derived from the device position. The home map also opens on it (`DEMO_CITY_REGION`) but does
+ * not narrow searches to its visible region; MAP-001-B's map-centre picker decides that.
  */
 export const DEFAULT_BROWSE_AREA: PlaceSearchArea = {
   center: { latitude: 42.87, longitude: 74.59 },

@@ -161,6 +161,8 @@ Zod is the only runtime dependency. Mobile receives it through the contracts pac
 | `react-dom` | 19.2.3 | runtime | Required peer of `expo-router`'s web dependencies (`vaul`, Radix); must match `react` | Expo `19.2.3`; peer `react ^19.2.3` | MOBILE-001-A |
 | `@ride-match/contracts` | `workspace:*` | runtime | Shared package | Fixed decision | MOBILE-001-B |
 | `expo-location` | 57.0.22 | runtime | Foreground permission, cached and fresh fixes, and throttled observation (`src/platform/location/`); its config plugin writes the permission entries | Expo `~57.0.22`, the version SDK 57's `bundledNativeModules.json` lists and doctor checks. Published 2026-10-21, so younger than the two weeks used for other packages: the SDK's version takes precedence | LOCATION-001-A |
+| `react-native-maps` | 1.27.2 | runtime | The home map: Apple Maps on iOS, Google Maps on Android (`src/features/map/`) | The version SDK 57's `bundledNativeModules.json` lists and doctor checks (published 2026-03-11; 1.29.11 is newest). Its own config plugin is not used: its options land in the public app configuration, so the Android key goes through Expo's `android.config.googleMaps.apiKey` instead (see DEVELOPMENT) | MAP-001-A |
+| `react-native-svg` | 15.15.4 | runtime | Draws the design's stroke icons (`src/ui/Icon.tsx`) | The version SDK 57's `bundledNativeModules.json` lists (published 2026-03-18; 15.16.0 is newest). Chosen over `@expo/vector-icons`, whose icon sets differ from the design's own drawings | MAP-001-A |
 | `@tanstack/react-query` | 5.104.5 | runtime | Query cache for data-source reads (with `@tanstack/query-core` 5.104.5) | Pure JavaScript, not in Expo's `bundledNativeModules.json`; peers `react ^18 \|\| ^19`. Published 2026-10-19, the newest release at least two weeks old; 5.105.0 (2026-10-26) not selected yet | DATA-001-B |
 | `typescript` | 6.0.3 | dev | Typecheck | Expo `~6.0.3` | MOBILE-001-A |
 | `@types/react` | 19.2.18 | dev | React types | Expo `~19.2.4` | MOBILE-001-A |
@@ -222,6 +224,7 @@ The four rows marked MOBILE-001-A above that are not in the original plan pin th
 - **Jest 30.5.2 and `@types/jest` 30**: `jest-expo` 57 is built on Jest 29.
 - **pnpm 12.8.1** and **Turbo 2.11.7**: see above.
 - **`react-native-safe-area-context` 5.10.1 and `react-native-screens` 4.28.0**: outside Expo SDK 57's ranges.
+- **`react-native-maps` 1.29.11 and `react-native-svg` 15.16.0**: newer than the versions Expo SDK 57 lists (1.27.2 and 15.15.4), which doctor checks.
 
 ## TypeScript configuration
 
@@ -352,6 +355,7 @@ If a consumer fails, record the evidence and choose one format that all three lo
   - `clearMocks: true` (UI-001-D). React Native's preset already mocks APIs such as `AccessibilityInfo` with shared `jest.fn`s. `jest.spyOn` returns that same mock, and `restoreAllMocks` does not reset it, so a spy saw calls from earlier tests.
   - `setupFiles: ['<rootDir>/tests/setup/publicEnvironment.ts']` (DATA-001-A), which sets the `EXPO_PUBLIC_` build variables; Jest loads no `.env`, and Expo's Babel preset does not inline them under Jest.
   - `tests/setup/expoLocation.ts` (LOCATION-001-B), a second setup file: Expo Location has no native module under Jest, and route tests start the root layout's location controller, so every test gets a stand-in device that already allows precise location with a fresh fix. Tests change it through `jest.mocked(Location.…)`; a test file that mocks `expo-location` itself, like `tests/locationLifecycle.test.tsx`, replaces it.
+  - `tests/setup/reactNativeMaps.ts` (MAP-001-A), a third setup file: react-native-maps draws native views Jest cannot render, so `MapView`, `Marker` and `Circle` become plain views that keep their props, a map reports itself ready on mounting, and the shared `animateToRegion` mock records camera moves (`jest.requireMock('react-native-maps').animateToRegion`). Nothing in Jest draws real tiles. react-native-svg renders under Jest without a mock.
   - No `babel.config.js`: without one, `jest-expo` resolves `expo/internal/babel-preset` from `process.cwd()`, so Jest must run in `apps/mobile` (the `test` script does).
 - Route tests use `renderRouter` from `expo-router/testing-library` against the real `app/` directory, through `tests/helpers/renderApp.ts`. Tests stay outside `app/`.
   - Testing Library 14's `render` is async. `renderRouter` attaches `getPathname()` and `getRouterState()` to the returned promise, so the helper awaits it and keeps those functions.
@@ -524,6 +528,12 @@ pnpm --filter @ride-match/mobile add --save-exact expo-location@57.0.22
 pnpm install --frozen-lockfile
 pnpm peers check
 pnpm doctor:mobile
+
+# MAP-001-A
+pnpm --filter @ride-match/mobile add --save-exact react-native-maps@1.27.2 react-native-svg@15.15.4
+pnpm install --frozen-lockfile
+pnpm peers check
+pnpm doctor:mobile
 ```
 
 ### App fonts (UI-001-A)
@@ -665,6 +675,7 @@ These are expectations recorded here, not checked results. The named task confir
 - **CONTRACT-001-A:** on 2026-10-31, contracts tests (61), typecheck, lint, build, the file-list checks, a frozen install, mobile typecheck, and a Node import of `@ride-match/contracts` from `apps/mobile` (all 11 exports, Zod loaded) passed. VERIFY-001 then confirmed the app side: the mobile Jest suite loads Zod through the package, both exports bundle it (the iOS Hermes bytecode contains the contracts' and Zod's strings), and both development builds start with it under Hermes.
 - **DATA-001-B:** on 2026-11-01, `pnpm --filter @ride-match/mobile add --save-exact @tanstack/react-query@5.104.5` added two lockfile packages; a frozen install, online doctor (21/21), the mobile suite (105), typecheck and lint passed. Doctor's output also showed Expo's env loader reading `apps/mobile/.env` and exporting the three `EXPO_PUBLIC_` variables. Query clients in tests set `gcTime: Infinity`: the default five-minute garbage-collection timer otherwise kept Jest from exiting.
 - **LOCATION-001-A:** on 2026-11-01, `pnpm --filter @ride-match/mobile add --save-exact expo-location@57.0.22` added one lockfile package (`expo-location`; its `@expo/image-utils` dependency was already present). A frozen install, `pnpm peers check`, online doctor (21/21), typecheck, lint and the mobile suite (193) passed. `expo config --type introspect` shows only `NSLocationWhenInUseUsageDescription` on iOS (no "always" or motion descriptions, no `location` background mode) and only `ACCESS_COARSE_LOCATION` and `ACCESS_FINE_LOCATION` on Android. **Native (VERIFY-002, 2026-11-01):** `apps/mobile/ios/` and `apps/mobile/android/` were removed (both predated the plugin: the old Info.plist had no location text) and rebuilt with the TOOLCHAIN commands. iOS: CocoaPods installed 106 pods (`ExpoLocation` added), Build Succeeded with 0 errors and the same two warnings, and the generated Info.plist has `NSLocationWhenInUseUsageDescription` with no `NSLocationAlways…` key or `UIBackgroundModes`. Android: BUILD SUCCESSFUL in 49 s; the merged manifest's only location permissions are `ACCESS_COARSE_LOCATION` and `ACCESS_FINE_LOCATION`. Both apps installed and opened through the development client; `pnpm mobile:android` reused the Metro server that `pnpm mobile:ios` started. The permission checks passed (see DEVELOPMENT.md). Android links: after a cold start from the development client, `ride-match://dev/…` opened home twice before the third link opened the route (the MOBILE-001-H limitation, seen more often than before).
+- **MAP-001-A:** on 2026-11-01, `pnpm --filter @ride-match/mobile add react-native-maps@1.27.2 react-native-svg@15.15.4` (exact through the workspace's `save-exact`) added 14 lockfile packages: the two libraries, `@types/geojson`, and react-native-svg's CSS parsing dependencies (`css-select`, `css-tree` and their own). A frozen install, `pnpm peers check`, online doctor (21/21), typecheck, lint and the mobile suite (256) passed. `expo config --type introspect` with a synthetic `GOOGLE_MAPS_ANDROID_API_KEY` writes `com.google.android.geo.API_KEY` into the Android manifest, and `--type public` does not contain the value; without the variable the manifest has no key and `extra.googleMapsAndroidConfigured` is false. **Not run (deferred):** regenerating the native folders, both development builds and the map checks (both new libraries are native, so the current development clients lack them).
 - **UI-001-A:** typecheck, lint, doctor (21/21), and the resolved config (both plugins) passed on 2026-10-30. VERIFY-001 (2026-10-31) rebuilt both development clients: each Manrope weight renders distinctly, there is no startup font error, and nothing clips on iOS at the default and XXXL text sizes. **Open:** on Android, line heights grow less than font sizes under the system's nonlinear font scaling. At 150% the `section` style (24/30) cuts off descenders on its last line; at 200% a `section` line is 38 dp, and `heading` and `subheading` are tight too.
 
 ## Sources (checked 2026-10-03)

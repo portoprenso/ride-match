@@ -13,12 +13,12 @@ async function press(name: string) {
 }
 
 describe('home', () => {
-  it('opens anonymously on the map placeholder', async () => {
+  it('opens anonymously on the map', async () => {
     const app = await renderApp('/');
 
     expect(app.getPathname()).toBe('/');
-    expect(screen.getByRole('header', { name: 'Ride Match' })).toBeOnTheScreen();
-    expect(screen.getByText('Map coming soon')).toBeOnTheScreen();
+    expect(screen.getByRole('header', { name: 'along' })).toBeOnTheScreen();
+    expect(screen.getByTestId('home-map')).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeOnTheScreen();
     expect(screen.queryByText('Sign in with your phone')).not.toBeOnTheScreen();
   });
@@ -48,7 +48,7 @@ describe('sign-in placeholders', () => {
     await press('Close sign-in');
     expect(app.getPathname()).toBe('/');
     expect(app.getRootStack()).toEqual(['index']);
-    expect(screen.getByText('Map coming soon')).toBeOnTheScreen();
+    expect(screen.getByTestId('home-map')).toBeOnTheScreen();
   });
 
   it('Close on the code step returns to the existing home', async () => {
@@ -59,7 +59,7 @@ describe('sign-in placeholders', () => {
     await press('Close sign-in');
     expect(app.getPathname()).toBe('/');
     expect(app.getRootStack()).toEqual(['index']);
-    expect(screen.getByText('Map coming soon')).toBeOnTheScreen();
+    expect(screen.getByTestId('home-map')).toBeOnTheScreen();
   });
 
   it('Close after opening the code step directly falls back to home', async () => {
@@ -68,7 +68,7 @@ describe('sign-in placeholders', () => {
 
     await press('Close sign-in');
     expect(app.getPathname()).toBe('/');
-    expect(screen.getByText('Map coming soon')).toBeOnTheScreen();
+    expect(screen.getByTestId('home-map')).toBeOnTheScreen();
   });
 
   it('Back after opening the code step directly reaches the phone step', async () => {
@@ -96,7 +96,7 @@ describe('inert routes', () => {
 
     await press('Go to map');
     expect(app.getPathname()).toBe('/');
-    expect(screen.getByText('Map coming soon')).toBeOnTheScreen();
+    expect(screen.getByTestId('home-map')).toBeOnTheScreen();
   });
 
   it('/dev/scenarios shows the inert scenario placeholder in development mode', async () => {

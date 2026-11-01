@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 has A and B completed; LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; all other implementation tasks are planned.**
+Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 has A and B completed; LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; MAP-001 is paused with A implemented and its native checks pending; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,15 @@ Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**MAP-001-A — Paused (2026-11-01): implemented, native checks pending.**
+
+- **Done:**
+  - `react-native-maps` 1.27.2 and `react-native-svg` 15.15.4, the versions Expo SDK 57 lists. Home is now a map (Apple Maps on iOS, Google Maps on Android) in `MapLayout`: a floating "along" title and Demo badge, "Show my location" above a fixed bottom sheet, and the location card, the confirmed pickup and the temporary Sign in moved into that sheet.
+  - `src/features/map/`: the device position from the location controller (dot with accuracy circle, grey when stale, circle only under approximate permission, nothing with a denial), the confirmed pickup's pin, a camera that opens on the demo city and moves once to the first position or a newly confirmed pickup and never fights the user's own panning, and observation only while home is the focused screen.
+  - The Android key comes from `GOOGLE_MAPS_ANDROID_API_KEY` (ignored `.env.local` or the shell) through Expo's `android.config.googleMaps.apiKey`, which stays out of the public configuration; without a key Android shows a notice instead of a map that would stop the app. 256 mobile tests (13 new); typecheck, lint, peers and doctor (21/21) pass.
+- **Pending (deferred native pass):** rebuild both development clients (both libraries are native) and run DEVELOPMENT's map shell checks: rendering, pan and zoom, Bishkek coverage, recenter, denial browsing, logo and legal notice above the sheet. Android rendering also needs the user's restricted Google Maps key; without it, check the notice.
+- **Next available:** MOCK-001-C. MAP-001-B (map-centre picker) follows MAP-001-A's native checks.
 
 **LOCATION-001-B — Completed (2026-11-01); LOCATION-001 is `Completed`.**
 
@@ -255,7 +264,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | SYNC-001 | Event synchronization and recovery | Planned |
 | AUTH-001 | Simulated authentication | Planned |
 | LOCATION-001 | Foreground location | Completed |
-| MAP-001 | Native map shell | Planned |
+| MAP-001 | Native map shell | Paused (A implemented, native checks pending; B planned) |
 | ANALYTICS-001 | Typed analytics foundation | Completed |
 | MAP-002 | Live nearby activity | Planned |
 | DESTINATION-001 | Destination selection and compatibility | Planned |
@@ -409,7 +418,7 @@ Execution: [MOBILE-001-A through MOBILE-001-H](FIRST_STEPS.md#mobile-001-a--crea
 
 - **Goal:** Users can view and navigate a map.
 - **Scope:** Provider configuration, user dot, camera/recenter, overlays, base sheet interaction.
-- **Expected files/modules:** `M/src/features/map/`, app native configuration.
+- **Expected files/modules:** `M/src/features/map/`, app native configuration. MAP-001-A added `M/src/features/map/`, `M/src/ui/{MapLayout,Icon}.tsx`, the Android key setting in `app.config.ts`, and `tests/{mapHome,mapProvider}.test.ts(x)`.
 - **Dependencies:** LOCATION-001.
 - **Acceptance criteria:** Basemap/recenter work on both platforms; denied location still permits browsing; local coverage is checked.
 - **Verification:** `pnpm mobile:android`, `pnpm mobile:ios`; manually pan/zoom/recenter and deny location.

@@ -68,6 +68,16 @@ Rules:
 - Provide a compact accessible nearby-items view as a secondary interaction, not the home-screen replacement.
 - Never create synthetic people merely to fill an empty scenario. Clearly label the mock/demo environment.
 
+**Implemented map shell (MAP-001-A):** `apps/mobile/src/features/map/` replaced the placeholder home. Native rendering is not verified yet (see DEVELOPMENT, map shell checks).
+
+- **Map:** Apple Maps on iOS and Google Maps on Android, light style, flat and north-up (no pitch or rotation), without the provider's own location dot, location button or Android toolbar. Anyone can pan and zoom it, whatever the permission. No ride or group markers yet (MAP-002).
+- **Overlays:** the "along" title and a "Demo" badge float at the top. A fixed sheet at the bottom holds the location card (or "Going the same way?" while location needs no explanation), the confirmed pickup and the temporary Sign in. The overlays are passed to the map as padding, so the camera centres in the visible part and the provider's logo and legal notice stay above the sheet. The sheet is not draggable; MAP-002-A decides that.
+- **Camera:** it opens on the confirmed pickup, else the device position, else the demo city (about 13 km from north to south). The first device position moves it there once, unless the user has touched the map. "Show my location", shown only with a position, moves it there and asks for a fresh fix, which it follows once. A newly confirmed pickup moves it there. Later positions move only the dot.
+- **Device position:** drawn from the location controller's fix, only while located: a teal dot with its accuracy circle, grey once out of date (over two minutes), and only the circle under approximate permission, so an approximate position never looks exact. Nothing is drawn with a denial, services off or no fix.
+- **Pickup point:** a confirmed pickup shows as a pin titled "Pickup point", "Near …". It is the user's own choice, never drawn as the device position.
+- **Observation:** the controller observes the device while home is the focused screen; another screen on top, such as sign-in, stops it.
+- **Android without a map key:** a notice says the map can't be shown in this build, and the sheet, with the named pickup, still works.
+
 ## Main UI states
 
 | State | Visible behavior |
@@ -112,13 +122,13 @@ Initial tunable defaults: cached browsing fix up to two minutes old; discovery r
 - **Android's "can ask again":** after a second denial, expo-location still reported that the prompt could appear. Only the next request, which showed no dialog, reported that it could not. LOCATION-001-B's card therefore explains a request that ends in a denial and then offers the system settings.
 - **Accuracy seen in the emulator and simulator:** a fresh high-accuracy fix was ±5 m on both; Android's balanced observation reported ±100 m (exactly the pickup limit); approximate permission gave ±11 km on iOS and ±2 km on Android. Before confirming a pickup, request a fresh fix (`refresh`) instead of relying on observation.
 
-**Implemented recovery (LOCATION-001-B):** `apps/mobile/src/features/location/` puts these rules on home until the map exists (MAP-001-A moves them into its sheet).
+**Implemented recovery (LOCATION-001-B):** `apps/mobile/src/features/location/` puts these rules on home; since MAP-001-A they sit in the map's sheet (map behavior above).
 
 - **Introduction (screen 01):** shown while the permission was never requested. It explains what the app does, that location is used only while the app is open and that others see only an approximate area, and labels the riders synthetic. "Use my location" shows the OS prompt; "Choose an area instead" closes the introduction for this launch without prompting. A failed request is explained on the screen.
 - **Home location card (screen 21 and its siblings):** one card for each state that needs words: location not in use ("Use my location"), denied ("Allow location" while the prompt can still appear, otherwise "Open device settings"), location services off (Android opens the device switch; iOS opens the app's settings page and the text names the path to Location Services), no fix in time ("Try again"), the permission unreadable, locating, an approximate fix (precise location is off), an inaccurate fix and a stale fix ("Try again" or "Refresh location"). Nothing shows while the permission is read, or with a fresh or recent, precise and accurate fix. A request that ends in a denial, or settings that did not open, are explained inside the card. The card always says that location is used only while the app is open.
 - **Named pickup point:** every card offers "Choose pickup area", which searches the curated places through `places.search` (debounced; without text, the area's places nearest its center). Choosing a place asks "Is this your pickup point?" and says that discovery shows only an approximate area and that the point stays fixed after publishing; only "Confirm this pickup" sets it. Home then shows "Near …", "Chosen by you, not your device location", and "Change pickup point". The pickup is a `manual` location at the place's own point and is never shown as the device position: the location card keeps describing the real location state.
 - **Per launch:** the set-aside introduction and the confirmed pickup live in memory only. A new launch asks again while the permission was never requested; RIDE-001-B takes the pickup into the request draft.
-- **Search area:** until the map supplies a region, searches cover a fixed area around the demo city (30 km from 42.87° N, 74.59° E), never derived from the device position.
+- **Search area:** searches cover a fixed area around the demo city (30 km from 42.87° N, 74.59° E), never derived from the device position. The map opens on the same city but does not narrow searches to its visible region yet; MAP-001-B's map-centre picker decides that.
 
 Published request origins do not automatically move with the device. Exact input coordinates stay out of analytics, logs, and public responses. Discovery uses a coarse viewport; sensitive creation input uses an authenticated body.
 
