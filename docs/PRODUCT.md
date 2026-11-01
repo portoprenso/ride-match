@@ -1,6 +1,6 @@
 # Mobile product and UX plan
 
-Status: planned. Last updated: 2026-10-31.
+Status: planned. Last updated: 2026-11-01.
 
 Design reference: [Along mobile MVP concept](design/along/README.md) (DESIGN-001). Along is provisional branding only. The saved Figma draft has the brand kit and 20 journey screens; the local package covers 55 illustrative screens. Offline importer 1.0.1 repairs the user's failed native import; the user will retest it, and native visual/prototype verification remains pending. This does not change implemented app capabilities or the lifecycle rules below.
 
@@ -55,7 +55,7 @@ Rules:
 
 - A marker represents a ride intention, not a person's tracked position.
 - Use only safe public coordinates for discovery markers.
-- Display approximate distance without claiming exact walking or road distance.
+- Display approximate distance without claiming exact walking or road distance. The app computes it from the item's public area center and its own location fix; discovery requests never carry the device position (CONTRACT-002-B).
 - Any simple directional line must be labeled as a direction hint, not a calculated route.
 - Do not calculate compatibility from straight-line proximity.
 - Group formation replaces separate member ride markers with one group marker.

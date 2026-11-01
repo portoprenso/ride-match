@@ -1,6 +1,6 @@
 # Future API: conventions, boundaries, and handoff
 
-Status: proposed specification, not an implemented API. Last updated: 2026-10-31. The shared schemas for [common values and errors](#common-values-and-errors-contract-001-a) for [locations and users](#locations-and-users-contract-001-b), for [authentication](authentication.md#implemented-contracts-contract-001-c), and for [place search](rides.md#places-and-discovery) exist in `packages/contracts`; the other contracts are still planned.
+Status: proposed specification, not an implemented API. Last updated: 2026-11-01. The shared schemas for [common values and errors](#common-values-and-errors-contract-001-a), for [locations and users](#locations-and-users-contract-001-b), for [authentication](authentication.md#implemented-contracts-contract-001-c), for [place search](rides.md#places-and-discovery), and for [ride requests, nearby discovery, matches and the public group preview](rides.md#implemented-contracts-contract-002-b) exist in `packages/contracts`; the other contracts are still planned.
 
 The mobile mock data source must reproduce these observable operations and rules. A future NestJS backend will implement the reviewed contracts after the mock mobile MVP. No backend implementation belongs to the current milestone.
 
@@ -38,11 +38,13 @@ Schemas live in `packages/contracts`, organized as described in [architecture](.
 | `SessionCredentialsDto`, `RefreshSessionInput`, `LogoutInput` | Rotated credentials; the refresh token sent to refresh or log out. Implemented |
 | `PlaceDto` | Stable place ID, label, optional detail line, coordinates of selected place/venue. Implemented; see [place search](rides.md#places-and-discovery) |
 | `SearchPlacesInput`, `PlaceSearchResultsDto` | Optional text, coarse area, limit; at most 20 distinct places. Implemented |
-| `CreateRideRequestInput` | Exact origin, selected destination, departure time, client operation ID |
-| `RideRequestDto` | ID, public user summary, public origin/destination, departure/expiry, status, group reference, version |
-| `OwnRideRequestDto` | Public request plus authorized owner-only draft restoration fields |
-| `NearbyItemDto` | Discriminated public ride or public group summary |
-| `RideMatchDto` | Target ride/group, match level, optional additional minutes, validity time, version |
+| `CreateRideRequestInput`, `CancelRideRequestInput` | Exact origin, destination place ID, departure choice (0, 5 or 10 minutes), operation ID; cancel takes the operation ID and expected version. Implemented; see [ride contracts](rides.md#implemented-contracts-contract-002-b) |
+| `RideRequestDto` | Public projection of an active request: ID, public user summary, public origin, destination place, departure/expiry, version; no status or group reference. Implemented |
+| `OwnRideRequestDto` | Public fields plus status, group reference and the exact origin. Implemented |
+| `NearbyQueryInput`, `NearbySnapshotDto` | Coarse viewport (span at most 0.5°), optional destination/departure, limit; at most 100 items, `truncated`, advisory match previews. Implemented |
+| `NearbyItemDto` | Union on `kind` of a public ride or a group preview. Implemented |
+| `GroupPreviewDto` | Public preview of a live group: status, member count of four seats, public origin, destination, departure, expiry, version; no members, coordinator, meeting point or chat. Implemented |
+| `RideMatchDto`, `RideMatchSetDto` | Target ride/group, match level, optional additional minutes, validity time; the owner's set of at most 20 with its own version. Implemented |
 | `RideGroupDto` | ID, coordinator, authorized members, capacity, status, destination, departure, meeting point, expiry, version |
 | `GroupMemberDto` | User summary, joinedAt, linked request ID |
 | `MeetingPointDto` | ID, shared place coordinates, label, optional viewer-specific walking estimate. Implemented; group embedding and updates come with CONTRACT-003-A |
@@ -67,7 +69,7 @@ Implemented in `packages/contracts/src/{common,errors}.ts` and covered by `pnpm 
 | `OperationIdSchema` | A UUID created once per user intent and reused on every retry of it; the future `Idempotency-Key` |
 | `CursorSchema` | 1–512 RFC 3986 unreserved characters (`A–Z`, `a–z`, `0–9`, `-`, `.`, `_`, `~`), so it needs no encoding in a query string. Opaque |
 | `ResponseMetaSchema`, `apiResponseSchema(data)` | The success envelope `{ data, meta: { serverTime } }`; no other top-level fields |
-| `ApiErrorCodeSchema` | Exactly the codes in the [errors](#errors) table, including the OTP verification codes added by CONTRACT-001-C and `UNSUPPORTED_AREA` from CONTRACT-002-A. A later domain contract that owns more codes adds them to this list |
+| `ApiErrorCodeSchema` | Exactly the codes in the [errors](#errors) table, including the OTP verification codes added by CONTRACT-001-C and `UNSUPPORTED_AREA` from CONTRACT-002-A. CONTRACT-002-B removed `INVALID_DEPARTURE`, because a departure outside the fixed options fails validation. A later domain contract that owns more codes adds them to this list |
 | `FieldErrorSchema` | `{ field, code, message }`. `field` is a dot path (`origin.latitude`, `members.0.userId`); `code` is `REQUIRED`, `INVALID_FORMAT`, `TOO_SHORT`, `TOO_LONG`, `OUT_OF_RANGE` or `INVALID_VALUE`; `message` is 1–200 characters. There is no field for the submitted value, so an error cannot echo it |
 | `ApiErrorSchema` | `code`, `message` (1–500 characters, safe to show), `requestId` (an ID), optional `fieldErrors` (1–50), optional `retryAfterSeconds` (integer, 1–86,400) |
 | `singleLineTextSchema(max)` | Builds a short text schema (added by CONTRACT-001-B): 1–`max` characters, no leading or trailing whitespace, no control characters such as line breaks. Nothing is trimmed; unclean text fails |
@@ -144,7 +146,7 @@ Server responses use stable error codes; mobile must not branch on human-readabl
 | 404 | `NOT_FOUND`, `TARGET_UNAVAILABLE` where existence should not be disclosed |
 | 409 | `ACTIVE_REQUEST_EXISTS`, `ALREADY_IN_GROUP`, `GROUP_FULL`, `GROUP_CLOSED`, `VERSION_CONFLICT`, `IDEMPOTENCY_CONFLICT`, `USE_LEAVE_GROUP`, `BLOCKED_RELATIONSHIP` |
 | 410 | `RIDE_EXPIRED`, `HISTORY_EXPIRED` when authorized to know the resource; `OTP_EXPIRED` |
-| 422 | `VALIDATION_FAILED`, `LOCATION_STALE`, `INVALID_DEPARTURE`, `INVALID_TRANSITION`, `OTP_INVALID`, `UNSUPPORTED_AREA` |
+| 422 | `VALIDATION_FAILED`, `LOCATION_STALE`, `INVALID_TRANSITION`, `OTP_INVALID`, `UNSUPPORTED_AREA` |
 | 429 | `RATE_LIMITED`, `OTP_ATTEMPTS_EXCEEDED`, `OTP_RESEND_THROTTLED` |
 | 503 | `SERVICE_UNAVAILABLE` |
 

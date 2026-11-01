@@ -1427,3 +1427,57 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
   - MEGAsync exclusions.
 - **Ownership:** Released; no active task.
+
+## 2026-11-01 — CONTRACT-002-B: Ride, discovery and match contracts
+
+- **Actor/session:** Claude Code / contract-002-b.
+- **Status:** `Completed`; ownership released. The parent CONTRACT-002 is `Completed`.
+- **Working copy:** `main` at `8286e2c` (CONTRACT-002-A). Committed on top of it at the user's request, with no push. The untracked `.idea/` files were left untouched.
+- **Request/scope:** "Ok, go ahead" (start CONTRACT-002-B here), then commit. Contracts, tests and docs only.
+- **Prerequisites:** CONTRACT-002-A is `Completed`.
+- **Changes:**
+  - **`src/rides.ts` (new):**
+    - **`RIDE_POLICY`:** departure choices 0, 5 and 10 minutes; 900-second active lifetime (applied by the source, RIDE-001-A).
+    - **`DepartureOffsetMinutesSchema`:** `z.literal([0, 5, 10])`.
+    - **`RideRequestStatusSchema`:** `active`, `grouped`, `completed`, `expired`, `cancelled`.
+    - **`RideRequestSchema`:** public projection of an active request: `id`, `user`, `publicOrigin`, `destination` (place), `departureAt`, `expiresAt`, `version`, refined so departure comes before expiry.
+    - **`OwnRideRequestSchema`:** `RideRequestSchema.safeExtend` with `status`, `groupId` and `origin` (`OwnerLocationDto`), refined so `groupId` is `null` when `active` or `expired`, set when `grouped` or `completed`, and either when `cancelled`.
+    - **`CreateRideRequestInputSchema`:** `operationId`, `origin` (`ExactLocationInput`), `destinationPlaceId`, `departureOffsetMinutes`.
+    - **`CancelRideRequestInputSchema`:** `operationId`, `expectedVersion`.
+  - **`src/groups.ts` (new):** `GROUP_POLICY` (capacity 4, at least 2 members), `GroupStatusSchema`, `LiveGroupStatusSchema` (`forming`, `ready`), `JoinTargetKindSchema`, `JoinTargetSchema`, `joinTargetKey`, `hasDistinctTargets`, and `GroupPreviewSchema` (`id`, `status`, `memberCount` 2–4, `capacity` 4, `publicOrigin`, `destination`, `departureAt`, `expiresAt`, `version`).
+  - **`src/matches.ts` (new):** `MATCH_POLICY` (20 matches, 0–60 additional minutes), `MatchLevelSchema`, `MatchPreviewSchema` (`target`, `level`, `additionalMinutes` or `null`), `RideMatchSchema` (adds `expiresAt`), `RideMatchSetSchema` (`version`, at most 20 matches, each target once).
+  - **`src/nearby.ts` (new):** `NEARBY_POLICY` (0.5° span, 100 items), `MapViewportSchema` (coarse `southWest`/`northEast`, north above south, east of west, spans compared in hundredths of a degree to avoid float error), `NearbyQueryInputSchema` (optional `destinationPlaceId`, optional `departureOffsetMinutes` that needs the destination, `limit` 1–100), `NearbyItemSchema` (discriminated union on `kind` of the ride and group-preview fields, via `safeExtend`) and `NearbySnapshotSchema` (`items` each once, `truncated`, `previews` one per item and only for returned items).
+  - **`src/errors.ts`:** removed `INVALID_DEPARTURE`, for 27 codes.
+  - **`src/index.ts`:** re-exports the four new modules.
+  - **Tests:**
+    - `tests/rides.test.ts`, `tests/nearby.test.ts`, `tests/matches.test.ts`, `tests/groups.test.ts` (new): bounds at their limits, the status/group rule, private and owner-only fields rejected from public shapes, viewport float edges (for example 42.37–42.87), antimeridian and precise corners, duplicate items, previews for missing items, a ride and a group sharing an ID, and a create → match → expire walkthrough with owner and public projections.
+    - `tests/errors.test.ts`: `INVALID_DEPARTURE` now fails.
+    - 439 tests (162 new).
+- **Decisions:**
+  - **The public ride has no status or group reference.** Only an active request has a public projection; any other read answers `TARGET_UNAVAILABLE`. A public `groupId` would let anyone link a named rider to a group, which group previews deliberately hide. This narrows the earlier spec, which listed status and an optional group ID as public fields.
+  - **No distance in discovery items.** Discovery never receives the device position, so the source cannot know the viewer's distance. The app computes the approximate distance from `publicOrigin.center` and its own fix.
+  - **Departure as a choice of 0, 5 or 10 minutes, not a timestamp.** The source sets `departureAt` at creation, so a choice made before sign-in still means what the confirmation screen says, with no clock-skew tolerance. A wrong value is a validation failure, so `INVALID_DEPARTURE` had no remaining use and was removed.
+  - **Destination by place ID, public as a place.** The source resolves the curated place, so a client cannot invent coordinates. Curated places are public venues, so both projections carry the place.
+  - **A versioned match set without a cursor.** Matches are a small, ranked, changing set (at most 20); a set `version` lets the client ignore an older `matches.changed` event, which per-match versions and cursors would not do simply. Matches reference targets by kind and ID; the app reads the target's public projection, so each entity has one source.
+  - **Previews are separate from items.** Compatibility depends on the viewer's query, so it stays out of the public item shape that realtime upserts also carry.
+  - **A rectangular viewport for discovery**, unlike place search's center and radius, because markers and the nearby list must cover exactly the visible map. Corners reuse the 2-decimal coarse coordinates. The 0.5° span cap and no antimeridian crossing are mock limits.
+  - **`nearby.ts` added to the planned module layout** so imports stay one-way (groups ← matches ← nearby; rides ← nearby). The public group preview and group status live in `groups.ts` for CONTRACT-003-A to extend.
+  - **Cancel error order:** state errors (`USE_LEAVE_GROUP`, `RIDE_EXPIRED`, `INVALID_TRANSITION`) before `VERSION_CONFLICT`, because they tell the app what to do next.
+- **Excluded:** the mock operations, fixtures, lifetime enforcement and error precedence in code (RIDE-001-A, MOCK-001-B, DESTINATION-001-A), the join input, members and meeting-point embedding (CONTRACT-003-A), realtime event schemas (CONTRACT-004-A), and any mobile code.
+- **Verification:**
+  - `pnpm test:contracts`: 10 files, 439 tests pass.
+  - `pnpm build:contracts`, `pnpm typecheck` (contracts, contract tests and mobile) and `pnpm lint`: all Turbo tasks pass.
+  - Importing the built `packages/contracts/dist/index.js` in Node parses an empty nearby snapshot and finds the new exports.
+  - `git diff --check`: clean. Local Markdown links and anchors in the edited docs resolve.
+  - **Not run:** mobile Jest, both exports and native builds, because no app code changed (the user's standing preference to defer heavy checks).
+- **Docs:**
+  - `api/rides.md`: endpoint rows, discovery, public and owner fields, lifecycle and group rule, departure choices, cancel errors, the matching contract, and a new "Implemented contracts (CONTRACT-002-B)" section with the schema and policy tables.
+  - `api/overview.md`: status line, inventory rows, the error-code row and the 422 row.
+  - `api/groups.md`: the preview endpoint row and the `GroupPreviewDto` note.
+  - Also updated: `ARCHITECTURE.md` (modules and `nearby.ts`), `PRODUCT.md` (distance computed on the device), `MOBILE_IMPLEMENTATION_PLAN.md` (card status), `ROADMAP.md` (progress, CONTRACT-002 `Completed`), `DEVELOPMENT.md`, both READMEs, and `AI_CONTEXT.md`.
+- **TSDoc:** each schema states who may send or see it, its bounds, ordering and failure codes; the public ride and group preview explain what is withheld and why; `MapViewportSchema` explains the outward rounding.
+- **Remaining/next:**
+  - CONTRACT-003-A (groups, sized M), when requested. It must first record the ready-point policy in the specs.
+  - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
+  - MEGAsync exclusions.
+- **Ownership:** Released; no active task.

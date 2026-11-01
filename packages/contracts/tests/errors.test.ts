@@ -46,6 +46,7 @@ describe('ApiErrorSchema', () => {
   it.each([
     ['an unknown code', { ...validationError, code: 'TEAPOT' }],
     ['a lowercase code', { ...validationError, code: 'validation_failed' }],
+    ['the removed departure code', { ...validationError, code: 'INVALID_DEPARTURE' }],
     ['an empty message', { ...validationError, message: '' }],
     ['a missing request ID', { code: 'NOT_FOUND', message: 'Not found.' }],
     ['an invalid request ID', { ...validationError, requestId: 'req 1' }],

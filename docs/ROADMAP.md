@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-10-31. **MONO-001, MOBILE-001, TOOLCHAIN-001 and CONTRACT-001 are completed; UI-001 is paused for an Android text fix and screen-reader checks; CONTRACT-002 has A completed; all other implementation tasks are planned.**
+Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001 and CONTRACT-002 are completed; UI-001 is paused for an Android text fix and screen-reader checks; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,17 @@ Last updated: 2026-10-31. **MONO-001, MOBILE-001, TOOLCHAIN-001 and CONTRACT-001
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**CONTRACT-002-B — Completed (2026-11-01); CONTRACT-002 is `Completed`.**
+
+- **Done:**
+  - `rides.ts`: the public projection of an active request (no status or group, so no public read links a rider to a group), the owner view (status, group reference consistent with the status, exact origin), the create input (operation ID, exact origin, destination place ID, departure choice of 0, 5 or 10 minutes) and the cancel input (operation ID, expected version).
+  - `nearby.ts`: a coarse viewport (span at most 0.5°), the discovery query (optional destination and departure), the ride/group item union and the snapshot (at most 100 items, `truncated`, previews only for returned items). Items carry no distance; the app computes it from the public area.
+  - `matches.ts`: match level, preview, match and the owner's match set (at most 20, each target once, with its own version and no cursor).
+  - `groups.ts`: group status, `GROUP_POLICY`, the join target and the public group preview without members, coordinator, meeting point or chat.
+  - `INVALID_DEPARTURE` removed: a departure outside the options fails validation. Rules and mock policy values in `api/rides.md`. 439 contract tests (162 new).
+- **Parent check:** every CONTRACT-002 criterion holds: anonymous previews (ride projection, group preview, nearby snapshot), protected creation, expiry and supplied matches are representable without UI fields; a test walks a request from creation through a match to expiry with its owner and public projections.
+- **Not run (no app code changed):** mobile Jest, exports and native builds.
 
 **CONTRACT-002-A — Completed (2026-10-31).**
 
@@ -121,7 +132,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | --- | --- | --- |
 | MONO-001 | Workspace foundation | Completed |
 | CONTRACT-001 | Common, location, authentication contracts | Completed |
-| CONTRACT-002 | Places, rides, matching contracts | Paused (A completed; B planned) |
+| CONTRACT-002 | Places, rides, matching contracts | Completed |
 | CONTRACT-003 | Groups, chat, safety contracts | Planned |
 | CONTRACT-004 | Realtime and notification contracts | Planned |
 | MOBILE-001 | Expo shell and navigation | Completed |
@@ -192,7 +203,7 @@ Execution: [MONO-001-A through MONO-001-E](FIRST_STEPS.md#task-cards), assigned 
 
 - **Goal:** Discovery and ride-request semantics are specified.
 - **Scope:** Places/search, nearby items, public/own requests, lifecycle, supplied match results.
-- **Expected files/modules:** `C/src/{places,rides,matches}.ts`, contract tests, `docs/api/rides.md`.
+- **Expected files/modules:** `C/src/{places,rides,matches}.ts`, contract tests, `docs/api/rides.md`. Implemented with `nearby.ts` and the public group preview in `groups.ts` as well.
 - **Dependencies:** CONTRACT-001.
 - **Acceptance criteria:** Anonymous previews, protected creation, expiry, and server-supplied matches are representable without UI fields.
 - **Verification:** `pnpm test:contracts`; walk through create -> match -> expire payloads and public projections.

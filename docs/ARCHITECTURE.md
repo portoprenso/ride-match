@@ -1,6 +1,6 @@
 # Architecture plan
 
-Status: proposed; partly implemented (see [AI context](AI_CONTEXT.md)). Last updated: 2026-10-31.
+Status: proposed; partly implemented (see [AI context](AI_CONTEXT.md)). Last updated: 2026-11-01.
 
 ## Objective and scope
 
@@ -147,13 +147,14 @@ Avoid abstract base classes, dependency-injection containers, generic factories,
 packages/contracts/src/
   common.ts       location.ts     auth.ts          users.ts
   places.ts       rides.ts        matches.ts       groups.ts
+  nearby.ts
   chat.ts         safety.ts       notifications.ts realtime.ts
   errors.ts       index.ts
 ```
 
 The TypeScript/Zod convention (implemented from CONTRACT-001-A) is `FooSchema` as the runtime definition and `FooDto = z.infer<typeof FooSchema>` as its inferred type; scalar and input types drop the suffix (`Timestamp`, `ExactLocationInput`). Requests, public responses, owner responses, and event payloads use separate schemas where their visibility or fields differ. Do not maintain duplicate handwritten interfaces for the same schema.
 
-Object schemas are strict (`z.strictObject`): an unknown field fails validation instead of passing through or being silently stripped. That makes an accidental extra field, which may be private data, a test failure rather than a leak. DTO values stay JSON-shaped (timestamps remain strings), so input and output types match and no schema transforms data. So far `common.ts` (IDs, timestamps, versions, operation IDs, cursors, single-line text, response envelope), `errors.ts` (error codes, field errors, error body), `location.ts` (coordinates, coarse coordinates, exact input, owner, public and meeting-point locations, location policy) `users.ts` (public user, current user) `auth.ts` (phone number, one-time code, challenge, session credentials, mock OTP policy) and `places.ts` (curated place, search input and results) exist; the other modules arrive with their contract cards.
+Object schemas are strict (`z.strictObject`): an unknown field fails validation instead of passing through or being silently stripped. That makes an accidental extra field, which may be private data, a test failure rather than a leak. DTO values stay JSON-shaped (timestamps remain strings), so input and output types match and no schema transforms data. So far `common.ts` (IDs, timestamps, versions, operation IDs, cursors, single-line text, response envelope), `errors.ts` (error codes, field errors, error body), `location.ts` (coordinates, coarse coordinates, exact input, owner, public and meeting-point locations, location policy) `users.ts` (public user, current user) `auth.ts` (phone number, one-time code, challenge, session credentials, mock OTP policy) `places.ts` (curated place, search input and results), `rides.ts` (public and owner ride requests, create and cancel inputs, departure choices), `matches.ts` (match level, preview, match and match set), `groups.ts` (group status and policy, join target, public group preview; CONTRACT-003-A adds the rest) and `nearby.ts` (coarse viewport, discovery query, ride/group item union and snapshot) exist. `nearby.ts` was added to this layout by CONTRACT-002-B: it composes rides, group previews and match previews, which keeps the imports one-way. The other modules arrive with their contract cards.
 
 The package contains DTOs, request/response schemas, string-literal enum schemas, and event/notification payloads. It must not contain React Native code, UI state, database/Prisma/PostGIS types, service implementations, or backend-only matching logic. Contract fields and semantics are in [API overview](api/overview.md).
 

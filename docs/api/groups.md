@@ -1,6 +1,6 @@
 # Future API: groups, meeting points, chat, and safety
 
-Status: planned. Last updated: 2026-10-31.
+Status: planned. Last updated: 2026-11-01.
 
 Paths use `/v1`. Common envelopes/errors/idempotency are in [overview](overview.md). `Member` requires current membership; `Coordinator` also requires that role. Retained terminal history is accessible to members authorized at closure, not users who previously left.
 
@@ -9,7 +9,7 @@ Paths use `/v1`. Common envelopes/errors/idempotency are in [overview](overview.
 | Method/path | Auth | Body/query | Response | Important errors |
 | --- | --- | --- | --- | --- |
 | `POST /groups/join` | User | Own request ID; target ride ID **or** group ID; optional expected group version; operation identity | Group and updated own request | Full/closed/expired target, blocked relationship, already grouped, version conflict |
-| `GET /groups/{groupId}/preview` | Public | Group ID | Public group summary | Not found/unavailable |
+| `GET /groups/{groupId}/preview` | Public | Group ID | `GroupPreviewDto` | `TARGET_UNAVAILABLE` for an unknown or closed group |
 | `GET /groups/{groupId}` | Member | Group ID | `RideGroupDto` | Membership revoked, retention ended |
 | `DELETE /groups/{groupId}/members/me` | Member | Operation identity | Leave result and updated own request | Already-left is idempotent |
 | `PATCH /groups/{groupId}/status` | Coordinator | Requested status, expected version, operation identity | Updated group | Invalid transition, insufficient members, missing meeting point, version conflict |
@@ -27,7 +27,7 @@ Paths use `/v1`. Common envelopes/errors/idempotency are in [overview](overview.
 
 Each member has a public user summary, joinedAt, and linked ride-request ID. One user occupies one seat and belongs to at most one live group. Do not add invitations, approval queues, multiple seats per account, or a role hierarchy.
 
-Public previews expose public location/destination, occupancy, expected departure, status, and expiry. They omit private locations, meeting points, chat, and the full private group representation.
+Public previews expose public location/destination, occupancy, expected departure, status, and expiry. They omit private locations, meeting points, chat, and the full private group representation. `GroupPreviewDto` exists since CONTRACT-002-B, with `GroupStatusSchema` and `GROUP_POLICY` (capacity four, at least two members); see [ride contracts](rides.md#implemented-contracts-contract-002-b). Only `forming` and `ready` groups have a preview. `JoinTargetSchema` (`kind` ride or group, and `id`) is the target reference that the join input of CONTRACT-003-A can reuse.
 
 ## Atomic joining
 
