@@ -97,13 +97,7 @@ Use Expo Location with foreground permission only. [Expo Location documentation]
 
 Initial tunable defaults: cached browsing fix up to two minutes old; discovery refresh after roughly 100 metres of movement. Creation requires a recent, sufficiently accurate fix or an explicitly confirmed pickup point. CONTRACT-001-B chose mock defaults for the creation fix: accuracy of 100 m or better and at most 60 seconds old ([locations and users](api/overview.md#locations-and-users-contract-001-b)); otherwise the user confirms a manual pickup point. Confirm or adjust these after device checks; they are not a production policy.
 
-**Implemented controller (LOCATION-001-A):** `apps/mobile/src/platform/location/` holds these rules; no screen uses them yet (LOCATION-001-B adds the explanation and denial UI, MAP-001-A the map).
-
-**Device behavior (VERIFY-002, 2026-11-01):**
-
-- **Services off before denial:** with location services off, iOS reports every app's permission as denied, even when the app's own setting allows it. The controller therefore reads the services state on a denial too, and reports "location services are off" before "denied". The recovery UI should send the user to the services switch first.
-- **Android's "can ask again":** after a second denial, expo-location still reported that the prompt could appear. Only the next request, which showed no dialog, reported that it could not. LOCATION-001-B's denial UI must expect an "Allow" press that shows nothing once, then offer the system settings.
-- **Accuracy seen in the emulator and simulator:** a fresh high-accuracy fix was ±5 m on both; Android's balanced observation reported ±100 m (exactly the pickup limit); approximate permission gave ±11 km on iOS and ±2 km on Android. Before confirming a pickup, request a fresh fix (`refresh`) instead of relying on observation.
+**Implemented controller (LOCATION-001-A):** `apps/mobile/src/platform/location/` holds these rules; LOCATION-001-B's home screens use them (below), and MAP-001-A adds the map.
 
 - Starting reads the permission without prompting. The OS prompt appears only through `requestPermission()`, which the explanation screen calls.
 - With permission it shows a cached fix up to two minutes old, then asks for a fresh one with high accuracy. An attempt that takes over 15 seconds counts as failed, but a fix that arrives later still applies. A failed attempt rechecks location services. Nothing prompts for device settings.
@@ -111,6 +105,20 @@ Initial tunable defaults: cached browsing fix up to two minutes old; discovery r
 - Observation (a new position after about 20 m, at most every 5 s on Android, balanced accuracy) runs only while something needs it, with permission and services, and in the foreground. Going to the background stops it; returning rechecks the permission and services, refreshes the fix and resumes. iOS `inactive` (an OS dialog or the app switcher) counts as foreground.
 - Losing permission clears the fix. Fixes are frozen, so a position captured for a request never changes when the device moves.
 - Native configuration is foreground-only: iOS has only the when-in-use description, Android only coarse and fine location.
+
+**Device behavior (VERIFY-002, 2026-11-01):**
+
+- **Services off before denial:** with location services off, iOS reports every app's permission as denied, even when the app's own setting allows it. The controller therefore reads the services state on a denial too, and reports "location services are off" before "denied". The recovery UI should send the user to the services switch first.
+- **Android's "can ask again":** after a second denial, expo-location still reported that the prompt could appear. Only the next request, which showed no dialog, reported that it could not. LOCATION-001-B's card therefore explains a request that ends in a denial and then offers the system settings.
+- **Accuracy seen in the emulator and simulator:** a fresh high-accuracy fix was ±5 m on both; Android's balanced observation reported ±100 m (exactly the pickup limit); approximate permission gave ±11 km on iOS and ±2 km on Android. Before confirming a pickup, request a fresh fix (`refresh`) instead of relying on observation.
+
+**Implemented recovery (LOCATION-001-B):** `apps/mobile/src/features/location/` puts these rules on home until the map exists (MAP-001-A moves them into its sheet).
+
+- **Introduction (screen 01):** shown while the permission was never requested. It explains what the app does, that location is used only while the app is open and that others see only an approximate area, and labels the riders synthetic. "Use my location" shows the OS prompt; "Choose an area instead" closes the introduction for this launch without prompting. A failed request is explained on the screen.
+- **Home location card (screen 21 and its siblings):** one card for each state that needs words: location not in use ("Use my location"), denied ("Allow location" while the prompt can still appear, otherwise "Open device settings"), location services off (Android opens the device switch; iOS opens the app's settings page and the text names the path to Location Services), no fix in time ("Try again"), the permission unreadable, locating, an approximate fix (precise location is off), an inaccurate fix and a stale fix ("Try again" or "Refresh location"). Nothing shows while the permission is read, or with a fresh or recent, precise and accurate fix. A request that ends in a denial, or settings that did not open, are explained inside the card. The card always says that location is used only while the app is open.
+- **Named pickup point:** every card offers "Choose pickup area", which searches the curated places through `places.search` (debounced; without text, the area's places nearest its center). Choosing a place asks "Is this your pickup point?" and says that discovery shows only an approximate area and that the point stays fixed after publishing; only "Confirm this pickup" sets it. Home then shows "Near …", "Chosen by you, not your device location", and "Change pickup point". The pickup is a `manual` location at the place's own point and is never shown as the device position: the location card keeps describing the real location state.
+- **Per launch:** the set-aside introduction and the confirmed pickup live in memory only. A new launch asks again while the permission was never requested; RIDE-001-B takes the pickup into the request draft.
+- **Search area:** until the map supplies a region, searches cover a fixed area around the demo city (30 km from 42.87° N, 74.59° E), never derived from the device position.
 
 Published request origins do not automatically move with the device. Exact input coordinates stay out of analytics, logs, and public responses. Discovery uses a coarse viewport; sensitive creation input uses an authenticated body.
 

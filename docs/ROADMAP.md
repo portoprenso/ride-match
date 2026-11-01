@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 has A and B completed; LOCATION-001 has A completed (native permission checks passed in VERIFY-002); ANALYTICS-001 is completed; all other implementation tasks are planned.**
+Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 has A and B completed; LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,15 @@ Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**LOCATION-001-B — Completed (2026-11-01); LOCATION-001 is `Completed`.**
+
+- **Done:**
+  - `src/features/location/`: the location introduction (screen 01), which shows the OS prompt only on "Use my location" and can be set aside for the launch; a home location card for every state that needs words (screen 21 and its siblings), with a second action that fits the cause (ask again, open the settings, location services first, retry a fix); and a named pickup point chosen from the curated places through `places.search` and confirmed explicitly, kept as a frozen `manual` location for the request draft.
+  - The root layout creates, starts and disposes the one location controller and provides this launch's choices. `src/platform/location/openLocationSettings.ts` opens the settings. 243 mobile tests (22 new), through the real routes with a stand-in device.
+- **Parent check:** allow, deny, unavailable, stale and recovery paths (A natively in VERIFY-002, B in tests); observation stops in the background (VERIFY-002); a confirmed pickup and a captured fix never move (frozen, tested).
+- **Not run (JavaScript only, deferred):** opening the new screens on a device. The next native pass should look at the introduction, the cards and the settings links on both platforms.
+- **Next available:** MAP-001-A (needs LOCATION-001 and UI-001-D) and MOCK-001-C.
 
 **UI-001-D — Completed (2026-11-01, user waiver).**
 
@@ -245,7 +254,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | MOCK-001 | Simulator foundation | Paused (A and B completed; C planned) |
 | SYNC-001 | Event synchronization and recovery | Planned |
 | AUTH-001 | Simulated authentication | Planned |
-| LOCATION-001 | Foreground location | Paused (A completed; B planned) |
+| LOCATION-001 | Foreground location | Completed |
 | MAP-001 | Native map shell | Planned |
 | ANALYTICS-001 | Typed analytics foundation | Completed |
 | MAP-002 | Live nearby activity | Planned |
@@ -390,7 +399,7 @@ Execution: [MOBILE-001-A through MOBILE-001-H](FIRST_STEPS.md#mobile-001-a--crea
 
 - **Goal:** The app presents honest usable location states.
 - **Scope:** Permission, cached/fresh fix, manual fallback, foreground observation, stale/accuracy handling and cleanup.
-- **Expected files/modules:** `M/src/platform/location/`, permission UI and tests. LOCATION-001-A added the controller and `tests/locationLifecycle.test.tsx`.
+- **Expected files/modules:** `M/src/platform/location/`, permission UI and tests. LOCATION-001-A added the controller and `tests/locationLifecycle.test.tsx`; LOCATION-001-B added `M/src/features/location/` and `tests/locationRecovery.test.tsx`.
 - **Dependencies:** MOBILE-001.
 - **Acceptance criteria:** Allow/deny/unavailable/stale/recovery paths work; observation stops in background; a published request is not silently moved.
 - **Verification:** `pnpm test:mobile --runTestsByPath tests/locationLifecycle.test.tsx`; device permission/settings/background checks.

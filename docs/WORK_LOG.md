@@ -2055,3 +2055,32 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **Checks:** documentation only; links and statuses reviewed. No application checks were needed.
 - **Remaining/next:** the user chooses the next card (MOCK-001-C or LOCATION-001-B). The final device testing must include the waived screen-reader checks.
 - **Ownership:** Released; no active task.
+
+## 2026-11-01 — LOCATION-001-B: Location introduction, recovery and named pickup
+
+- **Actor/session:** Claude Code / location-001-b.
+- **Status:** `Completed`; ownership released. Parent LOCATION-001 is `Completed`.
+- **Working copy:** `main` at `3cab8a1` (UI-001-D waiver); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start LOCATION-001-B": the location explanation, denial and recovery states (screens 01 and 21) and a named manual pickup through the places boundary, with no fixture imports.
+- **Changes:**
+  - `src/features/location/` (new):
+    - `HomeLocation.tsx`: `useLocationIntro()` (shown while the permission was never requested and not set aside; "Use my location" calls `requestPermission`, a failure is explained) and `HomeLocationPanel` (the location card, the confirmed pickup and the pickup sheet).
+    - `locationCard.ts`: `describeLocationCard(status, platform)`. Cards: not in use, denied (ask again, or settings), services off (Android opens the switch; iOS names the path), no fix, unreadable, locating, approximate, inaccurate, stale. None while checking or with a fresh or recent, precise, accurate fix.
+    - `LocationIntroScreen.tsx` (screen 01, with the Along mark, now displayed for the first time), `PickupPlaceSheet.tsx` (search, choose, confirm or choose another; loading, failure with retry, empty), `usePlaceSearch.ts` (300 ms debounce, previous results kept while loading, `DEFAULT_BROWSE_AREA` until the map), `LocationChoicesProvider.tsx` (per-launch choices; `toConfirmedPickup` builds a frozen `manual` location at the place's point).
+  - `src/platform/location/openLocationSettings.ts`: the app's settings page, or Android's `LOCATION_SOURCE_SETTINGS`.
+  - `app/_layout.tsx` creates the controller, starts it once the data source is composed and disposes it on unmount, and provides the controller and the choices around the stack. `app/index.tsx` shows the introduction or `MapPlaceholderScreen`, which now takes children and puts Sign in in a footer of a scrolling screen.
+  - Tests: `tests/setup/expoLocation.ts` (a stand-in Expo Location device for every test, since the root layout now starts the controller; it allows precise location, so existing route tests see an unchanged home) and `tests/locationRecovery.test.tsx` (22 tests).
+- **Decisions:**
+  - The introduction's "Choose an area instead" only sets the introduction aside; without a map there is no area to show, and MAP-001-A centres the map. The card then offers "Choose pickup area" and "Use my location".
+  - Choices are kept per launch, in memory: no storage dependency was added, and asking again on a new launch is the documented first-use behavior while the permission is undetermined.
+  - The intro always labels riders synthetic, since every runnable build of this milestone uses the mock source.
+  - iOS offers no public link to the Location Services switch, so its card opens the app's settings page and names the path.
+  - A confirmed pickup keeps the location card describing the real state, so a chosen place is never presented as the device position.
+- **Checks:**
+  - `pnpm --filter @ride-match/mobile typecheck` and `lint` (including the simulator import boundary) passed.
+  - `pnpm exec jest` in `apps/mobile`: 12 suites, 243 tests passed (22 new); no React `act` warnings (only watchman's recrawl notice from the synced folder).
+  - **Not run (JavaScript only; deferred per the user's preference):** opening the screens on a device or simulator, exports, and the contracts suite (unchanged).
+- **Docs:** PRODUCT (implemented recovery; the VERIFY-002 device notes moved below the controller's list, where they belong), ARCHITECTURE (LOCATION-001-B module note; the root layout owns the controller), DEVELOPMENT (tests, 243), TOOLCHAIN (the second Jest setup file), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, LOCATION-001 completed), AI_CONTEXT.
+- **JSDoc:** the public functions, hooks and components above, covering prompting rules, privacy of the confirmed pickup, per-launch storage, settings fallbacks and focus return.
+- **Remaining/next:** the next native pass opens the introduction, the cards and the settings links on both platforms. Available cards: MAP-001-A and MOCK-001-C; the user chooses.
+- **Ownership:** Released; no active task.
