@@ -160,6 +160,7 @@ Zod is the only runtime dependency. Mobile receives it through the contracts pac
 | `react-native-worklets` | 0.10.1 | runtime | Required peer of reanimated 4.5.1 (`0.10.x`); optional peer of `expo-modules-core` (`^0.7.4` … `^0.10.0`) | Expo `0.10.1` | MOBILE-001-A |
 | `react-dom` | 19.2.3 | runtime | Required peer of `expo-router`'s web dependencies (`vaul`, Radix); must match `react` | Expo `19.2.3`; peer `react ^19.2.3` | MOBILE-001-A |
 | `@ride-match/contracts` | `workspace:*` | runtime | Shared package | Fixed decision | MOBILE-001-B |
+| `@tanstack/react-query` | 5.104.5 | runtime | Query cache for data-source reads (with `@tanstack/query-core` 5.104.5) | Pure JavaScript, not in Expo's `bundledNativeModules.json`; peers `react ^18 \|\| ^19`. Published 2026-10-19, the newest release at least two weeks old; 5.105.0 (2026-10-26) not selected yet | DATA-001-B |
 | `typescript` | 6.0.3 | dev | Typecheck | Expo `~6.0.3` | MOBILE-001-A |
 | `@types/react` | 19.2.18 | dev | React types | Expo `~19.2.4` | MOBILE-001-A |
 | `eslint` | 9.39.5 | dev | Lint binary | Expo CLI 57 `^9.0.0` | MOBILE-001-A |
@@ -338,7 +339,8 @@ If a consumer fails, record the evidence and choose one format that all three lo
   - **Correction:** `eslint-config-expo/flat` 57.0.2 registers the `@typescript-eslint` plugin only for those file globs (`flat/utils/typescript.js`). Without `files`, ESLint failed with "could not find plugin "@typescript-eslint"" while linting `eslint.config.js`.
   - It lints `app.config.ts`, `app/_layout.tsx`, `app/index.tsx`, `src/features/map/MapPlaceholderScreen.tsx`, and `eslint.config.js`, using the mobile config with base path `apps/mobile`.
 - **Mobile `lint`:** `eslint .`. Do not use `expo lint`, which can install packages.
-- Type-aware rules for mobile, and future mock-import boundary rules (DATA-001, MOCK-001), are deferred.
+- **Simulator import boundary (DATA-001-B):** `no-restricted-imports` with `regex` patterns. In `app/**` and `src/**`, except `src/bootstrap/**` and `src/data/mock/**`, a specifier matching `(^|/)data/mock(/|$)` fails. A second block for `src/data/**` (except `mock`) repeats it and adds `^(\.\.?/)+mock(/|$)`, because a relative path inside `src/data` reaches the simulator without naming `data/`; a later block replaces the rule's options, hence the repetition. Plain string matching works before `src/data/mock` exists (`import/no-restricted-paths` skips unresolved files). `tests/importBoundary.test.ts` lints controlled source texts through the ESLint Node API in the `node` Jest environment; it passes the config object with `overrideConfigFile: true`, since Jest cannot run ESLint's dynamic config import. `eslint-config-expo` sets no `no-restricted-imports` of its own.
+- Type-aware rules for mobile are deferred.
 
 ## Test configuration (MOBILE-001-F)
 
@@ -347,6 +349,7 @@ If a consumer fails, record the evidence and choose one format that all three lo
   - `testMatch` limited to `<rootDir>/tests/**/*.test.ts?(x)`
   - **Correction (MOBILE-001-F):** no `transformIgnorePatterns` override. `jest-expo` 57.0.5's preset already starts with `/node_modules/(?!(.pnpm|react-native|@react-native|…|expo|@expo|…))`, which transforms Expo and React Native packages inside the `.pnpm` store. It also excludes `react-native-reanimated/plugin/` and `@react-native/babel-preset/`, which the pattern planned here would have dropped.
   - `clearMocks: true` (UI-001-D). React Native's preset already mocks APIs such as `AccessibilityInfo` with shared `jest.fn`s. `jest.spyOn` returns that same mock, and `restoreAllMocks` does not reset it, so a spy saw calls from earlier tests.
+  - `setupFiles: ['<rootDir>/tests/setup/publicEnvironment.ts']` (DATA-001-A), which sets the `EXPO_PUBLIC_` build variables; Jest loads no `.env`, and Expo's Babel preset does not inline them under Jest.
   - No `babel.config.js`: without one, `jest-expo` resolves `expo/internal/babel-preset` from `process.cwd()`, so Jest must run in `apps/mobile` (the `test` script does).
 - Route tests use `renderRouter` from `expo-router/testing-library` against the real `app/` directory, through `tests/helpers/renderApp.ts`. Tests stay outside `app/`.
   - Testing Library 14's `render` is async. `renderRouter` attaches `getPathname()` and `getRouterState()` to the returned promise, so the helper awaits it and keeps those functions.
@@ -652,6 +655,7 @@ These are expectations recorded here, not checked results. The named task confir
 - **MOBILE-001-H:** verified on 2026-10-30. See the iOS result, the patch-alignment correction, and the `Screen` safe-area section above. The Android checks were rerun on the final files.
 - **TOOLCHAIN-001-A:** the gesture-handler pin passed the quick dependency checks on 2026-10-30, and VERIFY-001 (2026-10-31) confirmed the rest: tests, both exports, online doctor (21/21), and clean Android and iOS rebuilds. `RNGestureHandler` 2.32.0 is in the generated Podfile's linked modules and the Android build.
 - **CONTRACT-001-A:** on 2026-10-31, contracts tests (61), typecheck, lint, build, the file-list checks, a frozen install, mobile typecheck, and a Node import of `@ride-match/contracts` from `apps/mobile` (all 11 exports, Zod loaded) passed. VERIFY-001 then confirmed the app side: the mobile Jest suite loads Zod through the package, both exports bundle it (the iOS Hermes bytecode contains the contracts' and Zod's strings), and both development builds start with it under Hermes.
+- **DATA-001-B:** on 2026-11-01, `pnpm --filter @ride-match/mobile add --save-exact @tanstack/react-query@5.104.5` added two lockfile packages; a frozen install, online doctor (21/21), the mobile suite (105), typecheck and lint passed. Doctor's output also showed Expo's env loader reading `apps/mobile/.env` and exporting the three `EXPO_PUBLIC_` variables. Query clients in tests set `gcTime: Infinity`: the default five-minute garbage-collection timer otherwise kept Jest from exiting.
 - **UI-001-A:** typecheck, lint, doctor (21/21), and the resolved config (both plugins) passed on 2026-10-30. VERIFY-001 (2026-10-31) rebuilt both development clients: each Manrope weight renders distinctly, there is no startup font error, and nothing clips on iOS at the default and XXXL text sizes. **Open:** on Android, line heights grow less than font sizes under the system's nonlinear font scaling. At 150% the `section` style (24/30) cuts off descenders on its last line; at 200% a `section` line is 38 dp, and `heading` and `subheading` are tight too.
 
 ## Sources (checked 2026-10-03)

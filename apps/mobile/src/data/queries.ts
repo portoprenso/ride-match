@@ -1,0 +1,79 @@
+import type { Id, NearbyQueryInput, SearchPlacesInput } from '@ride-match/contracts';
+import { queryOptions } from '@tanstack/react-query';
+
+import type { AppDataSource } from './AppDataSource';
+import { withDataErrors, type DataError } from './errors';
+import { queryKeys, type SignedInViewer, type Viewer } from './queryKeys';
+
+declare module '@tanstack/react-query' {
+  interface Register {
+    // Query and mutation functions wrap their call in `withDataErrors`, so failures are DataErrors.
+    defaultError: DataError;
+  }
+}
+
+/*
+ * Query options for the data source's unpaged reads, for feature hooks to pass to `useQuery`,
+ * for example `useQuery(nearbyQuery(useDataSource(), viewer, input))`.
+ *
+ * Each pairs the read with its key from `queryKeys` and passes Query's abort signal to the
+ * data source. Query aborts that signal when a read becomes obsolete, such as the previous
+ * viewport's read after the map moves, or a read nothing displays any more, so a late result
+ * never replaces a newer one. Failures arrive as `DataError`s.
+ */
+
+export function placeSearchQuery(dataSource: AppDataSource, input: SearchPlacesInput) {
+  return queryOptions({
+    queryKey: queryKeys.placeSearch(input),
+    queryFn: ({ signal }) => withDataErrors(dataSource.places.search(input, { signal })),
+  });
+}
+
+export function nearbyQuery(dataSource: AppDataSource, viewer: Viewer, input: NearbyQueryInput) {
+  return queryOptions({
+    queryKey: queryKeys.nearby(viewer, input),
+    queryFn: ({ signal }) => withDataErrors(dataSource.rides.getNearby(input, { signal })),
+  });
+}
+
+export function rideQuery(dataSource: AppDataSource, viewer: Viewer, rideId: Id) {
+  return queryOptions({
+    queryKey: queryKeys.ride(viewer, rideId),
+    queryFn: ({ signal }) => withDataErrors(dataSource.rides.getRide(rideId, { signal })),
+  });
+}
+
+export function groupPreviewQuery(dataSource: AppDataSource, viewer: Viewer, groupId: Id) {
+  return queryOptions({
+    queryKey: queryKeys.groupPreview(viewer, groupId),
+    queryFn: ({ signal }) => withDataErrors(dataSource.groups.getPreview(groupId, { signal })),
+  });
+}
+
+export function currentUserQuery(dataSource: AppDataSource, viewer: SignedInViewer) {
+  return queryOptions({
+    queryKey: queryKeys.currentUser(viewer),
+    queryFn: ({ signal }) => withDataErrors(dataSource.auth.getCurrentUser({ signal })),
+  });
+}
+
+export function ownRequestQuery(dataSource: AppDataSource, viewer: SignedInViewer) {
+  return queryOptions({
+    queryKey: queryKeys.ownRequest(viewer),
+    queryFn: ({ signal }) => withDataErrors(dataSource.rides.getOwnRequest({ signal })),
+  });
+}
+
+export function matchesQuery(dataSource: AppDataSource, viewer: SignedInViewer, rideId: Id) {
+  return queryOptions({
+    queryKey: queryKeys.matches(viewer, rideId),
+    queryFn: ({ signal }) => withDataErrors(dataSource.rides.getMatches(rideId, { signal })),
+  });
+}
+
+export function groupDetailQuery(dataSource: AppDataSource, viewer: SignedInViewer, groupId: Id) {
+  return queryOptions({
+    queryKey: queryKeys.groupDetail(viewer, groupId),
+    queryFn: ({ signal }) => withDataErrors(dataSource.groups.getGroup(groupId, { signal })),
+  });
+}

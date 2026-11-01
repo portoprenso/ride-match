@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix and screen-reader checks; DATA-001 has A completed; all other implementation tasks are planned.**
+Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix and screen-reader checks; DATA-001 is completed; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,16 @@ Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**DATA-001-B — Completed (2026-11-01); DATA-001 is `Completed`.**
+
+- **Done:**
+  - `@tanstack/react-query` 5.104.5 with one client per launch in the root layout: reads retry at most twice and only when a retry may succeed; mutations never retry automatically.
+  - `src/data/errors.ts`: the mobile error model (`DataError` with `source`, `network`, `unavailable`, `aborted` and `unexpected` kinds; source bodies validated against `ApiErrorSchema`), normalization, and Query's error type.
+  - `src/data/queryKeys.ts` and `queries.ts`: keys scoped by viewer identity with every parameter, a public scope for place search, a per-group prefix for private data, and read options that pass Query's abort signal.
+  - ESLint blocks simulator imports outside the composition root and the simulator. The contracts smoke import is removed. 105 mobile tests (36 new).
+- **Parent check:** features cannot import the simulator (lint, tested with controlled imports), unsupported API mode fails clearly (A), and identity and parameters are in the query keys (tested).
+- **Not run (deferred):** a development build or export, as for A. No native configuration changed.
 
 **DATA-001-A — Completed (2026-11-01).**
 
@@ -187,7 +197,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | CONTRACT-003 | Groups, chat, safety contracts | Completed |
 | CONTRACT-004 | Realtime and notification contracts | Completed |
 | MOBILE-001 | Expo shell and navigation | Completed |
-| DATA-001 | Data-source and Query foundation | Paused (A completed; B planned) |
+| DATA-001 | Data-source and Query foundation | Completed |
 | MOCK-001 | Simulator foundation | Planned |
 | SYNC-001 | Event synchronization and recovery | Planned |
 | AUTH-001 | Simulated authentication | Planned |
@@ -296,7 +306,7 @@ Execution: [MOBILE-001-A through MOBILE-001-H](FIRST_STEPS.md#mobile-001-a--crea
 
 - **Goal:** Features can call typed asynchronous operations through one boundary.
 - **Scope:** AppDataSource, central selection, Query provider/keys, error normalization, read cancellation, config validation, import restrictions.
-- **Expected files/modules:** `M/src/data/`, `M/src/config/`, bootstrap providers. DATA-001-A completed the interface, central selection, configuration and data-source provider.
+- **Expected files/modules:** `M/src/data/`, `M/src/config/`, bootstrap providers. DATA-001-A completed the interface, central selection, configuration and data-source provider, and DATA-001-B the Query client, keys, read options, error model and import rule.
 - **Dependencies:** MOBILE-001, CONTRACT-004.
 - **Acceptance criteria:** Features cannot import mock fixtures; unsupported API mode fails clearly; identity/parameters are represented in relevant query keys.
 - **Verification:** `pnpm test:mobile --runTestsByPath src/data/dataSource.test.ts`; verify lint restriction with a controlled invalid import test/check.

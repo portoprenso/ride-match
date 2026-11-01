@@ -1772,3 +1772,48 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
   - MEGAsync exclusions.
 - **Ownership:** Released; no active task.
+
+## 2026-11-01 — DATA-001-B: Query foundation, error model and import boundary
+
+- **Actor/session:** Claude Code / data-001-b.
+- **Status:** `Completed`; ownership released. The parent DATA-001 is `Completed`.
+- **Working copy:** `main` at `32e7a32` (DATA-001-A). Committed on top of it, with no push: the user asked for a commit after each completed step. The untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start DATA-001-B". Mobile data layer, bootstrap, lint configuration, tests and docs. No mock data and no feature hooks.
+- **Prerequisites:** DATA-001-A is `Completed`.
+- **Changes:**
+  - **Dependency:** `@tanstack/react-query` 5.104.5 (exact), adding it and `@tanstack/query-core` 5.104.5 to the lockfile.
+  - **`src/data/errors.ts`:** `DataErrorKind`, `DataError` (`kind`, `body`, `code`, `DataError.fromSource(body)` validating with `ApiErrorSchema`), `DataSourceUnavailableError` (now a `DataError` of kind `unavailable`), `toDataError`, `withDataErrors`, `isRetryableRead`.
+  - **`src/data/queryKeys.ts` (new):** `SignedInViewer`, `Viewer`, `ANONYMOUS_VIEWER`, and `queryKeys` (`viewer`, `placeSearch`, `nearby`, `ride`, `groupPreview`, `currentUser`, `ownRequest`, `matches`, `group`, `groupDetail`, `chatHistory`, `blockList`).
+  - **`src/data/queries.ts` (new):** `placeSearchQuery`, `nearbyQuery`, `rideQuery`, `groupPreviewQuery`, `currentUserQuery`, `ownRequestQuery`, `matchesQuery`, `groupDetailQuery`, and the `Register` declaration making `DataError` Query's default error.
+  - **`src/bootstrap/createQueryClient.ts` (new):** `MAX_READ_RETRIES` (2) and `createQueryClient()`.
+  - **`app/_layout.tsx`:** provides the Query client (created once with `useState`) inside `DataSourceProvider`; the smoke import is gone.
+  - **Removed:** `src/bootstrap/checkContractsPackage.ts`.
+  - **`eslint.config.js`:** the simulator import boundary (two blocks, a shared message, `regex` patterns).
+  - **Tests:** `tests/dataQueries.test.tsx` (27) and `tests/importBoundary.test.ts` (9). 105 mobile tests (36 new).
+- **Decisions:**
+  - **Version:** 5.104.5, the newest release at least two weeks old (published 2026-10-19), rather than 5.105.0 (six days old). It is pure JavaScript with `react ^18 || ^19` peers.
+  - **Error model:** five kinds that decide behavior. Implementations report source and network failures as `DataError`s, since only they can tell them apart; everything else normalizes to `unexpected`. Source bodies are validated against the contract, and an invalid body becomes `unexpected` without carrying any of its content, so an echoed submitted value never reaches the UI or logs. Feature copy depends on `kind` and `code`, never message text.
+  - **Retries:** reads retry at most twice, and only after `network` or `SERVICE_UNAVAILABLE`. Rate limits are not retried automatically because they say when to retry. Mutations never retry automatically, matching the no-offline-queue rule; an unknown outcome is retried on purpose with the same operation ID.
+  - **Keys:** every key the session can change starts with the viewer scope, including public projections that a signed-in viewer's blocks can filter; only place search is `public`. Removing `viewer(…)` clears one identity; removing `group(…)` clears one group's detail and chat but not its public preview. Private keys require a `SignedInViewer` at compile time. Keys hold only IDs and coarse inputs.
+  - **Read options for unpaged reads only:** chat history and the block list are paged, and their feature cards decide the page parameters; their keys exist.
+  - **Abort:** the options pass Query's signal, so Query aborts a read whose key changed or that nothing observes. A test checks the previous viewport's signal after the map moves and the last one after unmounting.
+  - **Lint boundary by specifier, not resolved path:** `no-restricted-imports` regex patterns work before `src/data/mock` exists; `import/no-restricted-paths` would skip unresolved imports. A second block catches relative paths inside `src/data`, which the first test run showed slipping through.
+  - **ESLint in Jest:** the boundary test runs ESLint's Node API in the `node` environment with the config object, because Jest cannot run ESLint's dynamic config import. It uses `process.cwd()` instead of Node's `path`, since the mobile tsconfig has no Node types.
+  - **Focus and online state** are left to SYNC-001-B, which owns foreground and reconnect behavior.
+- **Excluded:**
+  - feature query and mutation hooks (their feature cards), paged chat and block-list options;
+  - Query focus and online wiring and identity-change clearing (SYNC-001-B, AUTH-001-B);
+  - the simulator (MOCK-001).
+- **Verification:**
+  - `pnpm install --frozen-lockfile`: passes. `pnpm doctor:mobile`: 21/21; its output showed Expo's env loader reading `apps/mobile/.env` and exporting the three variables.
+  - `pnpm test:mobile`: 7 suites, 105 tests pass, and Jest exits (after giving test Query clients `gcTime: Infinity`; the first run passed but hung on the default five-minute cache timer).
+  - `pnpm typecheck` and `pnpm lint`: all Turbo tasks pass. The first typecheck found an untyped `renderHook` prop and Node-only `path`/`__dirname` in the boundary test; both were fixed.
+  - A manual lint probe with temporary files (removed) confirmed the rule fails a feature import and allows a bootstrap import.
+  - `git diff --check`: clean. Local Markdown links and anchors in the edited docs resolve.
+  - Not run (deferred to the later verification pass): a development build or export.
+- **Remaining/next:**
+  - MOCK-001-A (simulator foundation), when requested.
+  - The deferred development-build check from DATA-001-A.
+  - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
+  - MEGAsync exclusions.
+- **Ownership:** Released; no active task.
