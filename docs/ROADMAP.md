@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002 and CONTRACT-003 are completed; UI-001 is paused for an Android text fix and screen-reader checks; all other implementation tasks are planned.**
+Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002 and CONTRACT-003 are completed; UI-001 is paused for an Android text fix and screen-reader checks; CONTRACT-004 has A completed; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,14 @@ Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**CONTRACT-004-A — Completed (2026-11-01).**
+
+- **Done:**
+  - `realtime.ts`: the event envelope (event ID, schema version 1, occurrence time, type, audience, payload), the three audiences (public, one user, one group's members), the seven events with their payloads and cache rules, the per-subscription event unions, and the subscription request (`nearby` viewport, `user`, `group`), acknowledgement and unsubscribe.
+  - `api/realtime.md`: payload and cache action per event, removal, group-change and revocation reasons that never reveal a join or a block, subscription errors, and the events one block-and-leave raises. No error codes were added. 781 contract tests (82 new).
+- **Parent check (partial):** each event has a validated payload, audience and cache/recovery rule. Notification payloads (B) remain.
+- **Not run (no app code changed):** mobile Jest, exports and native builds.
 
 **CONTRACT-003-C — Completed (2026-11-01); CONTRACT-003 is `Completed`.**
 
@@ -160,7 +168,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | CONTRACT-001 | Common, location, authentication contracts | Completed |
 | CONTRACT-002 | Places, rides, matching contracts | Completed |
 | CONTRACT-003 | Groups, chat, safety contracts | Completed |
-| CONTRACT-004 | Realtime and notification contracts | Planned |
+| CONTRACT-004 | Realtime and notification contracts | Paused (A completed; B planned) |
 | MOBILE-001 | Expo shell and navigation | Completed |
 | DATA-001 | Data-source and Query foundation | Planned |
 | MOCK-001 | Simulator foundation | Planned |
@@ -249,7 +257,7 @@ Execution: [MONO-001-A through MONO-001-E](FIRST_STEPS.md#task-cards), assigned 
 
 - **Goal:** Asynchronous updates share a stable vocabulary.
 - **Scope:** Event/notification envelopes, logical subscriptions, audiences, recovery semantics.
-- **Expected files/modules:** `C/src/{realtime,notifications}.ts`, contract tests, `docs/api/realtime.md`.
+- **Expected files/modules:** `C/src/{realtime,notifications}.ts`, contract tests, `docs/api/realtime.md`. CONTRACT-004-A completed `realtime.ts`.
 - **Dependencies:** CONTRACT-003.
 - **Acceptance criteria:** Each event has a validated payload, audience, and cache/recovery rule; push payloads contain no sensitive content.
 - **Verification:** `pnpm test:contracts`; validate public/private event and notification examples.

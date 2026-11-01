@@ -1640,3 +1640,53 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
   - MEGAsync exclusions.
 - **Ownership:** Released; no active task.
+
+## 2026-11-01 — CONTRACT-004-A: Realtime event and subscription contracts
+
+- **Actor/session:** Claude Code / contract-004-a.
+- **Status:** `Completed`; ownership released. The parent CONTRACT-004 is `Paused` (A completed; B planned).
+- **Working copy:** `main` at `79aebb5` (CONTRACT-003-C). Committed on top of it, with no push: the user asked for a commit after each completed step. The untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start CONTRACT-004-A". Contracts, tests and docs only.
+- **Prerequisites:** CONTRACT-003 is `Completed`.
+- **Changes:**
+  - **`src/realtime.ts` (new):**
+    - **`EVENT_SCHEMA_VERSION`:** 1.
+    - **Audiences:** `PublicAudienceSchema` (`kind: 'public'`), `UserAudienceSchema` (`userId`), `GroupAudienceSchema` (`groupId`), and their union `EventAudienceSchema`.
+    - **Envelope fields on every event:** `id`, `schemaVersion`, `occurredAt`, `type`, `audience`, `payload`.
+    - **Events:**
+      - `NearbyUpsertedEventSchema`: public, `item` (`NearbyItemSchema`).
+      - `NearbyRemovedEventSchema`: public, `target` (`JoinTargetSchema`), `version`, `reason` (`NearbyRemovalReasonSchema`: `expired`, `unavailable`).
+      - `RideChangedEventSchema`: user, `rideRequestId`, `version`, `status`.
+      - `MatchesChangedEventSchema`: user, `rideRequestId`, `version`.
+      - `GroupChangedEventSchema`: group, `groupId`, `version`, `reason` (`GroupChangeReasonSchema`: `member_joined`, `member_left`, `ready`, `reopened`, `meeting_point_changed`, `completed`, `cancelled`). Refined so the audience group is the payload's.
+      - `ChatMessageCreatedEventSchema`: group, `message` (`ChatMessageSchema`). Refined so the audience group is the message's.
+      - `AccessRevokedEventSchema`: user, `groupId`, `version`, `reason` (`AccessRevocationReasonSchema`: `left`, `history_expired`).
+    - **Unions:** `DomainEventSchema` (all seven), and `PublicEventSchema`, `UserEventSchema`, `GroupEventSchema` for the three subscription kinds.
+    - **Subscriptions:** `SubscriptionRequestSchema` (union on `kind`: `nearby` with a `MapViewportSchema` viewport, `user`, `group` with `groupId`), `SubscriptionAckSchema` (`subscriptionId`, the accepted `subscription`) and `UnsubscribeInputSchema` (`subscriptionId`).
+  - **`src/index.ts`:** re-exports `realtime.js`.
+  - **Tests:** `tests/realtime.test.ts` (new) covers the audiences, each event accepted, the seven types listed, envelope failures (unknown type, schema version 2, missing ID or audience, offset time, room names), mixed public/private failures for every event (exact origins, ride status or group, members, meeting points, closed groups, previews, private events with a public audience and the reverse, another group's audience, revealing reasons), each subscription union accepting only its events, the subscription request, acknowledgement and unsubscribe, and a walkthrough of the events of a join, a message and a block-and-leave. 781 tests (82 new).
+- **Decisions:**
+  - **Every event carries an audience** with the recipient's identity (`userId` or `groupId`), not only a type. The app can then drop a private event for a user who signed out or a group it left, which unsubscribing alone does not guarantee. Each type has one audience kind, fixed by its schema, and group events are refined to their payload's group.
+  - **Per-subscription unions** (`PublicEventSchema`, `UserEventSchema`, `GroupEventSchema`), so a listener on a nearby subscription parses with a schema that cannot accept a private event.
+  - **ID-and-version payloads, except two.** Ride, match, group and revocation events carry IDs, a version and a reason, and the app rereads the authoritative snapshot. Only the public nearby item and the stored chat message travel whole, as the spec's "merge only when simple and safe" allows. The exact origin and member data never travel in events.
+  - **Reasons that reveal nothing:** a nearby removal is `expired` (public anyway) or `unavailable` (cancelled, grouped, completed, closed, or filtered for this subscriber), so watchers cannot link a ride to the group it joined, and a block shows as nothing more than an unavailable item. A leave by blocking is `member_left` to the group and `left` to the blocker.
+  - **Revocation carries the group version,** so a user who rejoined the same group ignores a delayed revocation. Only group access is revoked by event; a session end shows through authentication errors.
+  - **No match preview in upserts,** because previews depend on each viewer's destination; with a destination selected, the app rereads the snapshot.
+  - **Subscriptions:** logical `nearby`, `user` and `group` scopes, never room names; `user` names no user (the session decides). The acknowledgement echoes the scope exactly, since the source accepts or fails rather than narrowing. Errors reuse existing codes: `UNAUTHENTICATED`/`SESSION_EXPIRED`, `MEMBERSHIP_REQUIRED`, `HISTORY_EXPIRED`, `UNSUPPORTED_AREA`, `VALIDATION_FAILED`. IDs last one connection; unsubscribe is idempotent.
+  - **Unknown events are gaps:** an event that fails validation (new type or schema version) is logged by type only and triggers the reconnect resynchronization.
+  - **No new error codes.**
+- **Excluded:**
+  - notification payloads and push-device registration (CONTRACT-004-B);
+  - the mock event emitter and routing (MOCK-001), synchronization and version guards (SYNC-001-A/B);
+  - any mobile code.
+- **Verification:**
+  - `pnpm test:contracts`: 13 files, 781 tests pass.
+  - A script on the built package confirmed that mixed public/private cases fail on the intended path (unknown item key, closed status, audience kind, removal reason, audience group, schema version), and that all 22 new exports are present.
+  - `pnpm build:contracts`, `pnpm typecheck` (contracts, contract tests and mobile) and `pnpm lint`: all Turbo tasks pass. The first typecheck caught a test fixture typed as `object`; it was fixed.
+  - `git diff --check`: clean. Local Markdown links and anchors in the edited docs resolve.
+  - Not run (no app code changed): mobile Jest, exports and native builds.
+- **Remaining/next:**
+  - CONTRACT-004-B (notifications), when requested; it completes CONTRACT-004.
+  - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
+  - MEGAsync exclusions.
+- **Ownership:** Released; no active task.
