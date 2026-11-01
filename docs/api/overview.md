@@ -45,9 +45,11 @@ Schemas live in `packages/contracts`, organized as described in [architecture](.
 | `NearbyItemDto` | Union on `kind` of a public ride or a group preview. Implemented |
 | `GroupPreviewDto` | Public preview of a live group: status, member count of four seats, public origin, destination, departure, expiry, version; no members, coordinator, meeting point or chat. Implemented |
 | `RideMatchDto`, `RideMatchSetDto` | Target ride/group, match level, optional additional minutes, validity time; the owner's set of at most 20 with its own version. Implemented |
-| `RideGroupDto` | ID, coordinator, authorized members, capacity, status, destination, departure, meeting point, expiry, version |
-| `GroupMemberDto` | User summary, joinedAt, linked request ID |
-| `MeetingPointDto` | ID, shared place coordinates, label, optional viewer-specific walking estimate. Implemented; group embedding and updates come with CONTRACT-003-A |
+| `RideGroupDto` | ID, status, coordinator, members in join order, capacity, destination, departure, meeting point or `null`, creation/expiry, closure, version; member-only. Implemented; see [group contracts](groups.md#implemented-contracts-contract-003-a) |
+| `GroupMemberDto`, `GroupClosureDto` | User summary, joinedAt, linked request ID; closure reason, closedAt, historyExpiresAt. Implemented |
+| `JoinGroupInput`, `JoinGroupResultDto` | Own request ID, target ride or group, operation ID (no expected version); the forming group and the grouped own request. Implemented |
+| `LeaveGroupInput`, `LeaveGroupResultDto`, `UpdateGroupStatusInput` | Operation ID; group ID and the cancelled own request; requested status, expected version and operation ID. Implemented |
+| `MeetingPointDto` | ID, shared place coordinates, label, optional viewer-specific walking estimate. Implemented; the group carries it since CONTRACT-003-A |
 | `ChatMessageDto` | ID, group ID, sender, text, createdAt, group-local sequence, client message ID |
 | `ReportUserInput` | Target, reason, optional bounded details, optional relevant group/message reference |
 | `BlockUserInput` | Target user ID |

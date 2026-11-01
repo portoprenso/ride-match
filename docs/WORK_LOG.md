@@ -1481,3 +1481,64 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
   - MEGAsync exclusions.
 - **Ownership:** Released; no active task.
+
+## 2026-11-01 — CONTRACT-003-A: Group membership and lifecycle contracts
+
+- **Actor/session:** Claude Code / contract-003-a.
+- **Status:** `Completed`; ownership released. The parent CONTRACT-003 is `Paused` (A completed; B and C planned).
+- **Working copy:** `main` at `0aed09d` (CONTRACT-002-B). Committed on top of it at the user's request, with no push. The untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start CONTRACT-003-A", then commit. Contracts, tests and docs only.
+- **Prerequisites:** CONTRACT-002 is `Completed`.
+- **Ready-point policy (recorded in the specs before the code):** the plan's recommendation was adopted. When the source changes or withdraws the meeting point of a `ready` group, the group returns to `forming` and the coordinator must mark it ready again; meanwhile it accepts joins if a seat is free. A `forming` group stays `forming`. A change of point comes with a new point `id`.
+- **Changes:**
+  - **`src/groups.ts`:**
+    - **`GROUP_POLICY`:** gained `lifetimeSeconds` (1,800) and `historyRetentionSeconds` (3,600), applied by the source (GROUP-001-C).
+    - **`GroupClosureReasonSchema`:** `completed`, `coordinator_cancelled`, `expired`, `members_left`.
+    - **`GroupClosureSchema`:** `reason`, `closedAt`, `historyExpiresAt`, refined so history expires after closure.
+    - **`GroupMemberSchema`:** `user`, `joinedAt`, `rideRequestId`.
+    - **`RideGroupSchema`:** `id`, `status`, `coordinatorId`, `members` (1–4), `capacity` 4, `destination`, `departureAt`, `meetingPoint` or `null`, `createdAt`, `expiresAt`, `closure` or `null`, `version`. Refinements:
+      - a closure exactly when closed, whose reason fits the status;
+      - fewer than two members exactly when the closure reason is `members_left`;
+      - each user and ride request once;
+      - members in join order, none before `createdAt`;
+      - the coordinator among the members;
+      - a meeting point when `ready` or `completed`;
+      - creation and departure before expiry.
+    - **`JoinGroupInputSchema`:** `operationId`, `rideRequestId`, `target`, refined so the caller's own ride is not the target.
+    - **`JoinGroupResultSchema`:** `group` and `rideRequest`, refined so the group is `forming` and the request is `grouped` into it and listed among its members.
+    - **`LeaveGroupInputSchema`:** `operationId`.
+    - **`LeaveGroupResultSchema`:** `groupId` and `rideRequest`, refined so the request is `cancelled` with that group.
+    - **`UpdateGroupStatusInputSchema`:** `operationId`, `status`, `expectedVersion`.
+    - `groups.ts` now imports `rides.ts` for the join and leave results. Imports stay one-way: rides ← groups ← matches ← nearby.
+  - **Tests:** `tests/groups.test.ts` extended with the policy check (every departure choice comes before the group lifetime), each closure reason, private fields rejected from members and the group, every group refinement on its own, the join, leave and status inputs and results, and a walkthrough: solo formation, filling to four (still forming), a lost last-seat race that keeps an active request, ready, a point change back to forming, coordinator transfer on leave, and a `members_left` closure. 522 tests (83 new).
+- **Decisions:**
+  - **No expected version on join.** The earlier spec listed an optional one. A join is checked against the group's current status and seats; with a version, the loser of a last-seat race would get `VERSION_CONFLICT` instead of the specified `GROUP_FULL`, and an unrelated change would fail a valid join. The GROUP-002-A criterion in the plan now says "unavailable" instead of "version".
+  - **Join check order and codes**, in `api/groups.md`:
+    - own request: `FORBIDDEN`, `ALREADY_IN_GROUP`, `RIDE_EXPIRED`, `INVALID_TRANSITION`;
+    - target: `TARGET_UNAVAILABLE`, `BLOCKED_RELATIONSHIP`, `GROUP_CLOSED` (the group is `ready`), `GROUP_FULL`.
+  - **Blocks disclosed only to the blocker.** A participant who blocked the caller makes the target `TARGET_UNAVAILABLE`, as in authenticated discovery. Only a caller who blocked a participant gets `BLOCKED_RELATIONSHIP`.
+  - **The coordinator is always a listed member.** The earliest remaining member takes over even when the group then closes, so a group cancelled with `members_left` keeps its one remaining member, who may read the history. The reason never reveals a block.
+  - **Private group reads answer `MEMBERSHIP_REQUIRED`** for a former member, a non-member or an unknown group, so they never reveal whether a group exists. A closed group's history answers `HISTORY_EXPIRED` after `historyExpiresAt`.
+  - **Leave is idempotent through its operation ID.** A new leave by a non-member answers `MEMBERSHIP_REQUIRED`, and leaving a closed group `GROUP_CLOSED`. The result carries nothing about the group after the leave.
+  - **Status change error order:** `MEMBERSHIP_REQUIRED`, `FORBIDDEN`, `GROUP_CLOSED`, then `VERSION_CONFLICT`, then `INVALID_TRANSITION` (including ready without a point). A client acting on its current version meets a missing point only as a version conflict. The earlier "insufficient members" error was dropped, because a live group always has at least two members.
+  - **Meeting point carried by the group.** The separate `GET /groups/{groupId}/meeting-point` read was removed. The viewer-specific `walkingMinutes` may differ between reads without changing the group version.
+  - **No member count on the group**, unlike the preview: the app counts `members`, so the two cannot disagree.
+  - **No new error codes.** `GROUP_CLOSED` covers a join to a ready group and a leave or status change on a closed group.
+- **Excluded:**
+  - the mock join, leave, lifecycle and expiry operations (GROUP-001-A to C);
+  - meeting-point assignment (MEETING-001-A);
+  - chat (CONTRACT-003-B), block and report (CONTRACT-003-C);
+  - realtime events (CONTRACT-004-A);
+  - any mobile code.
+- **Verification:**
+  - `pnpm test:contracts`: 10 files, 522 tests pass.
+  - A script on the built package confirmed that each rejected group case fails only on its own rule's path.
+  - `pnpm build:contracts`, `pnpm typecheck` (contracts, contract tests and mobile) and `pnpm lint`: all Turbo tasks pass.
+  - Importing the built `packages/contracts/dist/index.js` in Node finds the nine new exports and the new `GROUP_POLICY` values, with 27 error codes.
+  - `git diff --check`: clean. Local Markdown links and anchors in the edited docs resolve.
+  - Not run (no app code changed): mobile Jest, exports and native builds.
+- **Remaining/next:**
+  - CONTRACT-003-B (chat), when requested.
+  - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
+  - MEGAsync exclusions.
+- **Ownership:** Released; no active task.

@@ -123,7 +123,7 @@ Joining requires an own active request. If creating that request succeeds but jo
 
 ## Group and chat presentation
 
-The authoritative state machine and transition permissions are in [group contracts](api/groups.md). Four members means full; it does not automatically mean ready. Readiness needs at least two members and a shared point, then coordinator confirmation. Leaving may reopen or cancel the group. Make those effects visible.
+The authoritative state machine and transition permissions are in [group contracts](api/groups.md). Four members means full; it does not automatically mean ready. Readiness needs at least two members and a shared point, then coordinator confirmation. If the point changes or is withdrawn while the group is ready, the group returns to forming and the coordinator confirms again. Leaving may reopen or cancel the group. Make those effects visible.
 
 Messages display sender and timestamp. Use local sending/failed presentation without pretending it is a server status. Retry preserves the original client message ID. A canonical message replaces its pending representation. Closed groups have no enabled composer; leaving or access revocation immediately clears private chat.
 

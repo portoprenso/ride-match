@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001 and CONTRACT-002 are completed; UI-001 is paused for an Android text fix and screen-reader checks; all other implementation tasks are planned.**
+Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001 and CONTRACT-002 are completed; UI-001 is paused for an Android text fix and screen-reader checks; CONTRACT-003 has A completed; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,15 @@ Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001 an
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**CONTRACT-003-A — Completed (2026-11-01).**
+
+- **Done:**
+  - Ready-point policy adopted: a changed or withdrawn meeting point returns a ready group to forming, and the coordinator marks it ready again.
+  - `groups.ts`: the member-only group (status, coordinator always among the members, members in join order, meeting point or `null`, closure, version), the member, the closure and its reasons, and the join, leave and coordinator status-change inputs with their results. `GROUP_POLICY` gained the 30-minute lifetime and one-hour history retention.
+  - `api/groups.md`: endpoint inputs, results and error order; a transition table with the actor of each change; the join checks in order. The separate meeting-point read was removed (the group carries the point), and the join has no expected version. No error codes were added. 522 contract tests (83 new).
+- **Parent check (partial):** solo-to-group formation, the last-seat conflict, leave, closure and access revocation are specified, and a test walks them. Chat (B) and safety (C) remain.
+- **Not run (no app code changed):** mobile Jest, exports and native builds.
 
 **CONTRACT-002-B — Completed (2026-11-01); CONTRACT-002 is `Completed`.**
 
@@ -133,7 +142,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | MONO-001 | Workspace foundation | Completed |
 | CONTRACT-001 | Common, location, authentication contracts | Completed |
 | CONTRACT-002 | Places, rides, matching contracts | Completed |
-| CONTRACT-003 | Groups, chat, safety contracts | Planned |
+| CONTRACT-003 | Groups, chat, safety contracts | Paused (A completed; B and C planned) |
 | CONTRACT-004 | Realtime and notification contracts | Planned |
 | MOBILE-001 | Expo shell and navigation | Completed |
 | DATA-001 | Data-source and Query foundation | Planned |
@@ -213,7 +222,7 @@ Execution: [MONO-001-A through MONO-001-E](FIRST_STEPS.md#task-cards), assigned 
 
 - **Goal:** Collaboration operations have unambiguous contracts.
 - **Scope:** Atomic joining, group lifecycle, members, meeting points, text messages, block/report.
-- **Expected files/modules:** `C/src/{groups,chat,safety}.ts`, contract tests, `docs/api/groups.md`.
+- **Expected files/modules:** `C/src/{groups,chat,safety}.ts`, contract tests, `docs/api/groups.md`. CONTRACT-003-A completed `groups.ts`.
 - **Dependencies:** CONTRACT-002.
 - **Acceptance criteria:** Solo-to-group formation, last-seat conflict, leave, closure, and access revocation are specified.
 - **Verification:** `pnpm test:contracts`; review transition/permission table and request/response examples.

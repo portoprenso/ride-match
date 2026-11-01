@@ -110,7 +110,7 @@ Mock values, to revisit before a backend exists:
 | `RIDE_POLICY.activeLifetimeSeconds` | 900 (15 minutes) | The source (RIDE-001-A); a test checks every departure choice comes before it |
 | `NEARBY_POLICY` | Viewport span 0.5°, 100 items | The schemas |
 | `MATCH_POLICY` | 20 matches, 0–60 additional minutes | The schemas |
-| `GROUP_POLICY` | Capacity 4, at least 2 members | The group preview schema; CONTRACT-003-A owns the rest of the group contracts |
+| `GROUP_POLICY` | Capacity 4, at least 2 members | The group preview schema; the group timings are in [group contracts](groups.md#implemented-contracts-contract-003-a) |
 
 `INVALID_DEPARTURE` was removed from the error codes: a departure outside the options fails validation instead.
 
