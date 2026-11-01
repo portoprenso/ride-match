@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix and screen-reader checks; DATA-001 is completed; MOCK-001 has A and B completed; LOCATION-001-A is implemented and paused for native permission checks; all other implementation tasks are planned.**
+Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix and screen-reader checks; DATA-001 is completed; MOCK-001 has A and B completed; LOCATION-001-A is implemented and paused for native permission checks; ANALYTICS-001 is completed; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,13 @@ Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**ANALYTICS-001-A — Completed (2026-11-01); ANALYTICS-001 is `Completed`.**
+
+- **Done:**
+  - `src/analytics/`: the event catalog from DEVELOPMENT.md with stages (`view`, `intent`, `success`, `observed`) and bounded properties, checked by types and by `validateEvent` (sensitive, unknown, missing and out-of-range properties rejected without echoing values); `createAnalytics` with sessions (new after 30 minutes away), once-per-session and once-per-key events, and marker dwell (1 second of foreground visibility, once per target per session); a context with environment, version, scenario, pseudonymous identities and `synthetic`; memory and no-op sinks; `isRealUserEvent`; the provider and hook. Not created by the app yet. 220 mobile tests (27 new).
+- **Parent check:** intent and success events are distinct, sensitive properties are rejected, and mock events are excluded from real-user metrics (all tested).
+- **Not run (no native change):** exports and native builds.
 
 **LOCATION-001-A — Paused (2026-11-01): implemented; native permission checks pending.**
 
@@ -226,7 +233,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | AUTH-001 | Simulated authentication | Planned |
 | LOCATION-001 | Foreground location | Paused (A implemented, native checks pending; B planned) |
 | MAP-001 | Native map shell | Planned |
-| ANALYTICS-001 | Typed analytics foundation | Planned |
+| ANALYTICS-001 | Typed analytics foundation | Completed |
 | MAP-002 | Live nearby activity | Planned |
 | DESTINATION-001 | Destination selection and compatibility | Planned |
 | RIDE-001 | Creation, matching, expiration | Planned |
@@ -389,10 +396,10 @@ Execution: [MOBILE-001-A through MOBILE-001-H](FIRST_STEPS.md#mobile-001-a--crea
 
 - **Goal:** Product actions emit defined inspectable events.
 - **Scope:** Event/property schemas, session/dwell semantics, memory/no-op sink, privacy guards, demo labeling.
-- **Expected files/modules:** `M/src/analytics/`, behavior tests, analytics section in development docs.
+- **Expected files/modules:** `M/src/analytics/`, behavior tests, analytics section in development docs. ANALYTICS-001-A added them, with `tests/analytics.test.tsx`.
 - **Dependencies:** MOBILE-001.
 - **Acceptance criteria:** Intent and success events are distinct; sensitive properties are rejected; mock events can be excluded from real metrics.
-- **Verification:** `pnpm test:mobile --runTestsByPath src/analytics/analytics.test.ts`; inspect safe event output.
+- **Verification:** `pnpm test:mobile --runTestsByPath tests/analytics.test.tsx`; inspect safe event output.
 - **Non-goals:** Vendor integration, dashboards, real retention claims.
 
 ## MAP-002 — Live nearby activity

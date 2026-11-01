@@ -1,5 +1,6 @@
 import { AppState } from 'react-native';
 
+import type { AppStateSource } from '../appState';
 import { assessFix, BROWSING_FIX_MAX_AGE_MS, type FixAssessment, type LocationFix } from './locationFix';
 import {
   expoLocationServices,
@@ -76,12 +77,6 @@ export function describeLocation(state: LocationState, now: number): LocationSta
   }
   return state.fixFailed ? { kind: 'unavailable', reason: 'no-fix' } : { kind: 'locating' };
 }
-
-/** The part of React Native's `AppState` the controller uses, so tests can supply their own. */
-export type AppStateSource = {
-  currentState: string;
-  addEventListener(type: 'change', listener: (state: string) => void): { remove(): void };
-};
 
 export type LocationControllerOptions = {
   services?: LocationServices;

@@ -1959,3 +1959,40 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - The native checks of this card in the later verification pass, with the deferred development-build check.
   - LOCATION-001-B also needs UI-001-D.
 - **Ownership:** Released; no active task.
+
+## 2026-11-01 — ANALYTICS-001-A: Typed analytics boundary
+
+- **Actor/session:** Claude Code / analytics-001-a.
+- **Status:** `Completed`; ownership released. ANALYTICS-001 has this one child, so it is `Completed` too.
+- **Working copy:** `main` at `68e9658` (LOCATION-001-A). Committed on top of it, with no push: the user asked for a commit after each step. The untracked `.idea/` files were left untouched.
+- **Request/scope:** the second card of "go with cards that could be started now". The analytics boundary, tests and docs. No vendor, no transmission, no instrumented screen, no composition change.
+- **Prerequisites:** MOBILE-001 is `Completed`.
+- **Changes:**
+  - New in `apps/mobile/src/analytics/`:
+    - `events.ts`: `ANALYTICS_EVENTS`, `AnalyticsEventName`, `AnalyticsProperties`, `PropertiesArgument`, `EventStage`, `INTENT_SUCCESS_PAIRS`, `COUNT_BUCKETS`, `countBucket`, `AnalyticsEventError`, `validateEvent`.
+    - `createAnalytics.ts`: `SESSION_TIMEOUT_MS`, `MARKER_DWELL_MS`, `AnalyticsContext`, `AnalyticsEvent`, `isRealUserEvent`, `AnalyticsOptions`, `Analytics`, `createAnalytics`.
+    - `sinks.ts`: `AnalyticsSink`, `noopSink`, `MemorySink`, `createMemorySink`, `selectAnalyticsSink`.
+    - `AnalyticsProvider.tsx`: `AnalyticsProvider`, `useAnalytics`.
+  - `src/platform/appState.ts` (new) holds `AppStateSource`; `createLocationController.ts` imports it instead of declaring it.
+  - **Tests:** `tests/analytics.test.tsx` (27). 220 mobile tests.
+- **Decisions:**
+  - **Fixed, bounded properties per event,** built from contract enums (`JoinTargetKindSchema`, `LocationSourceSchema`, `MatchLevelSchema`, `ReportReasonSchema`, `RIDE_POLICY`) and small whole-number ranges (`GROUP_POLICY`). No IDs, free text or coordinates. Resource IDs needed for de-duplication stay on the device as `trackOnce` keys and marker keys.
+  - **Double check:** types reject other properties at compile time (tested with `@ts-expect-error`), and `validateEvent` rejects them at run time. The error names the property but never the value. An invalid event throws rather than being dropped quietly, since it is a programming error and its data may be private.
+  - **Four stages:** `success` events are documented as coming only from the source's canonical result, apart from their `intent`. Expiry and matches are `observed`.
+  - **Session:** a new one after 30 minutes or more in the background; a shorter absence and iOS `inactive` continue it. Started in the background, the first session begins on the first foreground.
+  - **Dwell:** 1 second of foreground visibility, once per target per session, recording only the kind. Background pauses it; a still-visible marker restarts its full dwell on return; hiding cancels it. Clusters and the user's own marker are the caller's to leave out (MAP-002-B).
+  - **Synthetic by data source:** every event on the mock data source has `synthetic: true` and its scenario key. `isRealUserEvent` also requires the production environment.
+  - **Sinks:** memory (latest 500) in development and preview for inspection, no-op in production; nothing leaves the device. The installation ID is `null` until a storage card provides one.
+  - **Not created by the app yet:** the first instrumented card (MAP-002-A) adds the client to the root layout.
+- **Excluded:** vendor integration, dashboards, a development inspector screen, instrumenting screens, a persistent installation ID.
+- **Verification:**
+  - `npx jest tests/analytics.test.tsx` (in `apps/mobile`): 27 pass. Two first-run failures were test issues and were fixed: a value that also appeared in the event name broke the "never repeats the value" check, and React's scheduler timers needed flushing after unmount.
+  - `pnpm test:mobile`: 11 suites, 220 tests pass, and Jest exits.
+  - `pnpm typecheck`, `pnpm lint`: pass, after removing an unused test constant that lint flagged.
+  - `git diff --check`: clean. Local Markdown links and anchors in the edited docs resolve.
+  - Not run: exports and native builds (no native change).
+- **Remaining/next:**
+  - No card has all its prerequisites met now. MOCK-001-C, LOCATION-001-B and MAP-001-A need UI-001-D. AUTH-001-A and SYNC-001-A need MOCK-001-C. LOCATION-001 also needs A's native checks.
+  - The parked UI-001-D screen-reader pass unblocks the most; the user decides.
+  - Deferred verification pass: rebuilt development clients, LOCATION-001-A's native checks and the development-build check.
+- **Ownership:** Released; no active task.
