@@ -1,4 +1,4 @@
-import { act } from '@testing-library/react-native';
+import { act, cleanup } from '@testing-library/react-native';
 import { renderRouter } from 'expo-router/testing-library';
 
 // Resolved from the working directory. The mobile `test` script runs in `apps/mobile`, which
@@ -24,14 +24,17 @@ export async function renderApp(initialUrl: string) {
 }
 
 /**
- * Runs the timers the router left pending, checks that none rescheduled themselves, then
- * restores real timers.
+ * Unmounts the tree, runs the timers the router left pending, checks that none rescheduled
+ * themselves, then restores real timers.
  *
- * Call it after each router test, once Testing Library has unmounted the tree, so no navigation
- * timer outlives its test. The fake timers also fake `queueMicrotask`, which React's `act()`
- * uses for its own follow-up check, so those microtasks are run before counting.
+ * Call it after each router test, so no navigation timer outlives its test. Unmounting first
+ * disposes the app's mock data source, whose scenario timers would otherwise keep running; it
+ * does not wait for Testing Library's own cleanup, which may run after a nested `afterEach` and
+ * then finds nothing left to do. The fake timers also fake `queueMicrotask`, which React's
+ * `act()` uses for its own follow-up check, so those microtasks are run before counting.
  */
 export async function flushTimersAndRestore() {
+  await cleanup();
   await act(async () => {
     jest.runOnlyPendingTimers();
   });

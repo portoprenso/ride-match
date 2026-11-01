@@ -1859,3 +1859,60 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
   - MEGAsync exclusions.
 - **Ownership:** Released; no active task.
+
+## 2026-11-01 — MOCK-001-B: Discovery world, seeds and public reads
+
+- **Actor/session:** Claude Code / mock-001-b.
+- **Status:** `Completed`; ownership released. The parent MOCK-001 is `Paused` (A and B completed; C planned).
+- **Working copy:** `main` at `8750467` (MOCK-001-A). Committed on top of it, with no push: the user asked for a commit after each completed step. The untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start MOCK-001-B". World records, safe serializers, minimal seeds with curated places, place search and discovery reads, the adapter and composition, tests and docs. Screens 02, 05, 19, 23–25 and 54 get their data; no screen reads it yet.
+- **Prerequisites:** MOCK-001-A is `Completed`.
+- **Changes:**
+  - New in `apps/mobile/src/data/mock/`:
+    - `world.ts`: `UserRecord`, `RideRecord` (private `origin`, public `publicOrigin`), `GroupMemberRecord`, `MeetingPointRecord`, `GroupRecord`, `MockWorld`, `createEmptyWorld`, `isLiveGroup`, `isDiscoverableRide`.
+    - `serializers.ts`: `toUserDto`, `toPlaceDto`, `toRideRequestDto`, `toGroupPreviewDto`, `DiscoveryRecord`, `discoveryRecords`, `toNearbyItemDto`, and the event builders `nearbyUpserted`, `nearbyRemoved`, `rideChanged`, `groupChanged`.
+    - `places.ts`: `COVERAGE`, `CURATED_PLACES` (12 places), `findPlace`.
+    - `geometry.ts`: `distanceMeters` (equirectangular), `Bounds`, `viewportBounds`, `centerOf`, `contains`, `boundsIntersect`, `circleReaches`.
+    - `lifecycle.ts`: `expireRide`, `expireGroup`, `scheduleDeadlines`, `admitRide`, `Schedule`.
+    - `scenarios.ts`: the two seeds, `MockScenarioKey`, `MOCK_SCENARIO_KEYS`, `isMockScenarioKey`, `scenarioOptions`.
+    - `discovery.ts`: `searchPlaces`, `readNearby`, `readRide`, `readGroupPreview`, `acceptNearbySubscription`, `isPublicEventInViewport`.
+    - `createMockDataSource.ts`: `createMockSimulator(scenario, options?)` and `createMockDataSource(simulator)`.
+  - `simulator.ts`: `WorkContext.schedule`, so work can schedule a new record's deadline.
+  - `src/data/createDataSource.ts`: `ComposedDataSource` (`dataSource`, `dispose`); the mock factory returns it.
+  - `src/bootstrap/composeAppDataSource.ts`: the mock factory builds the simulator; an unknown key throws an `AppConfigError` naming the variable and the known keys. A `ready` composition carries `dispose`.
+  - `app/_layout.tsx`: disposes the composition on unmount.
+  - `src/data/createUnavailableDataSource.ts`: doc comment now says the mock reuses it for operations without a mock.
+  - **Tests:**
+    - `tests/mockDataSource.test.ts` (31 new).
+    - `tests/dataSource.test.tsx`: the composition test uses the real simulator and checks disposal leaves no timers. Two new tests show an unknown scenario fails the composition and appears on the error screen.
+    - `tests/helpers/renderApp.ts`: `flushTimersAndRestore()` unmounts first (Testing Library's `cleanup`), so the app's simulator is disposed before timers are counted, even from a nested `afterEach`.
+    - 168 mobile tests.
+- **Decisions:**
+  - **Records, not DTOs, in the world:** exact origins and meeting points live only in records. Serializers build each DTO field by field and throw for a ride that is not active or a closed group, so a public projection can only exist when the contract allows one. Public areas are district fixtures around each exact origin; the mock never claims to obfuscate.
+  - **Curated places as a fixed catalog** outside the world, shared by every scenario, so IDs stay stable across resets. The demo coverage box decides `UNSUPPORTED_AREA`: an area that does not reach it for place search, and a viewport that does not intersect it for discovery and subscriptions.
+  - **Search and discovery stay inside their area:** place search keeps the places inside the area's circle. Discovery keeps items whose public area's center lies in the viewport. Both order by straight-line distance, which only orders results and is never a match.
+  - **Previews stay empty** until a scenario supplies match records (DESTINATION-001-A); the mock never computes compatibility.
+  - **Deadlines for every ride and group, not only scenario A's +20 s:** without them a long demo would show requests past their `expiresAt`. Group expiry follows `docs/api/groups.md` (closure `expired` dated at the deadline, members' requests cancelled) and emits the public removal plus the members' and owners' events, all validated.
+  - **Nearby subscriptions only:** with no sessions, `user` and `group` subscriptions are unavailable rather than answered with invented authorization. Removals are routed by the removed record's area. Delivery starts once the acknowledgement arrives, so a lost acknowledgement leaves no listener.
+  - **The composition root owns the simulator:** `createDataSource` returns `{ dataSource, dispose }` so features never see `dispose`. The root layout disposes on unmount (Fast Refresh remounts, tests). The scenario starts at launch, so its timed events count from app start.
+  - **Unknown scenario keys** are checked in the composition root, which knows the variable name, and shown like any configuration problem.
+  - **Input validation without field errors:** invalid inputs fail with `VALIDATION_FAILED` and a generic message. Field-level errors arrive with the forms that need them.
+  - **Invented riders:** first names only, no avatars or phone numbers; places and areas use approximate demo coordinates.
+- **Excluded:**
+  - match previews and destination scenarios (DESTINATION-001-A);
+  - viewer filtering, `user` and `group` subscriptions, and owner views (AUTH-001-A, RIDE-001-A, GROUP-001);
+  - the dev controls (MOCK-001-C); any screen reading the data (MAP-002);
+  - field errors for invalid inputs.
+- **Verification:**
+  - `npx jest tests/mockDataSource.test.ts` (in `apps/mobile`): 31 pass. The first typecheck flagged a union of two promise types in one test; fixed.
+  - `pnpm test:mobile`: 9 suites, 168 tests pass, and Jest exits. Every mock test ends with no timer after disposal; route tests end with no timer after unmounting.
+  - `pnpm typecheck` and `pnpm lint`: all Turbo tasks pass. The ESLint boundary still allows only `src/bootstrap` to import `src/data/mock`.
+  - `git diff --check`: clean. Local Markdown links and anchors in the edited docs resolve.
+  - Not run (deferred to the later verification pass; no native configuration changed): a development build or export. The app now composes the simulator at launch but still shows the map placeholder.
+- **Remaining/next:**
+  - MOCK-001-C (dev controls) is next in plan order but needs UI-001-D, which is parked. AUTH-001-A and SYNC-001-A need the whole MOCK-001.
+  - LOCATION-001-A and ANALYTICS-001-A have their prerequisites met. Start one only when the user asks.
+  - The deferred development-build check.
+  - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
+  - MEGAsync exclusions.
+- **Ownership:** Released; no active task.

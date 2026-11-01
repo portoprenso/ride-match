@@ -1,6 +1,6 @@
 # Mock simulator and scenarios
 
-Status: partly implemented: the simulator foundation exists (MOCK-001-A); seeds, serializers, operations and scenario controls are planned. Last updated: 2026-11-01.
+Status: partly implemented: the simulator foundation (MOCK-001-A), and the discovery world, seeds and public reads that the app runs on (MOCK-001-B); the other operations and the scenario controls are planned. Last updated: 2026-11-01.
 
 ## Purpose
 
@@ -40,7 +40,7 @@ Rechecking after delay enables actual last-seat and expired-target conflicts. Us
 
 ## Implemented foundation (MOCK-001-A)
 
-`apps/mobile/src/data/mock/`, covered by `tests/simulator.test.ts` with Jest fake timers. Nothing imports it from features (the ESLint boundary), and the app does not use it yet: MOCK-001-B adds seeds and serializers and wires `createMockDataSource` into the composition root.
+`apps/mobile/src/data/mock/`, covered by `tests/simulator.test.ts` with Jest fake timers. Nothing imports it from features (the ESLint boundary); MOCK-001-B wires it into the app ([below](#implemented-seeds-and-reads-mock-001-b)).
 
 | Module | Rule |
 | --- | --- |
@@ -57,11 +57,36 @@ Rechecking after delay enables actual last-seat and expired-target conflicts. Us
 - **Time:** `advanceTime(ms)` moves simulated time and runs due tasks; `resume()` catches up on foreground return (SYNC-001-B calls it).
 - **Reset:** pending operations fail with `network` ("reset"), scheduled tasks, event subscriptions, receipts and queued failures are cleared, the clock offset, IDs and both random streams restart, the world is rebuilt and `activate` runs again, and the connection is restored. Connection watchers stay, since the app owns them. Repeated resets leave the same counts (`stats()`) and timers.
 - **Disposal:** releases everything, connection watchers included; pending and later operations fail with `DataSourceUnavailableError`; it is idempotent.
-- **Not yet:** the world's record types and seeds, safe serializers and their validation, domain operations, the `AppDataSource` adapter (including `events.subscribe` routing by audience) and the dev controls (MOCK-001-B/C and the domain cards).
+- **Scheduling from work (MOCK-001-B):** work also gets `schedule(dueAt, work)`, so a transition can schedule a new record's deadline.
+
+## Implemented seeds and reads (MOCK-001-B)
+
+`apps/mobile/src/data/mock/`, covered by `tests/mockDataSource.test.ts`. The composition root builds the simulator for `EXPO_PUBLIC_MOCK_SCENARIO` at launch (`createMockSimulator`), adapts it with `createMockDataSource`, and disposes it when the root layout unmounts.
+
+| Module | Rule |
+| --- | --- |
+| `world.ts` | Records: users (public profile only), ride requests (private exact `origin`, sanitized `publicOrigin` area, status, group link, version) and groups (members in join order, coordinator, meeting point, closure, version). Times are simulated milliseconds. Records stay after they end, so late reads and events still find them |
+| `serializers.ts` | The only way records leave the source: each public DTO and event is built field by field, so no private field can leak and callers never share world state. A ride that is not active has no public projection and a closed group no preview; the serializers throw rather than trust the caller |
+| `places.ts` | 12 curated Bishkek places with stable IDs such as `place_asia_mall` and approximate demo coordinates, shared by every scenario; the demo coverage box, 42.75–43.10° N and 74.40–74.80° E |
+| `scenarios.ts` | The implemented keys and their seeds. Riders are invented first names without avatars; each public area is a district around the rider's exact origin |
+| `lifecycle.ts` | Deadlines. An active ride expires at its `expiresAt`: it becomes `expired`, discovery removes it (`expired`) and its owner is told. A live group is cancelled at its `expiresAt`: closure `expired` dated at the deadline even after background time, history for one hour, members' requests cancelled; discovery removes it, and members and owners are told. `admitRide` adds another rider's new request with its deadline |
+| `discovery.ts` | `places.search`, `rides.getNearby`, `rides.getRide`, `groups.getPreview` and accepting a nearby subscription, validating every input as the source would |
+| `createMockDataSource.ts` | `createMockSimulator(scenario)` and the `AppDataSource` adapter. Each implemented call goes through `Simulator.run` (latency, failure controls, connection); every other operation rejects at once with `DataSourceUnavailableError` |
+
+- **Place search:** the curated places inside the area's circle, at most `limit`. Without a query, nearest the center first; with one (ignoring case), a label that starts with the text, then a label word that does, then a label or detail that contains it, each rank by distance. An area that does not reach the coverage box fails with `UNSUPPORTED_AREA`, and an invalid input with `VALIDATION_FAILED` (without field errors for now).
+- **Discovery:** active solo rides and live groups whose public area's center lies in the viewport, nearest the viewport's center first, at most `limit`, with `truncated`. A grouped request never appears on its own: its group stands for it once, and its public read answers `TARGET_UNAVAILABLE`. Previews stay empty, since no implemented scenario supplies matches yet (DESTINATION-001-A); a destination must still name a curated place. A viewport outside the coverage fails with `UNSUPPORTED_AREA`. Every caller is anonymous until sessions exist (AUTH-001-A), so nothing is filtered by viewer yet.
+- **Nearby subscriptions:** accepted after the simulated round trip; each delivers the public events about items in its viewport, and a removal is routed by the removed record's area. Delivery starts once the acknowledgement arrives, so a lost acknowledgement leaves no listener. `user` and `group` subscriptions are unavailable until sessions exist.
+
+| Scenario | World at activation | Timed |
+| --- | --- | --- |
+| `active-neighborhood` | Six solo rides in six districts; a forming group of three, and a ready group of two with a member-only meeting point. Eleven riders, one live request each | +8 s: a seventh solo ride appears; +20 s: a seeded ride reaches its deadline. Every other ride and group ends at its own deadline, so the area is empty after 26 minutes until a reset |
+| `empty-neighborhood` | No riders; the curated places still exist | None |
+
+Tests check that every output and every event of a full 31-minute run validates against its contract schema, that no exact origin or meeting point appears in any of them, that each exact origin lies inside its public area but away from its center, and that grouped riders appear only through their group.
 
 ## Scenario controls
 
-`EXPO_PUBLIC_MOCK_SCENARIO` selects the initial fixture. The build configuration (DATA-001-A) requires it with the mock data source and checks only its format; the simulator must reject a key it does not know. A minimal development/preview picker offers scenario selection, reset, simulated connectivity, fail-next-operation, and time advancement. Controls stay out of feature components and production API mode.
+`EXPO_PUBLIC_MOCK_SCENARIO` selects the initial fixture. The build configuration (DATA-001-A) requires it with the mock data source and checks only its format; the composition root rejects a key the simulator does not know, which the configuration error screen shows (MOCK-001-B). A minimal development/preview picker offers scenario selection, reset, simulated connectivity, fail-next-operation, and time advancement. Controls stay out of feature components and production API mode.
 
 A clear demo indicator identifies synthetic data. Empty scenarios remain empty. Mock data-source outage and basemap tile outage are distinct states.
 

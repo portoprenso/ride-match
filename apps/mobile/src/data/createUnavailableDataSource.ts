@@ -7,8 +7,7 @@ import { DataSourceUnavailableError } from './errors';
  * reports `disconnected`. It holds no data and no users, so it can never pass for real or
  * synthetic activity.
  *
- * It fills the mock slot until the simulator exists (MOCK-001), and the simulator can reuse it
- * for operations whose cards have not landed.
+ * The mock data source reuses it for the operations whose cards have not landed yet.
  *
  * @param message Why the operations are unavailable, shown with each rejection.
  */

@@ -72,7 +72,7 @@ describe('parseAppConfig', () => {
 
 describe('createDataSource', () => {
   it('builds the simulator with the configured scenario', () => {
-    const simulator = createUnavailableDataSource('test simulator');
+    const simulator = { dataSource: createUnavailableDataSource('test simulator'), dispose: jest.fn() };
     const mock = jest.fn(() => simulator);
 
     expect(createDataSource({ kind: 'mock', scenario: 'empty-neighborhood' }, { mock })).toBe(simulator);
@@ -80,7 +80,7 @@ describe('createDataSource', () => {
   });
 
   it('refuses the API kind clearly and never falls back to the simulator', () => {
-    const mock = jest.fn(() => createUnavailableDataSource('test simulator'));
+    const mock = jest.fn(() => ({ dataSource: createUnavailableDataSource('test simulator'), dispose: jest.fn() }));
 
     expect(() => createDataSource({ kind: 'api' }, { mock })).toThrow(DataSourceUnavailableError);
     expect(() => createDataSource({ kind: 'api' }, { mock })).toThrow(
@@ -122,12 +122,34 @@ describe('createUnavailableDataSource', () => {
 describe('composeAppDataSource', () => {
   const config = (dataSource: AppConfig['dataSource']) => () => ({ appEnv: 'development' as const, dataSource });
 
-  it('composes the mock slot from the configuration', async () => {
+  it('composes the simulator for the configured scenario, and disposing it leaves no timers', async () => {
+    jest.useFakeTimers();
     const composition = composeAppDataSource(config({ kind: 'mock', scenario: 'active-neighborhood' }));
-
     expect(composition.status).toBe('ready');
     if (composition.status !== 'ready') return;
-    await expect(composition.dataSource.rides.getOwnRequest()).rejects.toThrow('Mock data is not available yet.');
+
+    const places = composition.dataSource.places.search({
+      query: 'asia',
+      area: { center: { latitude: 42.87, longitude: 74.6 }, radiusMeters: 10_000 },
+      limit: 5,
+    });
+    await jest.advanceTimersByTimeAsync(700);
+    await expect(places).resolves.toEqual([expect.objectContaining({ id: 'place_asia_mall' })]);
+    await expect(composition.dataSource.rides.getOwnRequest()).rejects.toThrow(DataSourceUnavailableError);
+
+    expect(jest.getTimerCount()).toBeGreaterThan(0);
+    composition.dispose();
+    expect(jest.getTimerCount()).toBe(0);
+    jest.useRealTimers();
+  });
+
+  it('fails the composition for a scenario the simulator does not know', () => {
+    const composition = composeAppDataSource(config({ kind: 'mock', scenario: 'match-appears' }));
+
+    expect(composition.status === 'failed' && composition.error).toBeInstanceOf(AppConfigError);
+    expect(composition.status === 'failed' && composition.error instanceof AppConfigError && composition.error.problems).toEqual([
+      'EXPO_PUBLIC_MOCK_SCENARIO is "match-appears"; use one of active-neighborhood, empty-neighborhood.',
+    ]);
   });
 
   it('fails the composition for the API kind', () => {
@@ -195,6 +217,16 @@ describe('root layout', () => {
     ).toBeOnTheScreen();
     expect(screen.queryByText('Map coming soon')).not.toBeOnTheScreen();
     expect(screen.queryByRole('button')).not.toBeOnTheScreen();
+  });
+
+  it('shows an unknown scenario as a configuration problem', async () => {
+    process.env.EXPO_PUBLIC_MOCK_SCENARIO = 'match-appears';
+    await renderApp('/');
+
+    expect(screen.getByRole('header', { name: 'This build can’t start' })).toBeOnTheScreen();
+    expect(
+      screen.getByText('EXPO_PUBLIC_MOCK_SCENARIO is "match-appears"; use one of active-neighborhood, empty-neighborhood.'),
+    ).toBeOnTheScreen();
   });
 
   it('lists each configuration problem', async () => {

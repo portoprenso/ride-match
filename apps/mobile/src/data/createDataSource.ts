@@ -2,10 +2,19 @@ import type { DataSourceConfig } from '../config/appConfig';
 import type { AppDataSource } from './AppDataSource';
 import { DataSourceUnavailableError } from './errors';
 
+/**
+ * A built data source and the release of what it holds, such as the simulator's timers and
+ * listeners. Only the composition root calls `dispose`; features see the `AppDataSource` alone.
+ */
+export type ComposedDataSource = {
+  dataSource: AppDataSource;
+  dispose: () => void;
+};
+
 /** Builders of the implementations that exist, supplied by the composition root. */
 export type DataSourceFactories = {
-  /** Builds the in-memory simulator, starting from `scenario`. */
-  mock: (options: { scenario: string }) => AppDataSource;
+  /** Builds the in-memory simulator, starting from `scenario`; it throws for a scenario it does not know. */
+  mock: (options: { scenario: string }) => ComposedDataSource;
 };
 
 /**
@@ -18,7 +27,7 @@ export type DataSourceFactories = {
  *
  * @throws {DataSourceUnavailableError} For `api`.
  */
-export function createDataSource(config: DataSourceConfig, factories: DataSourceFactories): AppDataSource {
+export function createDataSource(config: DataSourceConfig, factories: DataSourceFactories): ComposedDataSource {
   switch (config.kind) {
     case 'mock':
       return factories.mock({ scenario: config.scenario });

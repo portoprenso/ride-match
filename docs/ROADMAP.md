@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix and screen-reader checks; DATA-001 is completed; MOCK-001 has A completed; all other implementation tasks are planned.**
+Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix and screen-reader checks; DATA-001 is completed; MOCK-001 has A and B completed; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,14 @@ Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**MOCK-001-B — Completed (2026-11-01).**
+
+- **Done:**
+  - `src/data/mock/`: world records with exact origins and meeting points kept private (`world.ts`); safe serializers for users, places, public rides, group previews, nearby items and events (`serializers.ts`); 12 curated places and the demo coverage (`places.ts`); the `active-neighborhood` and `empty-neighborhood` seeds with deadlines and scenario A's timed events (`scenarios.ts`, `lifecycle.ts`); place search, nearby discovery, ride and group previews and nearby subscriptions (`discovery.ts`); `createMockSimulator` and the `AppDataSource` adapter (`createMockDataSource.ts`), where every other operation is unavailable.
+  - Composition: the root layout runs the configured scenario from launch and disposes it on unmount; an unknown scenario key shows the configuration error screen. 168 mobile tests (33 new).
+- **Parent check (partial):** public outputs contain no exact private locations (every output and every event of a full scenario run checked), and reset stays repeatable with the seeds. The dev controls (C) remain.
+- **Not run (deferred; no native configuration changed):** a development build or export. The app still shows the map placeholder, since no feature reads yet.
 
 **MOCK-001-A — Completed (2026-11-01).**
 
@@ -206,7 +214,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | CONTRACT-004 | Realtime and notification contracts | Completed |
 | MOBILE-001 | Expo shell and navigation | Completed |
 | DATA-001 | Data-source and Query foundation | Completed |
-| MOCK-001 | Simulator foundation | Paused (A completed; B and C planned) |
+| MOCK-001 | Simulator foundation | Paused (A and B completed; C planned) |
 | SYNC-001 | Event synchronization and recovery | Planned |
 | AUTH-001 | Simulated authentication | Planned |
 | LOCATION-001 | Foreground location | Planned |
@@ -324,7 +332,7 @@ Execution: [MOBILE-001-A through MOBILE-001-H](FIRST_STEPS.md#mobile-001-a--crea
 
 - **Goal:** Deterministic mock operations and timed events work.
 - **Scope:** State, injected clock, scheduled events, safe serialization, latency/failure controls, minimal active/empty seeds, reset cleanup.
-- **Expected files/modules:** `M/src/data/mock/`, simulator behavior tests. MOCK-001-A completed the foundation modules and `tests/simulator.test.ts`.
+- **Expected files/modules:** `M/src/data/mock/`, simulator behavior tests. MOCK-001-A completed the foundation modules and `tests/simulator.test.ts`; MOCK-001-B added the world, seeds, serializers, public reads and the adapter, with `tests/mockDataSource.test.ts`.
 - **Dependencies:** DATA-001.
 - **Acceptance criteria:** Reset is repeatable; timers/listeners do not accumulate; public outputs contain no exact private locations.
 - **Verification:** `pnpm test:mobile --runTestsByPath src/data/mock/simulator.test.ts`; repeat resets and advance fake time.

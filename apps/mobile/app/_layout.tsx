@@ -1,6 +1,6 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { ConfigurationErrorScreen } from '../src/bootstrap/ConfigurationErrorScreen';
 import { composeAppDataSource } from '../src/bootstrap/composeAppDataSource';
@@ -17,6 +17,9 @@ export default function RootLayout() {
   // Composed once per launch. A configuration that cannot run replaces every route.
   const [composition] = useState(() => composeAppDataSource());
   const [queryClient] = useState(createQueryClient);
+  // Releases the simulator's timers and listeners if the root ever unmounts, as in a Fast
+  // Refresh remount or a test.
+  useEffect(() => (composition.status === 'ready' ? composition.dispose : undefined), [composition]);
 
   if (composition.status === 'failed') return <ConfigurationErrorScreen error={composition.error} />;
 

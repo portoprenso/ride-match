@@ -44,6 +44,8 @@ export type WorkContext<State> = {
   eventEnvelope(): EventEnvelope;
   /** A source refusal with a fresh request ID, for the work to throw. */
   sourceError(code: ApiErrorCode, message: string): DataError;
+  /** Runs `work` at simulated time `dueAt`, such as a new record's expiry; see {@link Simulator.schedule}. */
+  schedule(dueAt: number, work: Work<State, void>): () => void;
 };
 
 export type Work<State, Result> = (context: WorkContext<State>) => Result;
@@ -182,6 +184,7 @@ export function createSimulator<State>(options: SimulatorOptions<State>): Simula
       emit: (event) => queued.push(event),
       eventEnvelope,
       sourceError,
+      schedule,
     });
     for (const event of queued) events.publish(event);
     return result;
@@ -205,6 +208,10 @@ export function createSimulator<State>(options: SimulatorOptions<State>): Simula
 
   function cancelPending(error: () => DataError) {
     for (const operation of [...pending]) operation.cancel(error());
+  }
+
+  function schedule(dueAt: number, work: Work<State, void>) {
+    return scheduler.schedule(dueAt, () => commit(work));
   }
 
   function setConnection(next: ConnectionState) {
@@ -253,7 +260,7 @@ export function createSimulator<State>(options: SimulatorOptions<State>): Simula
       });
     },
 
-    schedule: (dueAt, work) => scheduler.schedule(dueAt, () => commit(work)),
+    schedule,
     subscribe: (listener) => events.subscribe(listener),
 
     watchConnection(listener) {
