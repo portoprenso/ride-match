@@ -1542,3 +1542,52 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
   - MEGAsync exclusions.
 - **Ownership:** Released; no active task.
+
+## 2026-11-01 — CONTRACT-003-B: Chat contracts
+
+- **Actor/session:** Claude Code / contract-003-b.
+- **Status:** `Completed`; ownership released. The parent CONTRACT-003 is `Paused` (A and B completed; C planned).
+- **Working copy:** `main` at `f009abb` (CONTRACT-003-A). Committed on top of it at the user's request, with no push. The untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start CONTRACT-003-B", then commit. Contracts, tests and docs only.
+- **Prerequisites:** CONTRACT-003-A is `Completed`.
+- **Changes:**
+  - **`src/chat.ts` (new):**
+    - **`CHAT_POLICY`:** 1,000-character text, 50-message pages.
+    - **`ChatTextSchema`:** 1–1,000 characters (UTF-16 code units), no leading or trailing whitespace, `\n` allowed inside, other control characters (`\r`, tabs) rejected; nothing is rewritten.
+    - **`MessageSequenceSchema`:** whole number from 1.
+    - **`ChatMessageSchema`:** `id`, `groupId`, `sender` (`UserSchema`), `text`, `createdAt`, `sequence`, `clientMessageId` (UUID).
+    - **`SendChatMessageInputSchema`:** `clientMessageId`, `text`.
+    - **`ChatHistoryQueryInputSchema`:** optional `beforeCursor` (`CursorSchema`) or `afterSequence` (from 0), refined so not both; `limit` 1–50.
+    - **`ChatMessagePageSchema`:** `messages` (at most 50), `olderCursor` (`CursorSchema` or `null`), `latestSequence` (from 0). Refinements:
+      - one group's messages in consecutive sequences, each ID and each sender intent (`sender.id` with `clientMessageId`) once;
+      - no message newer than `latestSequence`;
+      - `olderCursor` is `null` exactly when the page is empty or starts at sequence 1.
+  - **`src/index.ts`:** re-exports `chat.js`.
+  - **Tests:** `tests/chat.test.ts` (new) covers text bounds and control characters, the message with its rejected status, receipt, attachment, edit and location fields, caller-chosen sender, time, sequence or ID rejected from the send input, the three history modes, each page refinement on its own, and a walkthrough: a lost send response retried with the same client message ID, scrolling back through cursors to sequence 1, and catching up over two pages until `latestSequence`. 598 tests (76 new).
+- **Decisions:**
+  - **Gapless sequences.** Each group's chat numbers messages 1, 2, 3, … with no gaps (no deletion in the MVP). A gap tells the app it missed messages, for example from an event that skips ahead, which `afterSequence` then recovers. Pages are refined to consecutive sequences. `createdAt` only displays, so a backend with slightly skewed clocks cannot break the order.
+  - **One page shape for all three modes** with `olderCursor` and `latestSequence`, instead of a cursor plus `hasMore`. Older history follows the opaque `olderCursor`, as the overview's cursor convention requires; catch-up continues after the page's last sequence until a page is empty or ends at `latestSequence`. An `afterSequence` beyond `latestSequence` returns an empty page, from which the app knows to reload the latest page.
+  - **`clientMessageId` is a UUID and the send's idempotency key**, scoped to sender and group. It is on every message, not only the sender's view, so one shape serves pages, send results and realtime echoes. It reveals nothing.
+  - **Sender as the public user summary**, so messages from someone who left still show a name.
+  - **Multi-line text with `\n` only.** The app trims and normalizes line breaks; the schema rewrites nothing, matching the single-line text rule.
+  - **Send check order:** `VALIDATION_FAILED`, `MEMBERSHIP_REQUIRED` (also for a former member's retry), `HISTORY_EXPIRED`, then the stored message for a repeated client message ID (`IDEMPOTENCY_CONFLICT` if the text differs), then `GROUP_CLOSED`. A member's retry after closure therefore returns the message it already stored rather than an error.
+  - **No new error codes;** no chat rate limit was added, since none is specified.
+- **Other doc changes:** `api/realtime.md` reconnection step 8 now ends catch-up at `latestSequence` and starts it on a sequence gap.
+- **Excluded:**
+  - the mock chat operations and their idempotency (CHAT-001-A);
+  - the chat screens (CHAT-001-B and C);
+  - the `chat.message.created` event (CONTRACT-004-A);
+  - block and report (CONTRACT-003-C);
+  - any mobile code.
+- **Verification:**
+  - `pnpm test:contracts`: 11 files, 598 tests pass.
+  - A script on the built package confirmed each rejected page case fails only on its own rule's path. The out-of-order case was adjusted after it also tripped the cursor rule.
+  - `pnpm build:contracts`, `pnpm typecheck` (contracts, contract tests and mobile) and `pnpm lint`: all Turbo tasks pass.
+  - Importing the built `packages/contracts/dist/index.js` in Node finds the seven new exports and parses an empty page.
+  - `git diff --check`: clean. Local Markdown links and anchors in the edited docs resolve.
+  - Not run (no app code changed): mobile Jest, exports and native builds. The next native pass loads the new `\P{Cc}` regex under Hermes, as it already does for the single-line text rule.
+- **Remaining/next:**
+  - CONTRACT-003-C (safety), when requested; it completes CONTRACT-003.
+  - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
+  - MEGAsync exclusions.
+- **Ownership:** Released; no active task.

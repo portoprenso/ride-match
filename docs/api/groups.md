@@ -1,6 +1,6 @@
 # Future API: groups, meeting points, chat, and safety
 
-Status: planned; the group, membership, join, leave and status contracts exist in `packages/contracts` (CONTRACT-003-A). Last updated: 2026-11-01.
+Status: planned; the group, membership, join, leave and status contracts (CONTRACT-003-A) and the chat contracts (CONTRACT-003-B) exist in `packages/contracts`. Last updated: 2026-11-01.
 
 Paths use `/v1`. Common envelopes/errors/idempotency are in [overview](overview.md). `Member` requires current membership; `Coordinator` also requires that role. Retained terminal history is accessible to members authorized at closure, not users who previously left.
 
@@ -13,8 +13,8 @@ Paths use `/v1`. Common envelopes/errors/idempotency are in [overview](overview.
 | `GET /groups/{groupId}` | Member | Group ID | `RideGroupDto` | `MEMBERSHIP_REQUIRED` for a former member, a non-member or an unknown group, so private reads never reveal whether a group exists; `HISTORY_EXPIRED` after a closed group's `historyExpiresAt` |
 | `DELETE /groups/{groupId}/members/me` | Member | `LeaveGroupInput`: operation ID | `LeaveGroupResultDto`: group ID and the cancelled own request | `MEMBERSHIP_REQUIRED` for a new leave by a non-member (a retry with the same operation ID returns the original result), `GROUP_CLOSED` for a completed or cancelled group |
 | `PATCH /groups/{groupId}/status` | Coordinator | `UpdateGroupStatusInput`: requested status, expected version, operation ID | Updated `RideGroupDto` | In this order: `MEMBERSHIP_REQUIRED`, `FORBIDDEN` (a member who is not the coordinator), `GROUP_CLOSED`, `VERSION_CONFLICT`, then `INVALID_TRANSITION` for a transition the current status does not allow, including marking ready without a meeting point |
-| `GET /groups/{groupId}/messages` | Member | `beforeCursor` **or** `afterSequence`, limit | Message page and pagination metadata | Access revoked, history expired |
-| `POST /groups/{groupId}/messages` | Member | Text, client message ID | Canonical message | Group closed, invalid text, access revoked |
+| `GET /groups/{groupId}/messages` | Member; a member at closure until `historyExpiresAt` | `ChatHistoryQueryInput`: `beforeCursor` **or** `afterSequence`, limit | `ChatMessagePageDto`: messages, `olderCursor`, `latestSequence` | `MEMBERSHIP_REQUIRED` (as for the group read), `HISTORY_EXPIRED`, `VALIDATION_FAILED` for both positions or a cursor that is malformed or from another group |
+| `POST /groups/{groupId}/messages` | Member | `SendChatMessageInput`: client message ID, text | Stored `ChatMessageDto` | In this order: `VALIDATION_FAILED`, `MEMBERSHIP_REQUIRED` (also for a former member's retry), `HISTORY_EXPIRED`, then the stored message for a client message ID already used (`IDEMPOTENCY_CONFLICT` if the text differs), then `GROUP_CLOSED` |
 | `PUT /me/blocks/{userId}` | User | Operation identity | Block result and membership effects | Cannot block self |
 | `DELETE /me/blocks/{userId}` | User | None | `204` | Idempotent if absent |
 | `GET /me/blocks` | User | Cursor | Blocked-user summaries | Session expired |
@@ -130,18 +130,33 @@ No error codes were added. `GROUP_CLOSED` answers a join to a ready group and a 
 
 ## Chat
 
-- Text only; proposed trimmed length 1–1,000 characters, enforced at the boundary.
-- Server/source sets sender and timestamp. Caller cannot impersonate a user.
-- Group-local increasing message sequence supports catch-up and stable ordering.
-- Canonical message ID identifies a stored message. A sender's client message ID identifies one send intent and remains unchanged on retry.
-- Deduplicate retries and socket echoes by canonical/client message IDs scoped appropriately to sender/group.
-- `beforeCursor` loads older history; `afterSequence` catches up missing messages. They are mutually exclusive.
-- Return messages in ascending sequence order within each page plus next cursor/hasMore. Continue catch-up until complete.
+- Text only: 1–1,000 characters (UTF-16 code units), enforced at the boundary. The app trims surrounding whitespace and writes line breaks as `\n`; other control characters fail, and nothing is rewritten.
+- Server/source sets sender, timestamp, sequence and message ID. Caller cannot impersonate a user. The sender's public summary stays on a message after the sender leaves.
+- Group-local message sequence: 1 for the first message, then one more per message, with no gaps. It gives catch-up and stable ordering; `createdAt` is only displayed. A gap between the sequences the app holds, for example after an event that skips ahead, means it missed messages.
+- Canonical message ID identifies a stored message. A sender's client message ID (a UUID) identifies one send intent, remains unchanged on retry, and is the send's idempotency key, scoped to sender and group.
+- Deduplicate retries and socket echoes by canonical message ID; the sender's app replaces its pending message with the stored one carrying its client message ID. No page repeats a message or a send intent.
+- History modes: no position reads the latest messages; `beforeCursor` (from the previous page's `olderCursor`) loads older history; `afterSequence` catches up the messages after the newest one held (`0` from the first). The positions are mutually exclusive.
+- Each page returns messages in ascending sequence order, `olderCursor` (`null` exactly when nothing is older) and `latestSequence`, the group's newest sequence at read time. Continue catch-up until a page is empty or ends at `latestSequence`. An `afterSequence` beyond `latestSequence` returns an empty page; the app then reloads the latest page.
 - Pending/sending/failed presentation is mobile-only. Do not persist it as canonical message status.
-- Losing a response after commit must not create another message on retry.
+- Losing a response after commit must not create another message on retry: the retry returns the stored message, even if the group closed meanwhile.
 - Membership/lifecycle is checked on every read/send and subscription.
 - Leaving or revocation clears history/composer private data immediately; stale events cannot restore access.
-- No background offline send queue, attachments, editing, reactions, threads, presence, or read receipts.
+- No background offline send queue, attachments, editing, deletion, reactions, threads, presence, or read receipts.
+
+## Implemented chat contracts (CONTRACT-003-B)
+
+`packages/contracts/src/chat.ts`, covered by `pnpm test:contracts`:
+
+| Schema | Visibility | Rule |
+| --- | --- | --- |
+| `ChatTextSchema` | — | 1–1,000 characters with no surrounding whitespace; `\n` allowed, other control characters fail |
+| `MessageSequenceSchema` | — | Whole number from 1 |
+| `ChatMessageSchema` | Members; members at closure until `historyExpiresAt` | `id`, `groupId`, `sender` (public user), `text`, `createdAt`, `sequence`, `clientMessageId`. Status, read receipts, attachments, edit times and locations fail |
+| `SendChatMessageInputSchema` | Member input | `clientMessageId` (UUID) and `text`. A sender, time, sequence or message ID from the caller fails |
+| `ChatHistoryQueryInputSchema` | Member input | Optional `beforeCursor` or `afterSequence` (from 0), never both; `limit` 1–50 |
+| `ChatMessagePageSchema` | Members | `messages` (at most 50, one group, consecutive sequences, each message and send intent once), `olderCursor` (`null` exactly when the page is empty or starts at 1), `latestSequence` (at least the last message's). No total count |
+
+Mock values, to revisit before a backend exists: `CHAT_POLICY` holds the 1,000-character text limit and the 50-message page size, both enforced by the schemas. No error codes were added.
 
 ## Block and report
 

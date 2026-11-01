@@ -50,7 +50,8 @@ Schemas live in `packages/contracts`, organized as described in [architecture](.
 | `JoinGroupInput`, `JoinGroupResultDto` | Own request ID, target ride or group, operation ID (no expected version); the forming group and the grouped own request. Implemented |
 | `LeaveGroupInput`, `LeaveGroupResultDto`, `UpdateGroupStatusInput` | Operation ID; group ID and the cancelled own request; requested status, expected version and operation ID. Implemented |
 | `MeetingPointDto` | ID, shared place coordinates, label, optional viewer-specific walking estimate. Implemented; the group carries it since CONTRACT-003-A |
-| `ChatMessageDto` | ID, group ID, sender, text, createdAt, group-local sequence, client message ID |
+| `ChatMessageDto` | ID, group ID, sender, text, createdAt, group-local sequence (from 1, no gaps), client message ID. Implemented; see [chat contracts](groups.md#implemented-chat-contracts-contract-003-b) |
+| `SendChatMessageInput`, `ChatHistoryQueryInput`, `ChatMessagePageDto` | Client message ID and text (1–1,000); `beforeCursor` or `afterSequence` and a limit (1–50); ascending messages, `olderCursor`, `latestSequence`. Implemented |
 | `ReportUserInput` | Target, reason, optional bounded details, optional relevant group/message reference |
 | `BlockUserInput` | Target user ID |
 | `NotificationPayloadDto` | Payload version, notification ID, kind, resource IDs, issuedAt/expiresAt |

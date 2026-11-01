@@ -8,6 +8,7 @@
  * services, and backend-only logic belong elsewhere.
  */
 export * from './auth.js';
+export * from './chat.js';
 export * from './common.js';
 export * from './errors.js';
 export * from './groups.js';

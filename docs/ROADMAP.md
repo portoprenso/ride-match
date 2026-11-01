@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001 and CONTRACT-002 are completed; UI-001 is paused for an Android text fix and screen-reader checks; CONTRACT-003 has A completed; all other implementation tasks are planned.**
+Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001 and CONTRACT-002 are completed; UI-001 is paused for an Android text fix and screen-reader checks; CONTRACT-003 has A and B completed; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,14 @@ Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001 an
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**CONTRACT-003-B — Completed (2026-11-01).**
+
+- **Done:**
+  - `chat.ts`: message text (1–1,000 characters, line breaks allowed, no other control characters), the group-local sequence (from 1, no gaps), the stored message with sender, time and client message ID, the send input, the history query (latest, `beforeCursor` or `afterSequence`, never both; limit 1–50) and the page (consecutive messages, `olderCursor`, `latestSequence`).
+  - `api/groups.md`: send and history errors in order; a retry returns the stored message even after closure; catch-up ends at `latestSequence`. No error codes were added. 598 contract tests (76 new).
+- **Parent check (partial):** chat access follows the group's revocation and retention rules. Safety (C) remains.
+- **Not run (no app code changed):** mobile Jest, exports and native builds.
 
 **CONTRACT-003-A — Completed (2026-11-01).**
 
@@ -142,7 +150,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | MONO-001 | Workspace foundation | Completed |
 | CONTRACT-001 | Common, location, authentication contracts | Completed |
 | CONTRACT-002 | Places, rides, matching contracts | Completed |
-| CONTRACT-003 | Groups, chat, safety contracts | Paused (A completed; B and C planned) |
+| CONTRACT-003 | Groups, chat, safety contracts | Paused (A and B completed; C planned) |
 | CONTRACT-004 | Realtime and notification contracts | Planned |
 | MOBILE-001 | Expo shell and navigation | Completed |
 | DATA-001 | Data-source and Query foundation | Planned |
@@ -222,7 +230,7 @@ Execution: [MONO-001-A through MONO-001-E](FIRST_STEPS.md#task-cards), assigned 
 
 - **Goal:** Collaboration operations have unambiguous contracts.
 - **Scope:** Atomic joining, group lifecycle, members, meeting points, text messages, block/report.
-- **Expected files/modules:** `C/src/{groups,chat,safety}.ts`, contract tests, `docs/api/groups.md`. CONTRACT-003-A completed `groups.ts`.
+- **Expected files/modules:** `C/src/{groups,chat,safety}.ts`, contract tests, `docs/api/groups.md`. CONTRACT-003-A completed `groups.ts`, CONTRACT-003-B `chat.ts`.
 - **Dependencies:** CONTRACT-002.
 - **Acceptance criteria:** Solo-to-group formation, last-seat conflict, leave, closure, and access revocation are specified.
 - **Verification:** `pnpm test:contracts`; review transition/permission table and request/response examples.

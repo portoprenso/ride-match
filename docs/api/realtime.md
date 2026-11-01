@@ -1,6 +1,6 @@
 # Future API: realtime and notifications
 
-Status: planned. Last updated: 2026-10-03. The mobile MVP uses an in-process event emitter and local notifications, not a Socket.IO server or remote push backend.
+Status: planned. Last updated: 2026-11-01. The mobile MVP uses an in-process event emitter and local notifications, not a Socket.IO server or remote push backend.
 
 ## Event envelope
 
@@ -44,7 +44,7 @@ REST remains authoritative:
 5. Prefer invalidation for membership/matches/lifecycle changes. Merge full payloads only when simple and safe, such as a chat message.
 6. On disconnect, show stale status; do not pretend current capacity is confirmed.
 7. On reconnect or foreground return, resubscribe and refetch current own request, active group, nearby discovery, and applicable matches.
-8. Catch up chat using `afterSequence`, paging until caught up. Refresh recent history if recovery context is invalid.
+8. Catch up chat using `afterSequence`, paging until a page is empty or ends at `latestSequence`; a message event whose sequence skips ahead also starts catch-up. Refresh recent history if recovery context is invalid (an empty page for an `afterSequence` beyond `latestSequence`).
 9. Cancel/reset subscriptions and private state on session/scenario changes.
 
 Handle the snapshot/event race explicitly: an event during an in-flight snapshot must not be lost when an older snapshot resolves. Resource version guards and follow-up invalidation provide a small solution without an event-sourced client database.
