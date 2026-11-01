@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix and screen-reader checks; DATA-001 is completed; all other implementation tasks are planned.**
+Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix and screen-reader checks; DATA-001 is completed; MOCK-001 has A completed; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,14 @@ Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**MOCK-001-A — Completed (2026-11-01).**
+
+- **Done:**
+  - `src/data/mock/`: the simulated clock (real time plus an advanced offset), seeded randomness, deterministic IDs, the scheduler that catches up overdue tasks after background time, a typed emitter, idempotency receipts, and `createSimulator`: seeded latency, the operation pipeline (due tasks first, synchronous work, events only after it completes), explicit `network` (before or after commit) and `source` failures, connection loss that ends subscriptions, aborts, reset and disposal.
+  - `MOCK_SCENARIOS.md`: the implemented rules. 135 mobile tests (30 new).
+- **Parent check (partial):** reset is repeatable and timers and listeners do not accumulate (tested over ten resets and disposal). Safe public outputs and minimal seeds (B) and the dev controls (C) remain.
+- **Not run (no app code path uses it yet):** native builds and exports.
 
 **DATA-001-B — Completed (2026-11-01); DATA-001 is `Completed`.**
 
@@ -198,7 +206,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | CONTRACT-004 | Realtime and notification contracts | Completed |
 | MOBILE-001 | Expo shell and navigation | Completed |
 | DATA-001 | Data-source and Query foundation | Completed |
-| MOCK-001 | Simulator foundation | Planned |
+| MOCK-001 | Simulator foundation | Paused (A completed; B and C planned) |
 | SYNC-001 | Event synchronization and recovery | Planned |
 | AUTH-001 | Simulated authentication | Planned |
 | LOCATION-001 | Foreground location | Planned |
@@ -316,7 +324,7 @@ Execution: [MOBILE-001-A through MOBILE-001-H](FIRST_STEPS.md#mobile-001-a--crea
 
 - **Goal:** Deterministic mock operations and timed events work.
 - **Scope:** State, injected clock, scheduled events, safe serialization, latency/failure controls, minimal active/empty seeds, reset cleanup.
-- **Expected files/modules:** `M/src/data/mock/`, simulator behavior tests.
+- **Expected files/modules:** `M/src/data/mock/`, simulator behavior tests. MOCK-001-A completed the foundation modules and `tests/simulator.test.ts`.
 - **Dependencies:** DATA-001.
 - **Acceptance criteria:** Reset is repeatable; timers/listeners do not accumulate; public outputs contain no exact private locations.
 - **Verification:** `pnpm test:mobile --runTestsByPath src/data/mock/simulator.test.ts`; repeat resets and advance fake time.

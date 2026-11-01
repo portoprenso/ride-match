@@ -1817,3 +1817,45 @@ Never record credentials, phone numbers, exact rider locations, private messages
   - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
   - MEGAsync exclusions.
 - **Ownership:** Released; no active task.
+
+## 2026-11-01 — MOCK-001-A: Simulator foundation
+
+- **Actor/session:** Claude Code / mock-001-a.
+- **Status:** `Completed`; ownership released. The parent MOCK-001 is `Paused` (A completed; B and C planned).
+- **Working copy:** `main` at `6ac68bc` (DATA-001-B). Committed on top of it, with no push: the user asked for a commit after each completed step. The untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start MOCK-001-A". Simulator infrastructure, tests and docs. No seeds, serializers, domain operations, `AppDataSource` adapter, dev controls or composition change.
+- **Prerequisites:** DATA-001 is `Completed`.
+- **Changes (all new, in `apps/mobile/src/data/mock/`):**
+  - `clock.ts`: `SimulatedClock`, `createSimulatedClock(readTime?)`.
+  - `random.ts`: `SeededRandom`, `createSeededRandom(seed)`.
+  - `ids.ts`: `IdGenerator`, `createIdGenerator()`.
+  - `scheduler.ts`: `Scheduler`, `createScheduler(clock)`.
+  - `events.ts`: `EventEmitter`, `createEmitter()`.
+  - `receipts.ts`: `ReceiptKey`, `ReceiptRequest`, `ReceiptStore`, `createReceiptStore(conflict)`.
+  - `simulator.ts`: `DEFAULT_LATENCY_MS`, `LatencyRange`, `MockFailure`, `EventEnvelope`, `WorkContext`, `Work`, `SeedContext`, `SimulatorOptions`, `SimulatorStats`, `Simulator`, `createSimulator(options)`.
+  - **Tests:** `tests/simulator.test.ts` (30). 135 mobile tests.
+- **Decisions:**
+  - **Not wired into the app yet.** MOCK-001-B's acceptance (`places.search` callable through `AppDataSource`) makes it the card that builds `createMockDataSource` and replaces the mock slot. With no seeds, wiring now would either reject the configured scenario key or accept keys that do nothing.
+  - **A generic world (`createState`) instead of a `state.ts` with every record type,** so record shapes arrive with the cards that use them. `activate` lets a seed schedule its timed events again after each reset.
+  - **Timestamp-driven scheduling:** tasks run because their time passed. One timer wakes the queue in the foreground; `processDue` catches up after background time or a time jump and runs before every operation's work. A long delay is clamped to `setTimeout`'s limit, so a far-off task cannot fire at once and loop.
+  - **Atomic work without a lock:** work runs synchronously after the latency, so nothing interleaves; it must check before changing, because a throw after a change keeps that change (documented, not enforced by copying the world). Events queued by work are published only if it completes.
+  - **Separate random streams** for latency and world choices (`seed:latency`, `seed:world`), so adding a random choice to an operation never shifts later latencies.
+  - **Explicit failures only:** `network` before the source (nothing changes) or after commit (the answer is lost; tested with a receipt-backed retry), and `source` with a chosen code. A queued failure names an operation or matches any.
+  - **Connection loss ends event subscriptions,** matching the contract's one-connection subscriptions; operations in flight fail after their latency without changing anything.
+  - **Reset keeps connection watchers** (the app owns them, as Query's online manager will) and clears subscriptions, tasks, receipts, failures, IDs, random streams and the clock offset. Pending operations fail with `network`. Disposal releases everything and refuses later operations with `DataSourceUnavailableError`.
+  - **Receipts compare the operation name and input** with object keys sorted, scoped by acting user; results are stored and returned as JSON copies.
+- **Excluded:**
+  - world records, seeds, safe serializers, `places.search` and discovery reads, the `AppDataSource` adapter and `events.subscribe` routing (MOCK-001-B);
+  - the dev controls route (MOCK-001-C), domain operations (their cards), foreground wiring of `resume()` (SYNC-001-B).
+- **Verification:**
+  - `npx jest --runTestsByPath tests/simulator.test.ts` (in `apps/mobile`): 30 pass. The first run timed out in the reset test, which awaited an operation without advancing the fake clock; it was fixed.
+  - `pnpm test:mobile`: 8 suites, 135 tests pass, and Jest exits. Every simulator test ends with `jest.getTimerCount()` at 0 after disposal.
+  - `pnpm typecheck` and `pnpm lint`: all Turbo tasks pass.
+  - `git diff --check`: clean. Local Markdown links and anchors in the edited docs resolve.
+  - Not run: native builds and exports (no app code path uses the simulator yet), and the deferred development-build check from DATA-001-A.
+- **Remaining/next:**
+  - MOCK-001-B (world, seeds, serializers, first reads, `createMockDataSource` and composition), when requested.
+  - The deferred development-build check.
+  - The backlog stays parked: UI-001-A line-height fix and UI-001-D screen-reader pass.
+  - MEGAsync exclusions.
+- **Ownership:** Released; no active task.

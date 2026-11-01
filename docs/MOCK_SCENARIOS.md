@@ -1,6 +1,6 @@
 # Mock simulator and scenarios
 
-Status: planned. Last updated: 2026-10-03.
+Status: partly implemented: the simulator foundation exists (MOCK-001-A); seeds, serializers, operations and scenario controls are planned. Last updated: 2026-11-01.
 
 ## Purpose
 
@@ -37,6 +37,27 @@ Rechecking after delay enables actual last-seat and expired-target conflicts. Us
 - Matching is a fixture/scenario result keyed to selected destinations and actions. Mobile never computes a routing score.
 - Group changes and event payloads follow the future contracts, including permissions and idempotency.
 - Cold reload reset is a documented demo limitation, not a model for future server persistence.
+
+## Implemented foundation (MOCK-001-A)
+
+`apps/mobile/src/data/mock/`, covered by `tests/simulator.test.ts` with Jest fake timers. Nothing imports it from features (the ESLint boundary), and the app does not use it yet: MOCK-001-B adds seeds and serializers and wires `createMockDataSource` into the composition root.
+
+| Module | Rule |
+| --- | --- |
+| `clock.ts` | Simulated time is real time plus an offset that only grows; every deadline reads it. `nowIso()` gives contract timestamps |
+| `random.ts` | Seeded generator (FNV-1a seed hash, mulberry32): the same seed repeats the same sequence |
+| `ids.ts` | Deterministic `prefix_N` IDs, counted per prefix and restarted on reset |
+| `scheduler.ts` | Tasks due at simulated times run because their time passed, not because a timer fired: one wake-up timer serves the foreground, and `processDue()` runs every overdue task in due order (then scheduling order) after background time or a time jump. A task leaves the queue before it runs |
+| `events.ts` | Typed emitter with countable, clearable listeners |
+| `receipts.ts` | Idempotency results per acting user and operation ID: a retry with the same operation and input (key order ignored) returns a copy of the original result without running again; a different request throws `IDEMPOTENCY_CONFLICT`; failures store nothing |
+| `simulator.ts` | `createSimulator({ seed, createState, activate?, latencyMs? })` holds one generic world. `run(operation, work, { signal })` follows the pipeline above: refuse at once while disconnected or already aborted, wait a seeded latency (200–700 ms by default, its own random stream so world choices never shift it; abortable), run due tasks, apply a queued failure, run `work` synchronously (check before changing), then publish the events it emitted, only if it completed. `schedule` runs work at a simulated time under the same event rule |
+
+- **Failure controls:** `failNext(failure, operation?)` queues explicit failures, matched in order to the named operation or to any. `network` means no answer: by default nothing changed; with `afterCommit` the change was made and only the answer is lost, so a retry with the same operation ID must find the original result. `source` refuses with a chosen error code and a fresh request ID. No random failures.
+- **Connection:** `setConnection('disconnected')` fails new operations with `network`, makes operations in flight fail after their latency, and ends every event subscription (a subscription lasts one connection). `watchConnection` reports the state at once and on changes.
+- **Time:** `advanceTime(ms)` moves simulated time and runs due tasks; `resume()` catches up on foreground return (SYNC-001-B calls it).
+- **Reset:** pending operations fail with `network` ("reset"), scheduled tasks, event subscriptions, receipts and queued failures are cleared, the clock offset, IDs and both random streams restart, the world is rebuilt and `activate` runs again, and the connection is restored. Connection watchers stay, since the app owns them. Repeated resets leave the same counts (`stats()`) and timers.
+- **Disposal:** releases everything, connection watchers included; pending and later operations fail with `DataSourceUnavailableError`; it is idempotent.
+- **Not yet:** the world's record types and seeds, safe serializers and their validation, domain operations, the `AppDataSource` adapter (including `events.subscribe` routing by audience) and the dev controls (MOCK-001-B/C and the domain cards).
 
 ## Scenario controls
 
