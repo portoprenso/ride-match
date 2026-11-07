@@ -2331,3 +2331,22 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **Docs:** ROADMAP (entry, status line, AUTH-001 and MAP-001 rows), MOBILE_IMPLEMENTATION_PLAN (AUTH-001-B and MAP-001-A rows), DEVELOPMENT (check statuses, native pass notes), TOOLCHAIN (CocoaPods locale), AI_CONTEXT.
 - **Remaining/next:** MAP-001-A needs the Android key check (and the stale dot) before MAP-001-B and MAP-002-A, unless the user decides to proceed on iOS evidence.
 - **Ownership:** Released; no active task.
+
+## 2026-11-07 — VERIFY-004: Android map check with the Google Maps key
+
+- **Actor/session:** Claude Code / verify-004.
+- **Status:** `Completed`; ownership released. MAP-001-A stays `Paused` for one Android defect.
+- **Working copy:** `main` at `896c969` (VERIFY-003); docs only, committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** the user created a Google Cloud project and a key restricted to Android apps (`com.ridematch.dev`, the React Native template's debug SHA-1) and Maps SDK for Android, put it in `apps/mobile/.env.local` (ignored, confirmed with `git check-ignore`), and asked for the Android check. The key was never printed or recorded.
+- **Build:** `android/` removed and regenerated (the manifest has `com.google.android.geo.API_KEY`); BUILD SUCCESSFUL in 36 s.
+  - `expo run:android` chose a phone connected over USB (`2510DRA23G`) instead of the emulator and installed and opened the development build there. Nothing else was done on the phone; the build is still installed on it.
+  - The emulator lacked space to replace the app, so the old one was uninstalled and the APK installed with `adb install`.
+  - The Metro server already on port 8081 (started by the run) served `googleMapsAndroidConfigured: false`; a fresh `expo start` loaded `.env.local` and served `true`.
+- **Checks passed (Android 16 emulator):** Google Maps draws Bishkek with the Google logo above the sheet; the dot appears and the camera moves to it; after a pan a new position does not move the camera; Show my location recenters at street scale, flat and north-up; a confirmed pickup (Ala-Too Square) draws its pin; with location revoked the demo city shows with no dot or recenter button and the Location is off card.
+- **Defect (open):** after 150 s without a new fix the card shows "Your location is out of date", but the dot stays teal (`#146B59` measured at full resolution) instead of `muted`. The JS tree is right (`tests/mapHome.test.tsx` passes, the bundle had the change). react-native-maps 1.27.2's Android `MapMarker` turns a custom view into an image and redraws it through its `updated` counter, which a child's style change does not raise. A `key` per state, to remount the marker, did not change the colour on the emulator and was reverted; no code changes remain.
+- **Also seen:** the pickup pin is Google's default pin tinted light teal, since Android's `pinColor` becomes a hue and cannot reproduce the ink colour.
+- **Not checked:** the iOS stale dot; Android paste.
+- **Side effects outside the repository:** the development build installed on the user's phone; on the emulator the app reinstalled, location granted and then revoked, `adb reverse` added and removed; emulator shut down, Gradle and Metro stopped.
+- **Docs:** ROADMAP (entry, status line, MAP-001 row), MOBILE_IMPLEMENTATION_PLAN (MAP-001-A row), DEVELOPMENT (map check status, key notes), AI_CONTEXT.
+- **Remaining/next:** fix the Android stale dot within MAP-001-A (for example a marker image per state, or temporary `tracksViewChanges`), then check it on both platforms; MAP-001-B and MAP-002-A follow.
+- **Ownership:** Released; no active task.
