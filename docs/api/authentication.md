@@ -1,6 +1,6 @@
 # Future API: authentication and users
 
-Status: planned API; all MVP authentication is simulated, and the mock operations exist ([AUTH-001-A](#implemented-mock-auth-001-a)). Last updated: 2026-11-01.
+Status: planned API; all MVP authentication is simulated. The mock operations ([AUTH-001-A](#implemented-mock-auth-001-a)) and the app's session controller ([AUTH-001-B](#implemented-session-auth-001-b)) exist. Last updated: 2026-11-07.
 
 Paths are relative to `/v1`; response conventions and common failures are in [overview](overview.md).
 
@@ -83,7 +83,7 @@ The demo code itself is a mock fixture that AUTH-001-A documents; it is never pa
 | Logout | Revokes the whole session, so its access and refresh tokens stop working at once; repeating it, or sending a rotated or unknown token, still succeeds |
 | Reset | The auth records live in the mock world, so restarting or switching the scenario (demo controls) signs everyone out |
 
-The data source sends the access token it reads from an `AccessTokenSource` (`src/data/AppDataSource.ts`) when each call starts. The composition root does not pass one yet, so the app runs anonymous until the session controller (AUTH-001-B) supplies it. Every auth call goes through the simulator, so latency, queued failures and the connection apply: a request lost on the way leaves the challenge untouched.
+The data source sends the access token it reads from an `AccessTokenSource` (`src/data/AppDataSource.ts`) when each call starts; since AUTH-001-B the session controller supplies it. Every auth call goes through the simulator, so latency, queued failures and the connection apply: a request lost on the way leaves the challenge untouched.
 
 ## Session lifecycle
 
@@ -95,6 +95,23 @@ The data source sends the access token it reads from an `AccessTokenSource` (`sr
 - Logout attempts session/device deregistration while credentials are available, then clears local credentials and private data. Offline cleanup failures must not trap the user in a signed-in local state or be silently reported as successful server revocation.
 - A future backend must revoke device/session associations server-side as appropriate; the mock simulates that state change.
 - Demo storage uses a separate namespace. Full scenario/cold reset clears demo credentials and state; future production persistence is separate.
+
+## Implemented session (AUTH-001-B)
+
+`apps/mobile/src/features/auth/createSessionController.ts` (with `AuthSessionProvider.tsx`) and `apps/mobile/src/platform/secureStorage/credentialStore.ts`, covered by `tests/authSession.test.tsx`. Its native check (rebuilt development clients) is pending. No screen uses it yet: the sign-in screens and gate are AUTH-001-C, settings and the sign-out confirmation AUTH-001-D.
+
+| Rule | Behavior |
+| --- | --- |
+| Credentials | The access token stays in memory and reaches the data source only through `getAccessToken`. The refresh token is kept in memory and in SecureStore under `ridematch.<namespace>.refreshToken` (`mock` now, `api` later), readable only while the device is unlocked and never restored to another device (`WHEN_UNLOCKED_THIS_DEVICE_ONLY`; the config plugin excludes it from Android backups). Feature code never sees a token |
+| States | `restoring` at launch; `restore-failed` when a stored session could not be renewed (source unreachable or `RATE_LIMITED`/`SERVICE_UNAVAILABLE`, or the store unreadable), retried by `restore()`; `signed-out` with reason `none`, `signed-out`, `expired` or `reset`; `signed-in` with the rider and `persisted` (`false` when the token could not be saved, so the session ends with the app) |
+| Launch | Renews the stored session and reads the rider (`GET /me`). Any other source refusal ends it as `expired` and clears the key. On the mock source nothing is resumed: its world lives in memory, so the demo key is cleared at every launch (the cold reset the lifecycle rules ask for) |
+| Sign-in | `signIn({ challengeId, code })` verifies, keeps the credentials and saves the refresh token; a refused code leaves the state unchanged. Refused while a rider is signed in. Requesting a code needs no session and stays a plain data-source call |
+| Refresh | Single flight: callers that meet `SESSION_EXPIRED` at once share one `POST /auth/refresh`. `runAuthenticated(operation)` refreshes once and runs the operation again, for reads and for mutations whose closure keeps its operation ID. `REFRESH_TOKEN_INVALID` ends the session as `expired`; a network failure keeps it for the next attempt. Expiry is detected from the source's answer, not the device clock, because the source's clock can differ (the demo controls move it) |
+| Sign-out | Waits for a refresh in flight, sends `POST /auth/logout` with the newest refresh token, then clears memory and storage. The rider is signed out locally whatever happens; the result `{ revoked, revokeError, storageCleared }` says what was not confirmed, so the app never reports an unconfirmed revocation as done. Push-device deregistration joins it in NOTIFICATION-001 |
+| Ordering | Storage writes and removals run one at a time in call order, so a late save never brings back a token that signing out removed. A result that arrives after the session was replaced or ended (sign-out, a new sign-in, a demo reset) changes nothing |
+| Demo reset | Starting or restarting a scenario from the demo controls signs everyone out of the simulator, so the composition root discards the app's session first (`reset`) |
+
+Not yet: clearing cached private queries and stopping private subscriptions when the identity changes (SYNC-001-B); the session-expired screen and pending-intent gate (AUTH-001-C).
 
 ## Protected-action continuation
 

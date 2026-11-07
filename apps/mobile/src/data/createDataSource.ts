@@ -1,5 +1,5 @@
 import type { DataSourceConfig } from '../config/appConfig';
-import type { AppDataSource } from './AppDataSource';
+import type { AccessTokenSource, AppDataSource } from './AppDataSource';
 import type { DevControls } from './DevControls';
 import { DataSourceUnavailableError } from './errors';
 
@@ -19,9 +19,10 @@ export type ComposedDataSource = {
 export type DataSourceFactories = {
   /**
    * Builds the in-memory simulator, starting from `scenario`; it throws for a scenario it does not
-   * know. `devControls` says whether the build may offer the demo controls.
+   * know. `devControls` says whether the build may offer the demo controls, and `accessToken`
+   * supplies the session's access token to every authenticated call.
    */
-  mock: (options: { scenario: string; devControls: boolean }) => ComposedDataSource;
+  mock: (options: { scenario: string; devControls: boolean; accessToken: AccessTokenSource }) => ComposedDataSource;
 };
 
 /**
@@ -29,8 +30,9 @@ export type DataSourceFactories = {
  * that branches on the data-source kind; features never check it.
  *
  * `mock` builds the simulator with the configured scenario, and its demo controls when
- * `options.devControls` allows them. `api` fails, because no HTTP or
- * Socket.IO implementation exists in the mobile MVP, and it never falls back to the simulator:
+ * `options.devControls` allows them; it reads `options.accessToken` when each call starts. `api`
+ * fails, because no HTTP or Socket.IO implementation exists in the mobile MVP, and it never falls
+ * back to the simulator:
  * a build meant for real riders must not show synthetic ones.
  *
  * @throws {DataSourceUnavailableError} For `api`.
@@ -38,11 +40,11 @@ export type DataSourceFactories = {
 export function createDataSource(
   config: DataSourceConfig,
   factories: DataSourceFactories,
-  options: { devControls: boolean },
+  options: { devControls: boolean; accessToken: AccessTokenSource },
 ): ComposedDataSource {
   switch (config.kind) {
     case 'mock':
-      return factories.mock({ scenario: config.scenario, devControls: options.devControls });
+      return factories.mock({ scenario: config.scenario, ...options });
     case 'api':
       throw new DataSourceUnavailableError(
         'EXPO_PUBLIC_DATA_SOURCE is "api", but the API data source is not available in this build. Use "mock".',

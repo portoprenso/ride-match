@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is paused with A's mock operations completed; LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; MAP-001 is paused with A implemented and its native checks pending; all other implementation tasks are planned.**
+Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is paused with A's mock operations completed and B's session controller implemented, its native check pending; LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; MAP-001 is paused with A implemented and its native checks pending; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,16 @@ Last updated: 2026-11-01. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**AUTH-001-B — Paused (2026-11-07): implemented; the native check of `expo-secure-store` is pending.**
+
+- **Done:**
+  - `expo-secure-store` 57.0.4 and `src/platform/secureStorage/credentialStore.ts`: the refresh token alone, under a per-data-source key (`ridematch.mock.refreshToken`, later `ridematch.api.refreshToken`), readable only while the device is unlocked and never restored to another device; the config plugin adds no Face ID text and keeps the key out of Android backups.
+  - `src/features/auth/createSessionController.ts` with `AuthSessionProvider`, `useSessionController()` and `useSessionState()`: the access token stays in memory and reaches the data source through `getAccessToken`; callers that find it expired share one refresh (`runAuthenticated`); a refused refresh token ends the session as `expired`; sign-out revokes at the source, then signs out locally even offline or with a failing store and reports what was not confirmed; late results never restore a session, and storage calls run in order. Launch restore renews a stored session, except on the mock source, whose in-memory world cannot keep one, so the demo key is cleared instead.
+  - The composition root builds the session with the data source and passes its token to every call; starting a demo scenario signs the app out. 305 mobile tests (21 new).
+- **Not covered here:** the sign-in screens and protected-action gate (AUTH-001-C), settings and the sign-out confirmation (AUTH-001-D), identity-change clearing of cached private data and subscriptions (SYNC-001-B), push-device deregistration (NOTIFICATION-001). Nothing in the UI signs in yet.
+- **Pending:** rebuild both development clients and check that the app launches with the new native module (see DEVELOPMENT's session check), in the same native pass as MAP-001-A.
+- **Next available:** SYNC-001-A. SYNC-001-B needs SYNC-001-A and AUTH-001-B; MAP-001-B follows MAP-001-A's native checks.
 
 **AUTH-001-A — Completed (2026-11-01).**
 
@@ -281,7 +291,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | DATA-001 | Data-source and Query foundation | Completed |
 | MOCK-001 | Simulator foundation | Completed |
 | SYNC-001 | Event synchronization and recovery | Planned |
-| AUTH-001 | Simulated authentication | Paused (A completed; B–D planned) |
+| AUTH-001 | Simulated authentication | Paused (A completed; B implemented, native check pending; C–D planned) |
 | LOCATION-001 | Foreground location | Completed |
 | MAP-001 | Native map shell | Paused (A implemented, native checks pending; B planned) |
 | ANALYTICS-001 | Typed analytics foundation | Completed |

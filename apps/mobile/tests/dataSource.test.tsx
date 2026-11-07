@@ -71,19 +71,23 @@ describe('parseAppConfig', () => {
 });
 
 describe('createDataSource', () => {
-  it('builds the simulator with the configured scenario, passing on whether demo controls are allowed', () => {
+  it('builds the simulator with the configured scenario, passing on whether demo controls are allowed and the token source', () => {
     const simulator = { dataSource: createUnavailableDataSource('test simulator'), dispose: jest.fn(), devControls: null };
     const mock = jest.fn(() => simulator);
 
-    expect(createDataSource({ kind: 'mock', scenario: 'empty-neighborhood' }, { mock }, { devControls: true })).toBe(simulator);
-    expect(mock).toHaveBeenCalledWith({ scenario: 'empty-neighborhood', devControls: true });
+    const accessToken = () => null;
+
+    expect(createDataSource({ kind: 'mock', scenario: 'empty-neighborhood' }, { mock }, { devControls: true, accessToken })).toBe(
+      simulator,
+    );
+    expect(mock).toHaveBeenCalledWith({ scenario: 'empty-neighborhood', devControls: true, accessToken });
   });
 
   it('refuses the API kind clearly and never falls back to the simulator', () => {
     const mock = jest.fn(() => ({ dataSource: createUnavailableDataSource('test simulator'), dispose: jest.fn(), devControls: null }));
 
-    expect(() => createDataSource({ kind: 'api' }, { mock }, { devControls: true })).toThrow(DataSourceUnavailableError);
-    expect(() => createDataSource({ kind: 'api' }, { mock }, { devControls: true })).toThrow(
+    expect(() => createDataSource({ kind: 'api' }, { mock }, { devControls: true, accessToken: () => null })).toThrow(DataSourceUnavailableError);
+    expect(() => createDataSource({ kind: 'api' }, { mock }, { devControls: true, accessToken: () => null })).toThrow(
       'EXPO_PUBLIC_DATA_SOURCE is "api", but the API data source is not available in this build. Use "mock".',
     );
     expect(mock).not.toHaveBeenCalled();
@@ -124,7 +128,7 @@ describe('composeAppDataSource', () => {
 
   it('composes the simulator for the configured scenario, and disposing it leaves no timers', async () => {
     jest.useFakeTimers();
-    const composition = composeAppDataSource(config({ kind: 'mock', scenario: 'active-neighborhood' }));
+    const composition = composeAppDataSource({ readConfig: config({ kind: 'mock', scenario: 'active-neighborhood' }) });
     expect(composition.status).toBe('ready');
     if (composition.status !== 'ready') return;
 
@@ -148,7 +152,9 @@ describe('composeAppDataSource', () => {
     ['preview', true],
     ['production', false],
   ] as const)('gives the %s build demo controls: %s', (appEnv, offered) => {
-    const composition = composeAppDataSource(() => ({ appEnv, dataSource: { kind: 'mock', scenario: 'empty-neighborhood' } }));
+    const composition = composeAppDataSource({
+      readConfig: () => ({ appEnv, dataSource: { kind: 'mock', scenario: 'empty-neighborhood' } }),
+    });
     expect(composition.status).toBe('ready');
     if (composition.status !== 'ready') return;
 
@@ -157,7 +163,7 @@ describe('composeAppDataSource', () => {
   });
 
   it('fails the composition for a scenario the simulator does not know', () => {
-    const composition = composeAppDataSource(config({ kind: 'mock', scenario: 'match-appears' }));
+    const composition = composeAppDataSource({ readConfig: config({ kind: 'mock', scenario: 'match-appears' }) });
 
     expect(composition.status === 'failed' && composition.error).toBeInstanceOf(AppConfigError);
     expect(composition.status === 'failed' && composition.error instanceof AppConfigError && composition.error.problems).toEqual([
@@ -166,22 +172,24 @@ describe('composeAppDataSource', () => {
   });
 
   it('fails the composition for the API kind', () => {
-    const composition = composeAppDataSource(config({ kind: 'api' }));
+    const composition = composeAppDataSource({ readConfig: config({ kind: 'api' }) });
 
     expect(composition.status).toBe('failed');
     expect(composition.status === 'failed' && composition.error).toBeInstanceOf(DataSourceUnavailableError);
   });
 
   it('fails the composition for an invalid configuration', () => {
-    const composition = composeAppDataSource(() => parseAppConfig({}));
+    const composition = composeAppDataSource({ readConfig: () => parseAppConfig({}) });
 
     expect(composition.status === 'failed' && composition.error).toBeInstanceOf(AppConfigError);
   });
 
   it('rethrows any other error', () => {
     expect(() =>
-      composeAppDataSource(() => {
-        throw new TypeError('unexpected');
+      composeAppDataSource({
+        readConfig: () => {
+          throw new TypeError('unexpected');
+        },
       }),
     ).toThrow(TypeError);
   });

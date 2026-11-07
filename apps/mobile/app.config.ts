@@ -29,6 +29,9 @@ const config: ExpoConfig = {
     // Screens have light backgrounds, so the status bar needs dark icons. Without a style,
     // Android's edge-to-edge status bar keeps white icons and they disappear.
     ['expo-status-bar', { style: 'dark' }],
+    // The refresh token (AUTH-001-B). No biometric unlock, so no Face ID description; the plugin's
+    // default Android backup rules keep the stored token out of device backups.
+    ['expo-secure-store', { faceIDPermission: false }],
     // Foreground location only (docs/PRODUCT.md): the iOS "always" and motion descriptions are
     // removed, and Android gets no background-location or foreground-service permission.
     [

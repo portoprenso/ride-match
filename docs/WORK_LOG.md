@@ -2172,3 +2172,33 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** the auth operations with their error rules, the demo constants, the auth records, the serializers, `AccessTokenSource`, `SourceErrorDetails` and the adapter's `accessToken` option.
 - **Remaining/next:** AUTH-001-B adds secure storage and the session controller that supplies the access token, one shared refresh and logout cleanup; SYNC-001-A is also available. MAP-001-B follows MAP-001-A's native checks.
 - **Ownership:** Released; no active task.
+
+## 2026-11-07 — AUTH-001-B: Secure storage and the session controller
+
+- **Actor/session:** Claude Code / auth-001-b.
+- **Status:** `Paused`: implemented and unit-tested; the native check of `expo-secure-store` is deferred to the next native pass (per the user's standing preference). Parent AUTH-001 stays `Paused`.
+- **Working copy:** `main` at `4f3e2d2` (AUTH-001-A); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "AUTH-001-B": platform secure storage and the auth session controller, with a memory-only access token, namespaced refresh storage, one concurrent refresh, and a local logout that completes despite cleanup failure.
+- **Changes:**
+  - Dependency `expo-secure-store` 57.0.4 (SDK 57's version); `app.config.ts` plugin with `faceIDPermission: false` (default Android backup exclusion kept).
+  - `src/platform/secureStorage/credentialStore.ts`: `CredentialStore`, `createSecureCredentialStore(namespace, backend?)`, `refreshTokenKey` (`ridematch.<mock|api>.refreshToken`, `WHEN_UNLOCKED_THIS_DEVICE_ONLY`).
+  - `src/features/auth/createSessionController.ts`: `SessionState`, `SignedOutReason`, `SignOutResult`, `NoSessionError`, `createSessionController({ auth, store, resumeStoredSession })` with `getAccessToken`, `restore`, `signIn`, `refresh`, `runAuthenticated`, `signOut`, `discard`, `subscribe`, `dispose`. `src/features/auth/AuthSessionProvider.tsx`: `useSessionController()`, `useSessionState()`.
+  - `src/bootstrap/composeAppDataSource.ts`: now takes `{ readConfig?, credentialStore? }`, builds the session after the data source, passes its `getAccessToken` to the data source, returns `session`, disposes it, and wraps the demo controls so starting a scenario discards the session. `src/data/createDataSource.ts`: `accessToken` option passed to the mock factory. `app/_layout.tsx`: `AuthSessionProvider` and `restore()` at launch.
+  - Tests: `tests/authSession.test.tsx` (21), `tests/helpers/credentialStore.ts`, `tests/setup/expoSecureStore.ts` (registered in `jest.config.js`); `tests/dataSource.test.tsx` updated for the new signatures.
+- **Decisions:**
+  - The mock source never resumes a stored session: its world lives in memory, so a stored demo token can never be valid after a cold start; the demo key is cleared at launch instead. The restore path is exercised in tests against a shared simulator and will serve the API source.
+  - Expiry is detected from the source's `SESSION_EXPIRED`, not from `accessTokenExpiresAt` against the device clock, because the source's clock can differ (the demo controls advance it).
+  - Sign-out always completes locally; `{ revoked, revokeError, storageCleared }` reports what was not confirmed. A refresh in flight is awaited so the newest token is revoked.
+  - Storage calls are serialized and every async result is checked against a session epoch, so late saves and late responses cannot resurrect a session.
+  - A failed save keeps the session for this launch (`persisted: false`) rather than failing sign-in. Restore-time network or `RATE_LIMITED`/`SERVICE_UNAVAILABLE` failures keep the stored token (`restore-failed`); any other refusal ends the session as `expired`.
+  - `signIn` is refused while signed in; `requestOtp` needs no session, so it stays a data-source call.
+  - Excluded: sign-in screens and the pending-intent gate (AUTH-001-C), settings and the sign-out confirmation (AUTH-001-D), cache/subscription clearing on identity change (SYNC-001-B), push-device deregistration (NOTIFICATION-001).
+- **Checks:**
+  - `pnpm typecheck` and `pnpm lint` passed; `pnpm --filter @ride-match/mobile test`: 17 suites, 305 tests passed (21 new).
+  - `pnpm peers check`: no issues. `expo config --type introspect`: plugin options and Android backup attributes as intended. `expo install --check`: only `expo-router` 57.0.29 vs `~57.0.30` (pre-existing, unrelated; not changed).
+  - **Not run (deferred):** rebuilding the development clients and the DEVELOPMENT session check on Android and iOS; online doctor.
+- **Docs:** api/authentication (implemented session), ARCHITECTURE, TOOLCHAIN (dependency row and log), DEVELOPMENT (tests, session check), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, AUTH-001 status), AI_CONTEXT.
+- **JSDoc:** the credential store port and its key/options, the session states and reasons, every controller method (effects, sharing, failure behavior, ordering), the provider hooks, the composition options and the demo-reset wrapper.
+- **Remaining/next:** the native session check in the next native pass (with MAP-001-A's). Then SYNC-001-A; SYNC-001-B needs it and AUTH-001-B.
+- **Ownership:** Released; no active task.
+
