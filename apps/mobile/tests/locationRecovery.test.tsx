@@ -13,7 +13,7 @@ import { describeLocationCard } from '../src/features/location/locationCard';
 import { PickupPlaceSheet } from '../src/features/location/PickupPlaceSheet';
 import type { LocationStatus } from '../src/platform/location/createLocationController';
 import { assessFix, type LocationFix } from '../src/platform/location/locationFix';
-import { BLOCKED, DENIED_CAN_ASK, GRANTED, UNDETERMINED, device, openHome, permission, press, wait } from './helpers/locationDevice';
+import { BLOCKED, DENIED_CAN_ASK, GRANTED, UNDETERMINED, device, openHome, permission, press, pressLast, wait } from './helpers/locationDevice';
 import { flushTimersAndRestore } from './helpers/renderApp';
 
 /** The device position is never read: nothing could stand in for the user's location. */
@@ -140,6 +140,7 @@ describe('home location', () => {
     await openHome();
 
     await press('Choose pickup area');
+    await press('Choose a named place');
     expect(screen.getByRole('header', { name: 'Choose a pickup point' })).toBeOnTheScreen();
     await wait(1_000);
     // Without search text, the area's places nearest its center come first.
@@ -149,14 +150,15 @@ describe('home location', () => {
     await wait(1_500);
     await press('Asia Mall, Shopping centre');
 
-    expect(screen.getByRole('header', { name: 'Is this your pickup point?' })).toBeOnTheScreen();
+    // The named list's confirmation, over the map picker's own.
+    expect(screen.getAllByRole('header', { name: 'Is this your pickup point?' })).toHaveLength(2);
     expect(screen.getByText('Near Asia Mall (Shopping centre).')).toBeOnTheScreen();
-    expect(screen.getByText('This point stays fixed after you publish your request.')).toBeOnTheScreen();
+    expect(screen.getAllByText('This point stays fixed after you publish your request.')).toHaveLength(2);
 
     await press('Choose another place');
     expect(screen.getByRole('header', { name: 'Choose a pickup point' })).toBeOnTheScreen();
     await press('Asia Mall, Shopping centre');
-    await press('Confirm this pickup');
+    await pressLast('Confirm this pickup');
 
     expect(screen.queryByRole('header', { name: 'Is this your pickup point?' })).not.toBeOnTheScreen();
     expect(screen.getByText('Near Asia Mall')).toBeOnTheScreen();
@@ -171,9 +173,12 @@ describe('home location', () => {
     await openHome();
 
     await press('Choose pickup area');
+    await press('Choose a named place');
     await press('Cancel');
-
     expect(screen.queryByRole('header', { name: 'Choose a pickup point' })).not.toBeOnTheScreen();
+    // Back on the map picker, which the header's back button leaves.
+    await press('Stop choosing on the map');
+
     expect(screen.queryByText('Pickup point')).not.toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Choose pickup area' })).toBeOnTheScreen();
   });
@@ -265,6 +270,7 @@ describe('toConfirmedPickup', () => {
     const pickup = toConfirmedPickup(place);
 
     expect(pickup).toEqual({
+      kind: 'place',
       placeId: 'place_test',
       label: 'Test Square',
       detail: null,

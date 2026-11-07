@@ -7,7 +7,7 @@ import type { LocationStatus } from '../../platform/location/createLocationContr
 import type { MapCoverage } from '../../ui/MapLayout';
 import { Notice } from '../../ui/Notice';
 import { colors, spacing } from '../../ui/tokens';
-import type { ConfirmedPickup } from '../location/LocationChoicesProvider';
+import { describePickup, type ConfirmedPickup } from '../location/LocationChoicesProvider';
 
 type HomeMapProps = {
   /** From `useHomeCamera`, which moves the camera through it. */
@@ -16,6 +16,12 @@ type HomeMapProps = {
   onMapReady: () => void;
   /** Any touch on the map: the user is moving the camera themselves. */
   onUserGesture: () => void;
+  /** The camera started or kept moving, by a gesture or an animation. */
+  onRegionChange?: () => void;
+  /** The camera came to rest. */
+  onRegionChangeComplete?: () => void;
+  /** Google Maps drew the first view's tiles; Apple Maps never calls it (`useMapTileStatus`). */
+  onMapLoaded?: () => void;
   /** The space the screen's overlays cover, kept clear of the camera's centre and the provider's notices. */
   coverage: MapCoverage;
   /** The device position is drawn only while `located`. */
@@ -36,11 +42,25 @@ type HomeMapProps = {
  * Pitch and rotation are off, so the map stays flat and north-up. Android's map toolbar, which
  * opens Google Maps, is off too.
  */
-export function HomeMap({ mapRef, initialRegion, onMapReady, onUserGesture, coverage, location, pickup }: HomeMapProps) {
+export function HomeMap({
+  mapRef,
+  initialRegion,
+  onMapReady,
+  onUserGesture,
+  onRegionChange,
+  onRegionChangeComplete,
+  onMapLoaded,
+  coverage,
+  location,
+  pickup,
+}: HomeMapProps) {
   if (!isMapProviderConfigured()) {
     return (
       <View style={[styles.unavailable, { paddingTop: coverage.top + spacing.lg }]}>
-        <Notice tone="warning" message="The map can't be shown in this build. You can still choose a pickup point by name." />
+        <Notice
+          tone="warning"
+          message="The map can't be shown in this build. You can still choose a pickup point by name."
+        />
       </View>
     );
   }
@@ -53,6 +73,9 @@ export function HomeMap({ mapRef, initialRegion, onMapReady, onUserGesture, cove
       initialRegion={initialRegion}
       mapPadding={coverage}
       onMapReady={onMapReady}
+      onMapLoaded={onMapLoaded}
+      onRegionChange={onRegionChange}
+      onRegionChangeComplete={onRegionChangeComplete}
       onTouchStart={onUserGesture}
       userInterfaceStyle="light"
       pitchEnabled={false}
@@ -66,9 +89,9 @@ export function HomeMap({ mapRef, initialRegion, onMapReady, onUserGesture, cove
         <Marker
           coordinate={pickup.location.coordinates}
           title="Pickup point"
-          description={`Near ${pickup.label}`}
+          description={describePickup(pickup)}
           pinColor={colors.ink}
-          accessibilityLabel={`Pickup point near ${pickup.label}`}
+          accessibilityLabel={`Pickup point: ${describePickup(pickup)}`}
         />
       ) : null}
     </MapView>

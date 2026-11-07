@@ -48,6 +48,13 @@ export async function press(name: string | RegExp) {
   await wait();
 }
 
+/** Presses the last button with this name: the one in a sheet over a screen that has one too. */
+export async function pressLast(name: string | RegExp) {
+  const buttons = screen.getAllByRole('button', { name });
+  await userEvent.press(buttons[buttons.length - 1]!);
+  await wait();
+}
+
 /** Opens home and lets the location controller read the permission. */
 export async function openHome() {
   const app = await renderApp('/');

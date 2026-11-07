@@ -2368,3 +2368,28 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** the redraw's reason is commented at the effect.
 - **Remaining/next:** MAP-001-B, as the user asked.
 - **Ownership:** Released.
+
+## 2026-11-07 — MAP-001-B: Map-centre picker and tile status
+
+- **Actor/session:** Claude Code / map-001-b.
+- **Status:** implemented; `Paused` for its native check (deferred to the next native pass, as the user prefers). Parent MAP-001 stays `Paused`. Ownership released.
+- **Working copy:** `main` at `54b4a34` (MAP-001-A fix); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "fix the dot and start MAP-001-B": screen 22 and the tile-status boundary. Acceptance: pin tracks the centre; confirmation changes the draft only; accessible named alternative; tile and source failures distinct.
+- **Changes:**
+  - New `src/features/map/MapPointPicker.tsx`: `useMapPointPicker(mapRef, coverage, active)` (reads the point at the pin's tip with `coordinateForPoint` when the camera rests or the layout changes; newest read wins; `moving` while the camera moves), `CentrePin` (hidden from screen readers, ignores touches), `MapPointPanel` (design 22's copy, nearest-place line, slow-tile warning, Confirm and "Choose a named place"), `pinPoint`.
+  - New `src/features/location/nearestPlace.ts`: `toCoarse`, `distanceMeters`, `nearestPlace` (within 1 km), `useNearestPlace` (place search around the rounded point, 2 km, nearest picked on the device).
+  - New `src/platform/map/useMapTileStatus.ts`: `not-configured`/`unknown`/`loading`/`loaded`/`slow` (15 s), from Google Maps' one-time `onMapLoaded`; nothing on Apple Maps.
+  - `LocationChoicesProvider.tsx`: `ConfirmedPickup.kind` (`place`/`map-point`), nullable `placeId`/`label`, `toMapPointPickup`, `describePickup`, `confirmMapPoint`.
+  - `MapHomeScreen.tsx`: picker mode (header with back and "Confirm pickup", centre pin, panel, Android back), the tile status, the named list over the picker; `HomeMap.tsx` passes region and loaded events and names the pin through `describePickup`; `HomeLocation.tsx` takes `onChooseOnMap`; `PickupPlaceSheet.tsx` takes `onConfirmed`; `usePlaceSearch.ts` documents the search-area decision.
+  - Tests: new `tests/mapPicker.test.tsx` (16); `tests/setup/reactNativeMaps.ts` answers `coordinateForPoint`; `tests/helpers/locationDevice.ts` gains `pressLast`; `tests/mapHome.test.tsx` and `tests/locationRecovery.test.tsx` reach the named list through the picker.
+- **Decisions:**
+  - The point comes from the map at the pin's screen position rather than from the region's centre, because the map's padding (header and sheet) moves the visible centre away from the view's centre.
+  - The pickup keeps the exact point; only its 0.01° rounding is sent, to name it.
+  - The named list keeps the fixed demo area; it is not narrowed to the visible map.
+  - Tile status claims a problem only as "may not be loading" after 15 s on Google Maps, since its load report fires once and Apple Maps gives none; a data-source outage does not touch it.
+  - Design 22 is a mode of home, not a route, so the map, camera and pickup pin stay as they are.
+- **Checks:** `pnpm typecheck`, `pnpm lint`, `pnpm test` (23 suites, 386 tests) passed; `git diff --check` clean. **Not run:** native builds or device checks (JS only; deferred to the next native pass, DEVELOPMENT's map picker check). Screen readers waived.
+- **Docs:** PRODUCT (map picker, search area, map tiles), ARCHITECTURE, DEVELOPMENT (tests, 386; map picker check), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line, MAP-001 row), AI_CONTEXT.
+- **JSDoc:** the picker hook, pin, panel and pin point; the nearest-place helpers and their privacy rule; the tile status and its limits; the pickup kinds and helpers; `MapHomeScreen`'s picker mode; the new props.
+- **Remaining/next:** the native check of the picker; MAP-002-A (discovery) is the next card.
+- **Ownership:** Released; no active task.

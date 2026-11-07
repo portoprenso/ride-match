@@ -9,7 +9,7 @@ import { Badge } from '../../ui/Badge';
 import { Button } from '../../ui/Button';
 import { Notice } from '../../ui/Notice';
 import { colors, radii, spacing } from '../../ui/tokens';
-import { useLocationChoices } from './LocationChoicesProvider';
+import { describePickup, useLocationChoices } from './LocationChoicesProvider';
 import { describeLocationCard, type LocationCardAction } from './locationCard';
 import { PickupPlaceSheet } from './PickupPlaceSheet';
 
@@ -74,6 +74,11 @@ type HomeLocationPanelProps = {
   status: LocationStatus;
   /** Shown instead of the location card while location needs no explanation. */
   fallback: ReactNode;
+  /**
+   * Chooses the pickup point on the map (MAP-001-B). Without it, "Choose pickup area" and "Change
+   * pickup point" open the named list, as in a build that cannot draw a map.
+   */
+  onChooseOnMap?: () => void;
 };
 
 /**
@@ -85,7 +90,7 @@ type HomeLocationPanelProps = {
  * cause: ask again, open the settings, or retry a fix. A failed action is explained in the card
  * it came from.
  */
-export function HomeLocationPanel({ status, fallback }: HomeLocationPanelProps) {
+export function HomeLocationPanel({ status, fallback, onChooseOnMap }: HomeLocationPanelProps) {
   const controller = useLocationController();
   const state = useLocationState();
   const { pickup } = useLocationChoices();
@@ -94,6 +99,7 @@ export function HomeLocationPanel({ status, fallback }: HomeLocationPanelProps) 
   const cardOpener = useRef<View>(null);
   const pickupOpener = useRef<View>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const choosePickup = onChooseOnMap ?? (() => setSheetOpen(true));
   const [asking, setAsking] = useState(false);
   // A message about the last action, shown only while the status it was about still holds.
   const [notice, setNotice] = useState<{ status: LocationStatus['kind']; message: string } | null>(null);
@@ -109,7 +115,8 @@ export function HomeLocationPanel({ status, fallback }: HomeLocationPanelProps) 
         controller.requestPermission().then(
           (permission) => {
             setAsking(false);
-            if (permission.status === 'denied') explain('Location stays off. You can still choose a place for your pickup.');
+            if (permission.status === 'denied')
+              explain('Location stays off. You can still choose a place for your pickup.');
           },
           () => {
             setAsking(false);
@@ -139,9 +146,7 @@ export function HomeLocationPanel({ status, fallback }: HomeLocationPanelProps) 
           </AppText>
           <AppText color="muted">{card.message}</AppText>
           {notice !== null && notice.status === status.kind ? <Notice tone="warning" message={notice.message} /> : null}
-          {pickup === null ? (
-            <Button ref={cardOpener} label="Choose pickup area" onPress={() => setSheetOpen(true)} />
-          ) : null}
+          {pickup === null ? <Button ref={cardOpener} label="Choose pickup area" onPress={choosePickup} /> : null}
           {card.action ? (
             <Button
               label={card.action.label}
@@ -162,11 +167,11 @@ export function HomeLocationPanel({ status, fallback }: HomeLocationPanelProps) 
           <AppText variant="small" color="muted">
             Pickup point
           </AppText>
-          <AppText variant="label">Near {pickup.label}</AppText>
+          <AppText variant="label">{describePickup(pickup)}</AppText>
           <AppText variant="small" color="muted">
             Chosen by you, not your device location. It stays fixed after you publish your request.
           </AppText>
-          <Button ref={pickupOpener} label="Change pickup point" variant="secondary" onPress={() => setSheetOpen(true)} />
+          <Button ref={pickupOpener} label="Change pickup point" variant="secondary" onPress={choosePickup} />
         </View>
       ) : null}
       {/* After a confirmation the card's button is gone, so focus goes to "Change pickup point". */}

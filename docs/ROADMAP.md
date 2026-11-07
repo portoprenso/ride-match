@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; MAP-001 is paused with A completed (native checks on both platforms, the Android stale-dot fix) and B planned; all other implementation tasks are planned.**
+Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,18 @@ Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**MAP-001-B — Implemented (2026-11-07), native check pending; MAP-001 stays `Paused`.**
+
+- **Done:**
+  - Map picker (screen 22) on home: "Choose pickup area" and "Change pickup point" show a fixed pin over the visible centre, with "Confirm pickup" and a back button in the header. The point under the pin is read from the map whenever the camera rests, so it matches the pin whatever the header and sheet cover. While the map moves, confirmation waits.
+  - The sheet names the nearest curated place within 1 km ("Near Ala-Too Square (City square)"), says when none is close or the name could not be found, and keeps design 22's notes. Only the point rounded to 0.01° is sent to name it; the exact point stays on the device.
+  - "Confirm this pickup" sets a `map-point` pickup (the exact point, `source: 'manual'`, named after the nearest place or "A point you chose on the map"); nothing is sent. "Choose a named place" opens the named list, the accessible alternative; a build without a map goes straight to it.
+  - Tile status (`src/platform/map/useMapTileStatus.ts`) is a platform fact apart from the data source; the picker warns when Google Maps has not reported its tiles within 15 s. Screen 26 (MAP-002-B) builds on it.
+  - 386 mobile tests (16 new; place-list tests now reach the list through "Choose a named place").
+- **Not covered here:** screen 26's tile fallback and nearby list (MAP-002-B); narrowing searches to the visible map (the named list keeps the whole demo area); Apple Maps reports no tile state.
+- **Pending:** the native check (DEVELOPMENT, map picker check) in the next native pass.
+- **Next available:** MAP-002-A (discovery).
 
 **MAP-001-A — Completed (2026-11-07): the Android stale-dot fix.**
 
@@ -351,7 +363,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | SYNC-001 | Event synchronization and recovery | Completed (A and B) |
 | AUTH-001 | Simulated authentication | Completed (A–D; B's native check in VERIFY-003) |
 | LOCATION-001 | Foreground location | Completed |
-| MAP-001 | Native map shell | Paused (A completed; B planned) |
+| MAP-001 | Native map shell | Paused (A completed; B implemented, native check pending) |
 | ANALYTICS-001 | Typed analytics foundation | Completed |
 | MAP-002 | Live nearby activity | Planned |
 | DESTINATION-001 | Destination selection and compatibility | Planned |

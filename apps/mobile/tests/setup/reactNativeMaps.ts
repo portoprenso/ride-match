@@ -4,7 +4,9 @@
  * camera's initial region, the padding, the markers' labels and the circle's radius from them.
  * A map reports itself ready right after mounting. Camera moves are recorded by the shared
  * `animateToRegion` mock (`jest.requireMock('react-native-maps').animateToRegion`), and marker
- * redraws by the shared `redrawMarker` mock, both reset by `clearMocks` before every test. Nothing here draws or checks real map tiles.
+ * redraws by the shared `redrawMarker` mock, both reset by `clearMocks` before every test. The
+ * point under a screen position comes from the shared `coordinateForPoint` mock, which answers
+ * Ala-Too Square's point unless a test sets another answer. Nothing here draws or checks real map tiles.
  */
 type MockStandInProps = {
   children?: import('react').ReactNode;
@@ -17,9 +19,10 @@ jest.mock('react-native-maps', () => {
   const { View } = jest.requireActual<typeof import('react-native')>('react-native');
   const animateToRegion = jest.fn();
   const redrawMarker = jest.fn();
+  const coordinateForPoint = jest.fn(async () => ({ latitude: 42.8765, longitude: 74.6037 }));
 
   function MapView({ ref, onMapReady, ...props }: MockStandInProps) {
-    React.useImperativeHandle(ref, () => ({ animateToRegion }), []);
+    React.useImperativeHandle(ref, () => ({ animateToRegion, coordinateForPoint }), []);
     // Ready once, on mounting, as the native map reports it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     React.useEffect(() => onMapReady?.(), []);
@@ -33,5 +36,5 @@ jest.mock('react-native-maps', () => {
     return React.createElement(View, { testID: 'map-circle', ...props });
   }
 
-  return { __esModule: true, default: MapView, Marker, Circle, animateToRegion, redrawMarker };
+  return { __esModule: true, default: MapView, Marker, Circle, animateToRegion, redrawMarker, coordinateForPoint };
 });

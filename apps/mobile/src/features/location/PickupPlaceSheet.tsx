@@ -17,6 +17,8 @@ type PickupPlaceSheetProps = {
   open: boolean;
   /** Called on Cancel, a dismissal, or after the pickup is confirmed. */
   onClose: () => void;
+  /** Called after the pickup is confirmed, before `onClose`. */
+  onConfirmed?: () => void;
   /** The control that opened the sheet; screen-reader focus returns to it. */
   returnFocusRef?: RefObject<View | null>;
 };
@@ -27,15 +29,15 @@ type PickupPlaceSheetProps = {
  * it explicitly; only then does it become the pickup in `useLocationChoices()`. The choice and
  * the search text reset each time the sheet opens.
  */
-export function PickupPlaceSheet({ open, onClose, returnFocusRef }: PickupPlaceSheetProps) {
+export function PickupPlaceSheet({ open, onClose, onConfirmed, returnFocusRef }: PickupPlaceSheetProps) {
   return (
     <SheetHost open={open} onDismiss={onClose} returnFocusRef={returnFocusRef}>
-      <PickupPlaceFlow onClose={onClose} />
+      <PickupPlaceFlow onClose={onClose} onConfirmed={onConfirmed} />
     </SheetHost>
   );
 }
 
-function PickupPlaceFlow({ onClose }: { onClose: () => void }) {
+function PickupPlaceFlow({ onClose, onConfirmed }: { onClose: () => void; onConfirmed?: () => void }) {
   const { confirmPickup } = useLocationChoices();
   const [text, setText] = useState('');
   const [chosen, setChosen] = useState<PlaceDto | null>(null);
@@ -50,6 +52,7 @@ function PickupPlaceFlow({ onClose }: { onClose: () => void }) {
         cancelLabel="Choose another place"
         onConfirm={() => {
           confirmPickup(chosen);
+          onConfirmed?.();
           onClose();
         }}
         onCancel={() => setChosen(null)}
@@ -73,7 +76,9 @@ function PickupPlaceFlow({ onClose }: { onClose: () => void }) {
         <AppText variant="section" accessibilityRole="header">
           Choose a pickup point
         </AppText>
-        <AppText color="muted">Pick a named place near where you will be. We won&apos;t treat it as your current location.</AppText>
+        <AppText color="muted">
+          Pick a named place near where you will be. We won&apos;t treat it as your current location.
+        </AppText>
       </View>
       <SearchField
         label="Search places"
@@ -94,10 +99,16 @@ function PickupPlaceFlow({ onClose }: { onClose: () => void }) {
           </AppText>
         )
       ) : places.length === 0 ? (
-        <Notice message={text.trim() === '' ? 'There are no places to choose in this area.' : 'No places match. Try another name.'} />
+        <Notice
+          message={
+            text.trim() === '' ? 'There are no places to choose in this area.' : 'No places match. Try another name.'
+          }
+        />
       ) : (
         <View style={styles.list} accessibilityRole="list">
-          {search.isError ? <Notice tone="danger" message="The newest results didn't load. These are the previous ones." /> : null}
+          {search.isError ? (
+            <Notice tone="danger" message="The newest results didn't load. These are the previous ones." />
+          ) : null}
           {places.map((place) => (
             <PlaceRow key={place.id} place={place} onPress={() => setChosen(place)} />
           ))}

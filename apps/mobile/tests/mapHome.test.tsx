@@ -3,7 +3,7 @@ import * as Location from 'expo-location';
 
 import * as mapProvider from '../src/config/isMapProviderConfigured';
 import { DEMO_CITY_REGION, streetRegion } from '../src/features/map/mapCamera';
-import { BLOCKED, GRANTED, device, openHome, permission, press, wait } from './helpers/locationDevice';
+import { BLOCKED, GRANTED, device, openHome, permission, press, pressLast, wait } from './helpers/locationDevice';
 import { flushTimersAndRestore } from './helpers/renderApp';
 
 /** The stand-in map's camera commands (`tests/setup/reactNativeMaps.ts`). */
@@ -162,13 +162,14 @@ describe('home map', () => {
     await openHome();
 
     await press('Choose pickup area');
+    await press('Choose a named place');
     await wait(1_000);
     await userEvent.type(screen.getByLabelText('Search places'), 'asia');
     await wait(1_500);
     await press('Asia Mall, Shopping centre');
-    await press('Confirm this pickup');
+    await pressLast('Confirm this pickup');
 
-    const pin = screen.getByLabelText('Pickup point near Asia Mall');
+    const pin = screen.getByLabelText('Pickup point: Near Asia Mall');
     expect(pin.props.title).toBe('Pickup point');
     expect(animateToRegion).toHaveBeenCalledTimes(1);
     expect(animateToRegion).toHaveBeenLastCalledWith(streetRegion(pin.props.coordinate), expect.any(Number));
