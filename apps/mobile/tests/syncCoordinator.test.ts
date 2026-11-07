@@ -134,9 +134,14 @@ describe('subscriptions', () => {
     await signIn(mock);
     await flush(1);
 
-    // The mock has no user subscriptions yet, so the source refuses it.
+    // The mock accepts a signed-in rider's user subscription (RIDE-001-A)…
     expect(mock.subscribe).toHaveBeenCalledWith({ kind: 'user' }, expect.any(Function));
-    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ kind: 'unavailable' }));
+    expect(onError).not.toHaveBeenCalled();
+    // …and still has no group subscriptions, so the source refuses one.
+    const onGroupError = jest.fn();
+    mock.sync.watch({ kind: 'group', groupId: 'group_1' }, onGroupError);
+    await flush(1);
+    expect(onGroupError).toHaveBeenCalledWith(expect.objectContaining({ kind: 'unavailable' }));
   });
 });
 

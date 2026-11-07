@@ -11,6 +11,7 @@ import {
   type NearbyRemovalReason,
   type NearbyRemovedEventDto,
   type NearbyUpsertedEventDto,
+  type OwnRideRequestDto,
   type OtpChallengeDto,
   type PlaceDto,
   type PublicLocationDto,
@@ -134,6 +135,26 @@ export function toRideRequestDto(world: MockWorld, ride: RideRecord): RideReques
     departureAt: toTimestamp(ride.departureAt),
     expiresAt: toTimestamp(ride.expiresAt),
     version: ride.version,
+  };
+}
+
+/**
+ * The owner's own view of their request (`GET /me/ride-request`, create and cancel results): the
+ * public fields plus status, group and the exact origin. Only the owner may receive it. Unlike
+ * the public projection it exists in every status, so the app can explain how a request ended.
+ */
+export function toOwnRideRequestDto(world: MockWorld, ride: RideRecord): OwnRideRequestDto {
+  return {
+    id: ride.id,
+    user: toUserDto(requireUser(world, ride.userId)),
+    publicOrigin: toPublicLocationDto(ride.publicOrigin),
+    destination: toPlaceDto(requirePlace(ride.destinationPlaceId)),
+    departureAt: toTimestamp(ride.departureAt),
+    expiresAt: toTimestamp(ride.expiresAt),
+    version: ride.version,
+    status: ride.status,
+    groupId: ride.groupId,
+    origin: { coordinates: { ...ride.origin.coordinates }, source: ride.origin.source },
   };
 }
 

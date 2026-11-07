@@ -1,17 +1,20 @@
-import type { PublicEventDto, SubscriptionRequest } from '@ride-match/contracts';
+import type { DomainEventDto, PublicEventDto, SubscriptionRequest } from '@ride-match/contracts';
 
 import type { AccessTokenSource, AppDataSource, EventForRequest, EventSubscription } from '../AppDataSource';
 import { createUnavailableDataSource } from '../createUnavailableDataSource';
 import { DataSourceUnavailableError } from '../errors';
-import { logout, readCurrentUser, refreshSession, requestOtp, verifyOtp } from './auth';
+import { logout, readCurrentUser, refreshSession, requestOtp, verifyOtp, viewerOf } from './auth';
 import {
   acceptNearbySubscription,
+  acceptUserSubscription,
   isPublicEventInViewport,
+  isViewersOwn,
   readGroupPreview,
   readNearby,
   readRide,
   searchPlaces,
 } from './discovery';
+import { cancelRide, createRide, readOwnRequest } from './rides';
 import { scenarioOptions, type MockScenarioKey } from './scenarios';
 import { createSimulator, type LatencyRange, type Simulator } from './simulator';
 import type { MockWorld } from './world';
@@ -40,10 +43,13 @@ export function createMockSimulator(
  *
  * - Implemented: sign-in, refresh, logout and the current user (AUTH-001-A, `auth.ts`); place
  *   search, nearby discovery, one ride's public view and a group's public preview (reads that
- *   take an abort signal); nearby subscriptions and the connection state.
+ *   take an abort signal); the caller's own request: create, read and cancel (RIDE-001-A,
+ *   `rides.ts`); nearby and `user` subscriptions and the connection state.
  * - Every other operation rejects at once with a `DataSourceUnavailableError` until the card
- *   that implements it lands, never with invented data. So do `user` and `group`
- *   subscriptions, whose events come from operations later cards add.
+ *   that implements it lands, never with invented data. So do `group` subscriptions, whose
+ *   events come from operations later cards add.
+ * - Signed-in operations read the access token when they start, as an HTTP client sets its
+ *   header. Discovery reads it too: a signed-in viewer's own request is left out.
  *
  * Every implemented call goes through `Simulator.run`, so it gets the seeded latency, the
  * failure controls and the connection state.
@@ -76,7 +82,26 @@ export function createMockDataSource(
     },
     rides: {
       ...unavailable.rides,
-      getNearby: (input, options) => simulator.run('rides.getNearby', (context) => readNearby(context, input), options),
+      getNearby: (input, options) => {
+        const token = accessToken();
+        return simulator.run(
+          'rides.getNearby',
+          (context) => readNearby(context, input, viewerOf(context, token)?.id ?? null),
+          options,
+        );
+      },
+      getOwnRequest: (options) => {
+        const token = accessToken();
+        return simulator.run('rides.getOwnRequest', (context) => readOwnRequest(context, token), options);
+      },
+      create: (input) => {
+        const token = accessToken();
+        return simulator.run('rides.create', (context) => createRide(context, token, input));
+      },
+      cancel: (rideId, input) => {
+        const token = accessToken();
+        return simulator.run('rides.cancel', (context) => cancelRide(context, token, rideId, input));
+      },
       getRide: (rideId, options) => simulator.run('rides.getRide', (context) => readRide(context, rideId), options),
     },
     groups: {
@@ -88,7 +113,10 @@ export function createMockDataSource(
       subscribe: <Request extends SubscriptionRequest>(
         request: Request,
         onEvent: (event: EventForRequest<Request>) => void,
-      ) => subscribeNearby(simulator, request, onEvent as (event: PublicEventDto) => void),
+      ) =>
+        request.kind === 'user'
+          ? subscribeUser(simulator, request, accessToken(), onEvent as (event: DomainEventDto) => void)
+          : subscribeNearby(simulator, request, accessToken(), onEvent as (event: PublicEventDto) => void),
       watchConnection: (listener) => simulator.watchConnection(listener),
     },
   };
@@ -99,21 +127,57 @@ export function createMockDataSource(
  * about an item in its viewport. Delivery starts only once the acknowledgement arrives, so an
  * acknowledgement lost to a simulated failure leaves no listener behind. The subscription ends
  * on `unsubscribe`, on disconnection, and on reset or disposal.
+ *
+ * A signed-in subscriber (as the token said when subscribing; the app subscribes again for each
+ * viewer) is not sent upserts of their own request or group, as discovery leaves them out.
  */
 async function subscribeNearby(
   simulator: Simulator<MockWorld>,
   request: SubscriptionRequest,
+  token: string | null,
   onEvent: (event: PublicEventDto) => void,
 ): Promise<EventSubscription> {
   if (request.kind !== 'nearby') throw new DataSourceUnavailableError(NOT_YET);
-  const ack = await simulator.run('events.subscribe', (context) => acceptNearbySubscription(context, request));
+  const ack = await simulator.run('events.subscribe', (context) => ({
+    ...acceptNearbySubscription(context, request),
+    viewerId: viewerOf(context, token)?.id ?? null,
+  }));
   const { viewport } = ack.subscription;
+  const { viewerId } = ack;
   const stop = simulator.subscribe((event) => {
     if (event.type !== 'nearby.upserted' && event.type !== 'nearby.removed') return;
-    if (isPublicEventInViewport(simulator.state, event, viewport)) onEvent(event);
+    if (!isPublicEventInViewport(simulator.state, event, viewport)) return;
+    if (event.type === 'nearby.upserted' && viewerId !== null) {
+      const { item } = event.payload;
+      if (isViewersOwn(simulator.state, item.kind, item.id, viewerId)) return;
+    }
+    onEvent(event);
   });
   return {
-    ack,
+    ack: { subscriptionId: ack.subscriptionId, subscription: ack.subscription },
+    unsubscribe: async () => {
+      stop();
+    },
+  };
+}
+
+/**
+ * Accepts a `user` subscription for the signed-in caller after the simulated round trip, then
+ * delivers every event addressed to that rider (`audience` `user`), such as `ride.changed` for
+ * their own request. It ends like a nearby subscription.
+ */
+async function subscribeUser(
+  simulator: Simulator<MockWorld>,
+  request: SubscriptionRequest,
+  token: string | null,
+  onEvent: (event: DomainEventDto) => void,
+): Promise<EventSubscription> {
+  const ack = await simulator.run('events.subscribe', (context) => acceptUserSubscription(context, request, token));
+  const stop = simulator.subscribe((event) => {
+    if (event.audience.kind === 'user' && event.audience.userId === ack.userId) onEvent(event);
+  });
+  return {
+    ack: { subscriptionId: ack.subscriptionId, subscription: ack.subscription },
     unsubscribe: async () => {
       stop();
     },

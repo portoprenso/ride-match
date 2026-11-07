@@ -2513,3 +2513,28 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** the destination sheet and panel, `summarizeDestination`'s rule, the match helpers, the discovery hook's destination and `matches` rule, the marker emphasis, the shared place results.
 - **Remaining/next:** the native pass (MAP-001-B, MAP-002-A/B/C, DESTINATION-001-B); RIDE-001-A.
 - **Ownership:** Released; no active task.
+
+## 2026-11-07 — RIDE-001-A: Mock own ride request operations
+
+- **Actor/session:** Claude Code / ride-001-a.
+- **Status:** `Completed`; parent RIDE-001 `In progress`. Ownership released. Started at the user's request ("Start RIDE-001-A") while DESTINATION-001-B's native check is pending.
+- **Working copy:** `main` at `d1f9008` (DESTINATION-001-B); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** mock ride create/current/cancel/expiry operations. Acceptance: one live request; same-key original result; changed-input conflict; grouped cancel rejected; private origins protected.
+- **Changes:**
+  - New `src/data/mock/rides.ts`: `createRide`, `readOwnRequest`, `cancelRide`, `publicAreaFor`.
+  - `auth.ts`: `authenticate` (shared by the current-user read and ride operations) and `viewerOf` (a refused token makes a public read anonymous; other errors still throw).
+  - `serializers.ts`: `toOwnRideRequestDto`.
+  - `discovery.ts`: `readNearby` takes the viewer and leaves out their own request and groups (`isViewersOwn`); `acceptUserSubscription`.
+  - `createMockDataSource.ts`: `rides.create`, `rides.getOwnRequest`, `rides.cancel`, token-aware `getNearby`; nearby subscriptions skip the subscriber's own upserts; `user` subscriptions deliver the rider's own events.
+  - Tests: new `tests/mockRides.test.ts` (12); `tests/mockDataSource.test.ts`, `tests/dataSource.test.tsx` and `tests/syncCoordinator.test.ts` updated where they used `getOwnRequest` or the user subscription as examples of unbuilt operations.
+- **Decisions:**
+  - The receipt is checked before the state checks, so a retry after success returns the original even though a live request now exists; a refusal stores nothing, so a retry after it runs again.
+  - Public area: the 0.01° grid cell's centre, radius 900 m (covers the cell). A mock rule only; the future source decides the real one.
+  - Unknown ride on cancel: `NOT_FOUND`; another rider's: `FORBIDDEN`, both before the state errors.
+  - `user` subscriptions enabled now, since `ride.changed` exists; `group` subscriptions wait for GROUP-001.
+- **Test notes:** the operation IDs must be UUIDs; after advancing the simulator 15 minutes its clock runs ahead of `Date.now`, so a device fix stamped from `Date.now` is correctly `LOCATION_STALE`, and the access token has expired (the test signs in again).
+- **Checks:** `pnpm typecheck`, `pnpm lint`, `npx jest` in `apps/mobile` (28 suites, 444 tests) passed. **Not run:** native builds (no app-visible change).
+- **Docs:** MOCK_SCENARIOS (status, module table, discovery and subscriptions, own-request section), api/rides.md (status), DEVELOPMENT (tests, 444), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line, RIDE-001 row), AI_CONTEXT. PRODUCT and ARCHITECTURE unchanged: no user-visible or boundary change.
+- **JSDoc:** each operation with its error order and effects, `publicAreaFor`, `authenticate`, `viewerOf`, `toOwnRideRequestDto`, `isViewersOwn`, `acceptUserSubscription`, the adapter's subscriptions.
+- **Remaining/next:** RIDE-001-B (draft, departure, confirmation screens); GROUP-001-A is also unblocked; the native pass.
+- **Ownership:** Released; no active task.

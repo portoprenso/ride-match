@@ -1,6 +1,6 @@
 # Future API: places, rides, and matching
 
-Status: planned; the place, ride request, nearby and match contracts exist in `packages/contracts`. Last updated: 2026-11-01.
+Status: planned; the place, ride request, nearby and match contracts exist in `packages/contracts`. The mock source implements creating, reading and cancelling the caller's own request (RIDE-001-A; [mock rules](../MOCK_SCENARIOS.md#own-ride-request-ride-001-a)). Last updated: 2026-11-07.
 
 All paths use `/v1`; tables show unwrapped response data. See [overview](overview.md) for common errors and idempotency.
 

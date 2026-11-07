@@ -16,6 +16,7 @@ import {
 } from '@ride-match/contracts';
 
 import { boundsIntersect, centerOf, circleReaches, contains, distanceMeters, viewportBounds } from './geometry';
+import { authenticate } from './auth';
 import { COVERAGE, CURATED_PLACES, findPlace } from './places';
 import {
   discoveryRecords,
@@ -31,9 +32,8 @@ import { isDiscoverableRide, isLiveGroup, type MockWorld, type SuppliedMatchReco
 /*
  * Public reads: curated place search, nearby discovery, and one ride's or group's public view,
  * as the future source answers them (docs/api/rides.md, docs/api/groups.md). They are open to
- * anonymous callers and are read anonymously for now. Sessions exist since AUTH-001-A, but a
- * signed-in viewer has no request, group or blocks until RIDE-001-A and SAFETY-001; those cards
- * make discovery leave out the viewer's own request and group and anyone either side blocked.
+ * anonymous callers. Since RIDE-001-A, discovery leaves out a signed-in viewer's own request and
+ * any group they belong to, without changing what other items show; SAFETY-001 adds blocks.
  *
  * Each runs as simulator work: the source validates the input itself, because a caller may send
  * anything, and answers with contract errors.
@@ -92,10 +92,12 @@ export function searchPlaces(context: Context, input: unknown): PlaceSearchResul
  * supplied matches for it ({@link matchPreviews}); without one it is empty. The mock never
  * computes compatibility. A destination must name a curated place.
  *
+ * A signed-in viewer (`viewerId`) never sees their own request or a group they belong to.
+ *
  * Fails with `VALIDATION_FAILED` for an invalid input or an unknown destination, and
  * `UNSUPPORTED_AREA` for a viewport entirely outside the covered city.
  */
-export function readNearby(context: Context, input: unknown): NearbySnapshotDto {
+export function readNearby(context: Context, input: unknown, viewerId: string | null = null): NearbySnapshotDto {
   const parsed = NearbyQueryInputSchema.safeParse(input);
   if (!parsed.success) throw invalidInput(context);
   const { viewport, destinationPlaceId, departureOffsetMinutes, limit } = parsed.data;
@@ -106,6 +108,7 @@ export function readNearby(context: Context, input: unknown): NearbySnapshotDto 
   const center = centerOf(bounds);
   const found = discoveryRecords(context.state)
     .filter((item) => contains(bounds, item.record.publicOrigin.center))
+    .filter((item) => viewerId === null || !isViewersOwn(context.state, item.kind, item.record.id, viewerId))
     .map((item) => ({ item, distance: distanceMeters(center, item.record.publicOrigin.center) }))
     .sort((first, second) => first.distance - second.distance);
 
@@ -177,6 +180,28 @@ export function acceptNearbySubscription(context: Context, request: unknown): Su
   if (!parsed.success || parsed.data.kind !== 'nearby') throw invalidInput(context);
   if (!boundsIntersect(viewportBounds(parsed.data.viewport), COVERAGE)) throw outsideCoverage(context);
   return { subscriptionId: context.ids.next('sub'), subscription: parsed.data };
+}
+
+/** Whether a discovery item is the viewer's own request, or a group the viewer belongs to. */
+export function isViewersOwn(world: MockWorld, kind: 'ride' | 'group', id: string, viewerId: string): boolean {
+  if (kind === 'ride') return world.rides.get(id)?.userId === viewerId;
+  return world.groups.get(id)?.members.some((member) => member.userId === viewerId) ?? false;
+}
+
+/**
+ * Accepts a `user` subscription for the signed-in caller, whose private events (such as
+ * `ride.changed` for their own request) it delivers. Fails with `UNAUTHENTICATED` or
+ * `SESSION_EXPIRED` like any signed-in operation.
+ */
+export function acceptUserSubscription(
+  context: Context,
+  request: unknown,
+  accessToken: string | null,
+): SubscriptionAckDto & { subscription: { kind: 'user' } } & { userId: string } {
+  const parsed = SubscriptionRequestSchema.safeParse(request);
+  if (!parsed.success || parsed.data.kind !== 'user') throw invalidInput(context);
+  const user = authenticate(context, accessToken);
+  return { subscriptionId: context.ids.next('sub'), subscription: parsed.data, userId: user.id };
 }
 
 /**

@@ -1,6 +1,6 @@
 # Mock simulator and scenarios
 
-Status: partly implemented: the simulator foundation (MOCK-001-A), the discovery world, seeds and public reads that the app runs on (MOCK-001-B), the demo controls (MOCK-001-C), sign-in and sessions (AUTH-001-A), and supplied destination matches (DESTINATION-001-A); the other operations and scenarios are planned. Last updated: 2026-11-07.
+Status: partly implemented: the simulator foundation (MOCK-001-A), the discovery world, seeds and public reads that the app runs on (MOCK-001-B), the demo controls (MOCK-001-C), sign-in and sessions (AUTH-001-A), supplied destination matches (DESTINATION-001-A), and the rider's own request (RIDE-001-A); the other operations and scenarios are planned. Last updated: 2026-11-07.
 
 ## Purpose
 
@@ -72,17 +72,30 @@ Rechecking after delay enables actual last-seat and expired-target conflicts. Us
 | `lifecycle.ts` | Deadlines. An active ride expires at its `expiresAt`: it becomes `expired`, discovery removes it (`expired`) and its owner is told. A live group is cancelled at its `expiresAt`: closure `expired` dated at the deadline even after background time, history for one hour, members' requests cancelled; discovery removes it, and members and owners are told. `admitRide` adds another rider's new request with its deadline |
 | `discovery.ts` | `places.search`, `rides.getNearby`, `rides.getRide`, `groups.getPreview` and accepting a nearby subscription, validating every input as the source would |
 | `auth.ts` (AUTH-001-A) | Demo-number challenges, the demo code, sessions, rotation, logout and the current user, with the world's private `auth` records (accounts, challenges, sessions, tokens); rules in [authentication](api/authentication.md#implemented-mock-auth-001-a) |
+| `rides.ts` (RIDE-001-A) | The signed-in rider's own request: create, read the current or latest one, cancel; [below](#own-ride-request-ride-001-a) |
 | `createMockDataSource.ts` | `createMockSimulator(scenario)` and the `AppDataSource` adapter. Each implemented call goes through `Simulator.run` (latency, failure controls, connection); every other operation rejects at once with `DataSourceUnavailableError` |
 
 - **Place search:** the curated places inside the area's circle, at most `limit`. Without a query, nearest the center first; with one (ignoring case), a label that starts with the text, then a label word that does, then a label or detail that contains it, each rank by distance. An area that does not reach the coverage box fails with `UNSUPPORTED_AREA`, and an invalid input with `VALIDATION_FAILED` (without field errors for now).
-- **Discovery:** active solo rides and live groups whose public area's center lies in the viewport, nearest the viewport's center first, at most `limit`, with `truncated`. A grouped request never appears on its own: its group stands for it once, and its public read answers `TARGET_UNAVAILABLE`. With a destination, `previews` holds the scenario's supplied matches ([below](#supplied-destination-matches-destination-001-a)); without one it is empty. A destination must name a curated place. A viewport outside the coverage fails with `UNSUPPORTED_AREA`. Discovery reads anonymously: sessions exist since AUTH-001-A, but a signed-in viewer has no request, group or blocks until RIDE-001-A and SAFETY-001, so nothing is filtered by viewer yet.
-- **Nearby subscriptions:** accepted after the simulated round trip; each delivers the public events about items in its viewport, and a removal is routed by the removed record's area. Delivery starts once the acknowledgement arrives, so a lost acknowledgement leaves no listener. `user` and `group` subscriptions stay unavailable until the operations whose events they carry exist.
+- **Discovery:** active solo rides and live groups whose public area's center lies in the viewport, nearest the viewport's center first, at most `limit`, with `truncated`. A grouped request never appears on its own: its group stands for it once, and its public read answers `TARGET_UNAVAILABLE`. With a destination, `previews` holds the scenario's supplied matches ([below](#supplied-destination-matches-destination-001-a)); without one it is empty. A destination must name a curated place. A viewport outside the coverage fails with `UNSUPPORTED_AREA`. A signed-in viewer's own request and any group they belong to are left out (RIDE-001-A); blocks wait for SAFETY-001.
+- **Nearby subscriptions:** accepted after the simulated round trip; each delivers the public events about items in its viewport, and a removal is routed by the removed record's area. Delivery starts once the acknowledgement arrives, so a lost acknowledgement leaves no listener. A signed-in subscriber is not sent upserts of their own request or group. `user` subscriptions (RIDE-001-A) need a working session (`UNAUTHENTICATED`/`SESSION_EXPIRED` otherwise) and deliver every event addressed to that rider, such as `ride.changed`. `group` subscriptions stay unavailable until GROUP-001.
 
 | Scenario | World at activation | Timed |
 | --- | --- | --- |
 | `active-neighborhood` | Six solo rides in six districts; a forming group of three, and a ready group of two with a member-only meeting point. Eleven riders, one live request each | +8 s: a seventh solo ride appears; +20 s: a seeded ride reaches its deadline. Every other ride and group ends at its own deadline, so the area is empty after 26 minutes until a reset |
 | `empty-neighborhood` | No riders; the curated places still exist | None |
 | `map-density` (MAP-002-B) | 100 discovery items in the demo city's opening view: 25 synthetic "Demo block N" areas on a 5 × 5 grid about 1.3 km apart, each with three solo rides and one forming group of two (75 rides, 25 groups, 125 requests). Names and values repeat deterministically | None; rides and groups end at their own deadlines |
+
+### Own ride request (RIDE-001-A)
+
+`rides.ts`, covered by `tests/mockRides.test.ts`. Rules follow [rides](api/rides.md); the order of checks is the contract's.
+
+- **Create (`rides.create`):** `VALIDATION_FAILED` (input or unknown place), then authentication, then the receipt: the same operation ID and input returns the original request even after it ended; the same ID with another input is `IDEMPOTENCY_CONFLICT`. A new operation then checks `LOCATION_STALE` (a device fix older than 60 s on the source's clock, or more than 10 s ahead of it; a confirmed manual point never ages), `UNSUPPORTED_AREA` (origin outside the demo city) and `ACTIVE_REQUEST_EXISTS` (one live request). The request is `active`, departs at the source's time plus the chosen 0/5/10 minutes, expires after `RIDE_POLICY.activeLifetimeSeconds` (15 minutes), and emits `nearby.upserted` and the owner's `ride.changed`.
+- **Public area:** the centre of the 0.01° grid cell holding the exact origin, radius 900 m, no label (`publicAreaFor`). It contains the origin without revealing where in the cell it is; the exact origin appears only in the owner's own view.
+- **Read (`rides.getOwnRequest`):** the live request, otherwise the most recent one in whatever status it ended, otherwise `null`.
+- **Cancel (`rides.cancel`):** `VALIDATION_FAILED`, authentication, the receipt, `NOT_FOUND`, `FORBIDDEN` (another rider's), then `USE_LEAVE_GROUP`, `RIDE_EXPIRED`, `INVALID_TRANSITION`, and only then `VERSION_CONFLICT`. Success emits `nearby.removed` (`unavailable`) and `ride.changed`.
+- **Expiry:** the existing lifecycle (`expireRide`), scheduled at creation; it emits `nearby.removed` (`expired`) and `ride.changed`.
+- **Current user:** `auth.getCurrentUser` names the live request (`rideRequestId`).
+- **Not yet:** matches for the own request (`rides.getMatches`, RIDE-001-D); grouping (GROUP-001).
 
 ### Supplied destination matches (DESTINATION-001-A)
 

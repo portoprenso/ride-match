@@ -20,6 +20,7 @@ import {
 } from './serializers';
 import type { DemoSignIn } from '../DemoSignIn';
 import type { WorkContext } from './simulator';
+import { DataError } from '../errors';
 import type { MockWorld, OtpChallengeRecord, UserRecord } from './world';
 
 /*
@@ -255,6 +256,15 @@ export function logout(context: Context, input: unknown): void {
  * expired, which the app answers with a refresh.
  */
 export function readCurrentUser(context: Context, accessToken: string | null): CurrentUserDto {
+  return toCurrentUserDto(context.state, authenticate(context, accessToken));
+}
+
+/**
+ * The signed-in rider holding `accessToken`, for operations that need one: `UNAUTHENTICATED`
+ * without a token, or with one that is unknown or whose session was revoked; `SESSION_EXPIRED`
+ * once the token expired.
+ */
+export function authenticate(context: Context, accessToken: string | null): UserRecord {
   const { auth, users } = context.state;
   const record = accessToken === null ? undefined : auth.accessTokens.get(accessToken);
   const session = record === undefined ? undefined : auth.sessions.get(record.sessionId);
@@ -263,5 +273,20 @@ export function readCurrentUser(context: Context, accessToken: string | null): C
     throw context.sourceError('UNAUTHENTICATED', 'Sign in to continue.');
   }
   if (context.now >= record.expiresAt) throw context.sourceError('SESSION_EXPIRED', 'The session needs to be renewed.');
-  return toCurrentUserDto(context.state, user);
+  return user;
+}
+
+/**
+ * The rider holding `accessToken` if it is a working session's, otherwise `null`: for public
+ * reads, which serve anonymous callers too but leave out a signed-in viewer's own request.
+ */
+export function viewerOf(context: Context, accessToken: string | null): UserRecord | null {
+  if (accessToken === null) return null;
+  try {
+    return authenticate(context, accessToken);
+  } catch (error) {
+    // A refused token makes the caller anonymous for a public read; anything else is a bug.
+    if (error instanceof DataError) return null;
+    throw error;
+  }
 }

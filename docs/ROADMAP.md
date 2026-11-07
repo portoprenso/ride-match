@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; DESTINATION-001 is paused with A's supplied matches completed and B's destination search, selection and map emphasis implemented, its native check pending; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; MAP-002 is paused with A's discovery read and states, B's markers, clusters, list and tile notice, and C's ride and group previews and disappeared target implemented, their native checks pending; all other implementation tasks are planned.**
+Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; RIDE-001 is in progress with A's mock request operations completed; DESTINATION-001 is paused with A's supplied matches completed and B's destination search, selection and map emphasis implemented, its native check pending; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; MAP-002 is paused with A's discovery read and states, B's markers, clusters, list and tile notice, and C's ride and group previews and disappeared target implemented, their native checks pending; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,16 @@ Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**RIDE-001-A — Completed (2026-11-07); RIDE-001 `In progress`.**
+
+- **Done:**
+  - The mock source creates, reads and cancels the signed-in rider's own request, with the contract's checks in order: validation, sign-in, the operation receipt (a retry returns the original, a changed input conflicts), stale device fix, outside the demo city, one live request; cancel's state errors before the version check.
+  - A new request is active for 15 minutes from creation, departs now, +5 or +10 by the source's clock, and shows in discovery with a district-sized public area (a 0.01° grid cell) instead of its exact origin, which only the owner's own view contains. Expiry uses the existing deadline.
+  - Discovery and nearby subscriptions leave out the viewer's own request and groups. `user` subscriptions now work for a signed-in rider (`ride.changed`).
+  - 444 mobile tests (12 new).
+- **Not covered here:** the draft, departure and confirmation screens (RIDE-001-B); the active card, countdown, cancel and expiry UI (RIDE-001-C); matches for the own request (RIDE-001-D). Started at the user's request while DESTINATION-001-B's native check is pending.
+- **Next available:** RIDE-001-B (draft, departure, final confirmation), or the native pass.
 
 **DESTINATION-001-B — Implemented (2026-11-07), native check pending; DESTINATION-001 `Paused`.**
 
@@ -430,7 +440,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | ANALYTICS-001 | Typed analytics foundation | Completed |
 | MAP-002 | Live nearby activity | Paused (A, B and C implemented, native checks pending) |
 | DESTINATION-001 | Destination selection and compatibility | Paused (A completed; B implemented, native check pending) |
-| RIDE-001 | Creation, matching, expiration | Planned |
+| RIDE-001 | Creation, matching, expiration | In progress (A completed) |
 | GROUP-001 | Atomic mock group operations | Planned |
 | GROUP-002 | Group product flow | Planned |
 | CHAT-001 | Temporary text chat | Planned |

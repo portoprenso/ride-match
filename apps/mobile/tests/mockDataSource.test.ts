@@ -491,13 +491,15 @@ describe('nearby subscriptions and timed events', () => {
     expect(simulator.stats().eventListeners).toBe(0);
   });
 
-  it('refuses invalid and uncovered viewports, and user and group subscriptions until sessions exist', async () => {
+  it('refuses invalid and uncovered viewports, an anonymous user subscription, and group subscriptions for now', async () => {
     const { dataSource } = source();
     const wide = { ...CITY, northEast: { latitude: 43.3, longitude: 74.8 } };
 
     await expect(subscribe(dataSource, wide)).rejects.toEqual(sourceError('VALIDATION_FAILED'));
     await expect(subscribe(dataSource, OUTSIDE)).rejects.toEqual(sourceError('UNSUPPORTED_AREA'));
-    await expect(dataSource.events.subscribe({ kind: 'user' }, () => {})).rejects.toThrow(DataSourceUnavailableError);
+    await expect(settle(dataSource.events.subscribe({ kind: 'user' }, () => {}))).rejects.toEqual(
+      sourceError('UNAUTHENTICATED'),
+    );
     await expect(dataSource.events.subscribe({ kind: 'group', groupId: 'group_1' }, () => {})).rejects.toThrow(
       DataSourceUnavailableError,
     );
@@ -556,7 +558,7 @@ describe('operations without a mock yet', () => {
   it('reject at once as unavailable, without simulated latency', async () => {
     const { dataSource } = source();
 
-    await expect(dataSource.rides.getOwnRequest()).rejects.toThrow(DataSourceUnavailableError);
+    await expect(dataSource.rides.getMatches('ride_1')).rejects.toThrow(DataSourceUnavailableError);
     await expect(dataSource.groups.getGroup('group_1')).rejects.toThrow(
       'The mock data source does not support this operation yet.',
     );
