@@ -6,6 +6,7 @@ import {
   type GroupChangedEventDto,
   type GroupPreviewDto,
   type JoinTargetDto,
+  type MatchPreviewDto,
   type NearbyItemDto,
   type NearbyRemovalReason,
   type NearbyRemovedEventDto,
@@ -28,6 +29,7 @@ import {
   type MockWorld,
   type OtpChallengeRecord,
   type RideRecord,
+  type SuppliedMatchRecord,
   type UserRecord,
 } from './world';
 
@@ -175,6 +177,15 @@ export function toNearbyItemDto(world: MockWorld, item: DiscoveryRecord): Nearby
     : { kind: 'group', ...toGroupPreviewDto(item.record) };
 }
 
+/** A supplied match as discovery's advisory preview: its target, level and extra minutes only. */
+export function toMatchPreviewDto(match: SuppliedMatchRecord): MatchPreviewDto {
+  return {
+    target: { kind: match.target.kind, id: match.target.id },
+    level: match.level,
+    additionalMinutes: match.additionalMinutes,
+  };
+}
+
 export function nearbyUpserted(envelope: EventEnvelope, item: NearbyItemDto): NearbyUpsertedEventDto {
   return { ...envelope, type: 'nearby.upserted', audience: { kind: 'public' }, payload: { item } };
 }
@@ -205,7 +216,11 @@ export function rideChanged(envelope: EventEnvelope, ride: RideRecord): RideChan
 }
 
 /** Tells the group's members that it changed; they reread the group for details. */
-export function groupChanged(envelope: EventEnvelope, group: GroupRecord, reason: GroupChangeReason): GroupChangedEventDto {
+export function groupChanged(
+  envelope: EventEnvelope,
+  group: GroupRecord,
+  reason: GroupChangeReason,
+): GroupChangedEventDto {
   return {
     ...envelope,
     type: 'group.changed',

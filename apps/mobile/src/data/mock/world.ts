@@ -1,8 +1,10 @@
 import type {
   CoordinatesDto,
+  DepartureOffsetMinutes,
   GroupClosureReason,
   GroupStatus,
   LocationSource,
+  MatchLevel,
   PublicLocationDto,
   RideRequestStatus,
 } from '@ride-match/contracts';
@@ -123,6 +125,23 @@ export type AuthRecords = {
 };
 
 /**
+ * A match the scenario supplies for a destination choice (DESTINATION-001-A). Discovery returns
+ * it as an advisory preview when a read names `destinationPlaceId`; the mock never computes
+ * compatibility, routes or scores (docs/MOCK_SCENARIOS.md, "Matching is a fixture").
+ *
+ * - `target` is the ride or group it describes; it shows only while discovery returns that item.
+ * - `departures` lists the departure choices it holds for, or `null` for any. A read that names
+ *   no departure choice gets every match for its destination.
+ */
+export type SuppliedMatchRecord = {
+  destinationPlaceId: string;
+  target: { kind: 'ride' | 'group'; id: string };
+  level: MatchLevel;
+  additionalMinutes: number | null;
+  departures: readonly DepartureOffsetMinutes[] | null;
+};
+
+/**
  * The mock source's world. Curated places are not part of it: they are a fixed catalog shared by
  * every scenario (`places.ts`). Later cards add their own records, such as messages.
  */
@@ -132,6 +151,8 @@ export type MockWorld = {
   users: Map<string, UserRecord>;
   rides: Map<string, RideRecord>;
   groups: Map<string, GroupRecord>;
+  /** Matches the scenario supplies for destination choices, in seed order. */
+  suppliedMatches: SuppliedMatchRecord[];
   /** Starts empty in every scenario, so a reset signs everyone out. */
   auth: AuthRecords;
 };
@@ -143,6 +164,7 @@ export function createEmptyWorld(now: number): MockWorld {
     users: new Map(),
     rides: new Map(),
     groups: new Map(),
+    suppliedMatches: [],
     auth: {
       accounts: new Map(),
       challenges: new Map(),

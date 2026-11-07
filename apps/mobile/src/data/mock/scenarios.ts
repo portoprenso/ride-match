@@ -3,6 +3,7 @@ import {
   RIDE_POLICY,
   type CoordinatesDto,
   type DepartureOffsetMinutes,
+  type MatchLevel,
   type PublicLocationDto,
 } from '@ride-match/contracts';
 
@@ -32,6 +33,17 @@ const AREAS = {
   alamedin1: { center: { latitude: 42.889, longitude: 74.637 }, radiusMeters: 700, label: 'Alamedin-1' },
 } satisfies Record<string, PublicLocationDto>;
 
+/**
+ * A match a scenario supplies for one destination choice (DESTINATION-001-A): fixture data,
+ * written by hand, never computed. `departures` limits it to those departure choices.
+ */
+type MatchSeed = {
+  destination: string;
+  level: MatchLevel;
+  additionalMinutes: number | null;
+  departures?: readonly DepartureOffsetMinutes[];
+};
+
 type RideSeed = {
   rider: string;
   /** A named area above, or one built for a scenario (`map-density`). */
@@ -41,6 +53,8 @@ type RideSeed = {
   destination: string;
   createdSecondsAgo: number;
   departureOffsetMinutes: DepartureOffsetMinutes;
+  /** Supplied matches for a solo ride, shown while it is discoverable. */
+  matches?: readonly MatchSeed[];
 };
 
 type GroupSeed = {
@@ -56,16 +70,31 @@ type GroupSeed = {
   meetingPoint: { label: string; coordinates: CoordinatesDto } | null;
   /** One change per join, meeting point and status change since creation. */
   version: number;
+  /** Supplied matches for the group, shown while it is live. */
+  matches?: readonly MatchSeed[];
 };
 
+/** Records a seed's supplied matches for `target` in the world. */
+function supplyMatches(world: MockWorld, target: { kind: 'ride' | 'group'; id: string }, seeds: readonly MatchSeed[] = []) {
+  for (const seed of seeds) {
+    world.suppliedMatches.push({
+      destinationPlaceId: seed.destination,
+      target,
+      level: seed.level,
+      additionalMinutes: seed.additionalMinutes,
+      departures: seed.departures ?? null,
+    });
+  }
+}
+
 const ACTIVE_SOLO_RIDES: readonly RideSeed[] = [
-  { rider: 'Aida', area: 'asanbay', offset: [0.0021, -0.0018], destination: 'place_asia_mall', createdSecondsAgo: 120, departureOffsetMinutes: 5 },
+  { rider: 'Aida', area: 'asanbay', offset: [0.0021, -0.0018], destination: 'place_asia_mall', createdSecondsAgo: 120, departureOffsetMinutes: 5, matches: [{ destination: 'place_asia_mall', level: 'excellent', additionalMinutes: 0 }, { destination: 'place_vefa_center', level: 'good', additionalMinutes: 4, departures: [5, 10] }] },
   // Reaches its 15-minute deadline 20 seconds after activation.
-  { rider: 'Bakyt', area: 'dzhal', offset: [-0.0016, 0.0024], destination: 'place_ala_too', createdSecondsAgo: 880, departureOffsetMinutes: 0 },
-  { rider: 'Cholpon', area: 'vostok5', offset: [0.0012, 0.0019], destination: 'place_manas_airport', createdSecondsAgo: 300, departureOffsetMinutes: 10 },
-  { rider: 'Daniyar', area: 'alamedin1', offset: [-0.0022, -0.0011], destination: 'place_bishkek_park', createdSecondsAgo: 45, departureOffsetMinutes: 0 },
-  { rider: 'Elnura', area: 'kokZhar', offset: [0.0015, 0.0023], destination: 'place_vefa_center', createdSecondsAgo: 540, departureOffsetMinutes: 5 },
-  { rider: 'Farkhat', area: 'oshBazaar', offset: [-0.0019, 0.0014], destination: 'place_dordoi_plaza', createdSecondsAgo: 200, departureOffsetMinutes: 10 },
+  { rider: 'Bakyt', area: 'dzhal', offset: [-0.0016, 0.0024], destination: 'place_ala_too', createdSecondsAgo: 880, departureOffsetMinutes: 0, matches: [{ destination: 'place_ala_too', level: 'excellent', additionalMinutes: 0, departures: [0] }, { destination: 'place_tsum', level: 'possible', additionalMinutes: 7 }] },
+  { rider: 'Cholpon', area: 'vostok5', offset: [0.0012, 0.0019], destination: 'place_manas_airport', createdSecondsAgo: 300, departureOffsetMinutes: 10, matches: [{ destination: 'place_manas_airport', level: 'excellent', additionalMinutes: 0 }] },
+  { rider: 'Daniyar', area: 'alamedin1', offset: [-0.0022, -0.0011], destination: 'place_bishkek_park', createdSecondsAgo: 45, departureOffsetMinutes: 0, matches: [{ destination: 'place_bishkek_park', level: 'excellent', additionalMinutes: 0 }, { destination: 'place_philharmonic', level: 'good', additionalMinutes: 3 }] },
+  { rider: 'Elnura', area: 'kokZhar', offset: [0.0015, 0.0023], destination: 'place_vefa_center', createdSecondsAgo: 540, departureOffsetMinutes: 5, matches: [{ destination: 'place_vefa_center', level: 'excellent', additionalMinutes: 0 }, { destination: 'place_asia_mall', level: 'good', additionalMinutes: 5 }] },
+  { rider: 'Farkhat', area: 'oshBazaar', offset: [-0.0019, 0.0014], destination: 'place_dordoi_plaza', createdSecondsAgo: 200, departureOffsetMinutes: 10, matches: [{ destination: 'place_dordoi_plaza', level: 'excellent', additionalMinutes: 0 }, { destination: 'place_tsum', level: 'good', additionalMinutes: 2 }] },
 ];
 
 const ACTIVE_GROUPS: readonly GroupSeed[] = [
@@ -80,6 +109,12 @@ const ACTIVE_GROUPS: readonly GroupSeed[] = [
     ],
     meetingPoint: null,
     version: 2,
+    // A ready group takes no riders, so the airport group below has no matches.
+    matches: [
+      { destination: 'place_tsum', level: 'excellent', additionalMinutes: 0 },
+      { destination: 'place_ala_too', level: 'good', additionalMinutes: 3 },
+      { destination: 'place_dordoi_plaza', level: 'possible', additionalMinutes: 6 },
+    ],
   },
   {
     status: 'ready',
@@ -100,6 +135,7 @@ const APPEARING_RIDE = {
   offset: [-0.0008, 0.0021],
   destination: 'place_osh_bazaar',
   departureOffsetMinutes: 5,
+  matches: [{ destination: 'place_osh_bazaar', level: 'excellent', additionalMinutes: 0 }],
 } as const satisfies Omit<RideSeed, 'createdSecondsAgo'>;
 const APPEARS_AFTER_MS = 8 * SECOND;
 
@@ -175,6 +211,7 @@ function addGroup(world: MockWorld, ids: IdGenerator, seed: GroupSeed, now: numb
     closure: null,
     version: seed.version,
   });
+  supplyMatches(world, { kind: 'group', id: groupId }, seed.matches);
 }
 
 /** Scenario A: six solo rides and two groups (one forming with three members, one ready with two). */
@@ -183,6 +220,7 @@ function createActiveNeighborhood({ now, ids }: SeedContext): MockWorld {
   for (const seed of ACTIVE_SOLO_RIDES) {
     const ride = buildRide(world, ids, seed, now - seed.createdSecondsAgo * SECOND, { status: 'active', groupId: null });
     world.rides.set(ride.id, ride);
+    supplyMatches(world, { kind: 'ride', id: ride.id }, seed.matches);
   }
   for (const seed of ACTIVE_GROUPS) addGroup(world, ids, seed, now);
   return world;
@@ -237,6 +275,8 @@ function createMapDensity({ now, ids }: SeedContext): MockWorld {
         };
         const ride = buildRide(world, ids, seed, now - seed.createdSecondsAgo * SECOND, { status: 'active', groupId: null });
         world.rides.set(ride.id, ride);
+        // The first ride of each block fits its own destination well: plenty of matches, not all.
+        if (rider === 0) supplyMatches(world, { kind: 'ride', id: ride.id }, [{ destination: seed.destination, level: 'excellent', additionalMinutes: 0 }]);
       }
       const g = next();
       const groupCreated = 60 + ((g * 53) % 540);
@@ -264,6 +304,9 @@ function createMapDensity({ now, ids }: SeedContext): MockWorld {
           laterMembers: [],
           meetingPoint: null,
           version: 1,
+          matches: [
+            { destination: DENSITY_DESTINATIONS[(g + 3) % DENSITY_DESTINATIONS.length]!, level: 'good', additionalMinutes: 2 },
+          ],
         },
         now,
       );
@@ -275,9 +318,11 @@ function createMapDensity({ now, ids }: SeedContext): MockWorld {
 /** Scenario A's timed event: a new ride appears after 8 seconds (the expiry at 20 seconds is a seeded deadline). */
 function scheduleActiveNeighborhood(world: MockWorld, schedule: Schedule): void {
   const appearsAt = world.activatedAt + APPEARS_AFTER_MS;
-  schedule(appearsAt, (context) =>
-    admitRide(context, buildRide(context.state, context.ids, APPEARING_RIDE, appearsAt, { status: 'active', groupId: null })),
-  );
+  schedule(appearsAt, (context) => {
+    const ride = buildRide(context.state, context.ids, APPEARING_RIDE, appearsAt, { status: 'active', groupId: null });
+    admitRide(context, ride);
+    supplyMatches(context.state, { kind: 'ride', id: ride.id }, APPEARING_RIDE.matches);
+  });
 }
 
 type ScenarioDefinition = {

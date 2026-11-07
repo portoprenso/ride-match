@@ -1,6 +1,6 @@
 # Mock simulator and scenarios
 
-Status: partly implemented: the simulator foundation (MOCK-001-A), the discovery world, seeds and public reads that the app runs on (MOCK-001-B), the demo controls (MOCK-001-C), and sign-in and sessions (AUTH-001-A); the other operations and scenarios are planned. Last updated: 2026-11-01.
+Status: partly implemented: the simulator foundation (MOCK-001-A), the discovery world, seeds and public reads that the app runs on (MOCK-001-B), the demo controls (MOCK-001-C), sign-in and sessions (AUTH-001-A), and supplied destination matches (DESTINATION-001-A); the other operations and scenarios are planned. Last updated: 2026-11-07.
 
 ## Purpose
 
@@ -75,7 +75,7 @@ Rechecking after delay enables actual last-seat and expired-target conflicts. Us
 | `createMockDataSource.ts` | `createMockSimulator(scenario)` and the `AppDataSource` adapter. Each implemented call goes through `Simulator.run` (latency, failure controls, connection); every other operation rejects at once with `DataSourceUnavailableError` |
 
 - **Place search:** the curated places inside the area's circle, at most `limit`. Without a query, nearest the center first; with one (ignoring case), a label that starts with the text, then a label word that does, then a label or detail that contains it, each rank by distance. An area that does not reach the coverage box fails with `UNSUPPORTED_AREA`, and an invalid input with `VALIDATION_FAILED` (without field errors for now).
-- **Discovery:** active solo rides and live groups whose public area's center lies in the viewport, nearest the viewport's center first, at most `limit`, with `truncated`. A grouped request never appears on its own: its group stands for it once, and its public read answers `TARGET_UNAVAILABLE`. Previews stay empty, since no implemented scenario supplies matches yet (DESTINATION-001-A); a destination must still name a curated place. A viewport outside the coverage fails with `UNSUPPORTED_AREA`. Discovery reads anonymously: sessions exist since AUTH-001-A, but a signed-in viewer has no request, group or blocks until RIDE-001-A and SAFETY-001, so nothing is filtered by viewer yet.
+- **Discovery:** active solo rides and live groups whose public area's center lies in the viewport, nearest the viewport's center first, at most `limit`, with `truncated`. A grouped request never appears on its own: its group stands for it once, and its public read answers `TARGET_UNAVAILABLE`. With a destination, `previews` holds the scenario's supplied matches ([below](#supplied-destination-matches-destination-001-a)); without one it is empty. A destination must name a curated place. A viewport outside the coverage fails with `UNSUPPORTED_AREA`. Discovery reads anonymously: sessions exist since AUTH-001-A, but a signed-in viewer has no request, group or blocks until RIDE-001-A and SAFETY-001, so nothing is filtered by viewer yet.
 - **Nearby subscriptions:** accepted after the simulated round trip; each delivers the public events about items in its viewport, and a removal is routed by the removed record's area. Delivery starts once the acknowledgement arrives, so a lost acknowledgement leaves no listener. `user` and `group` subscriptions stay unavailable until the operations whose events they carry exist.
 
 | Scenario | World at activation | Timed |
@@ -83,6 +83,16 @@ Rechecking after delay enables actual last-seat and expired-target conflicts. Us
 | `active-neighborhood` | Six solo rides in six districts; a forming group of three, and a ready group of two with a member-only meeting point. Eleven riders, one live request each | +8 s: a seventh solo ride appears; +20 s: a seeded ride reaches its deadline. Every other ride and group ends at its own deadline, so the area is empty after 26 minutes until a reset |
 | `empty-neighborhood` | No riders; the curated places still exist | None |
 | `map-density` (MAP-002-B) | 100 discovery items in the demo city's opening view: 25 synthetic "Demo block N" areas on a 5 × 5 grid about 1.3 km apart, each with three solo rides and one forming group of two (75 rides, 25 groups, 125 requests). Names and values repeat deterministically | None; rides and groups end at their own deadlines |
+
+### Supplied destination matches (DESTINATION-001-A)
+
+Matches are fixtures, written by hand in the scenario seeds; the mock never computes compatibility, routes or scores.
+
+- **Record:** `SuppliedMatchRecord` in `world.ts` (`world.suppliedMatches`): the destination place, the target ride or group, `level`, `additionalMinutes`, and the departure choices it holds for (`null` for any). Seeds give a ride or group `matches`; the record is private and leaves the source only as a `MatchPreviewDto` (`toMatchPreviewDto`: target, level, minutes).
+- **Discovery:** a read with `destinationPlaceId` returns, in `previews`, the matches for that destination whose target is among the returned `items`, in the items' order, each target once. A read with `departureOffsetMinutes` skips matches whose departure choices leave it out. The items themselves never change: unrelated activity stays. An item that left discovery (expired, grouped, closed) takes its match with it.
+- **Scenario A fixtures:** Asia Mall: Aida excellent, Elnura good (+5). Vefa Center: Elnura excellent, Aida good (+4, departures +5 and +10 only). Ala-Too: Bakyt excellent (departure now only; gone at +20 s), the TSUM group good (+3). TSUM: the TSUM group excellent, Farkhat good (+2), Bakyt possible (+7). Dordoi Plaza: Farkhat excellent, the TSUM group possible (+6). Bishkek Park: Daniyar excellent; Philharmonic: Daniyar good (+3). Manas airport: Cholpon excellent; the ready airport group takes no riders, so it has none. Osh Bazaar: the ride appearing at +8 s, excellent. Other places (such as Western Bus Station) have none.
+- **Scenario M:** each block's first ride matches its own destination (excellent), and each group its destination (good, +2).
+- **Place search:** unchanged from MOCK-001-B; it is already deterministic, bounded by `limit` and the area, and cancellable through the read's signal, which the destination search (DESTINATION-001-B) reuses.
 
 Tests check that every output and every event of a full 31-minute run validates against its contract schema, that no exact origin or meeting point appears in any of them, that each exact origin lies inside its public area but away from its center, and that grouped riders appear only through their group.
 

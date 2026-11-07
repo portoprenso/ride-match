@@ -280,14 +280,87 @@ describe('rides.getNearby', () => {
     expect(snapshot.items).toEqual([expect.objectContaining({ kind: 'group', status: 'ready' })]);
   });
 
-  it('returns no previews, since no implemented scenario supplies matches', async () => {
-    const { dataSource } = source();
-    const snapshot = await settle(
-      dataSource.rides.getNearby({ viewport: CITY, destinationPlaceId: 'place_asia_mall', departureOffsetMinutes: 5, limit: 100 }),
-    );
+  describe('supplied matches for a destination (DESTINATION-001-A)', () => {
+    const readFor = (dataSource: AppDataSource, destinationPlaceId?: string, departureOffsetMinutes?: 0 | 5 | 10, limit = 100) =>
+      settle(dataSource.rides.getNearby({ viewport: CITY, destinationPlaceId, departureOffsetMinutes, limit }));
+    /** Each preview as "Name level +minutes" (a group as "group"), to read the fixtures at a glance. */
+    const describePreviews = (snapshot: Awaited<ReturnType<typeof readFor>>) =>
+      snapshot.previews.map((preview) => {
+        const item = snapshot.items.find((entry) => entry.kind === preview.target.kind && entry.id === preview.target.id)!;
+        const who = item.kind === 'ride' ? item.user.displayName : 'group';
+        return `${who} ${preview.level} +${preview.additionalMinutes}`;
+      });
 
-    expect(snapshot.previews).toEqual([]);
-    expect(snapshot.items).toHaveLength(8);
+    it('returns no previews without a destination, and leaves the items unchanged with one', async () => {
+      const { dataSource } = source();
+      const general = await readFor(dataSource);
+      const withDestination = await readFor(dataSource, 'place_asia_mall');
+
+      expect(general.previews).toEqual([]);
+      expect(withDestination.items).toEqual(general.items);
+      expect(NearbySnapshotSchema.parse(withDestination)).toEqual(withDestination);
+    });
+
+    it('gives the scenario’s matches for the destination, in the items’ order, for returned items only', async () => {
+      const { dataSource } = source();
+      const snapshot = await readFor(dataSource, 'place_asia_mall');
+
+      expect(describePreviews(snapshot)).toEqual(
+        snapshot.items.flatMap((item) =>
+          item.kind === 'ride' && item.user.displayName === 'Aida'
+            ? ['Aida excellent +0']
+            : item.kind === 'ride' && item.user.displayName === 'Elnura'
+              ? ['Elnura good +5']
+              : [],
+        ),
+      );
+      expect(describePreviews(await readFor(dataSource, 'place_tsum'))).toEqual(
+        expect.arrayContaining(['group excellent +0', 'Farkhat good +2', 'Bakyt possible +7']),
+      );
+    });
+
+    it('leaves out a match whose departure choices exclude the read’s', async () => {
+      const { dataSource } = source();
+
+      expect(describePreviews(await readFor(dataSource, 'place_vefa_center', 0))).toEqual(['Elnura excellent +0']);
+      expect(describePreviews(await readFor(dataSource, 'place_vefa_center', 5)).sort()).toEqual([
+        'Aida good +4',
+        'Elnura excellent +0',
+      ]);
+    });
+
+    it('keeps unrelated activity with no previews for a destination nobody matches', async () => {
+      const { dataSource } = source();
+      const snapshot = await readFor(dataSource, 'place_western_bus_station');
+
+      expect(snapshot.previews).toEqual([]);
+      expect(snapshot.items).toHaveLength(8);
+    });
+
+    it('drops a match once its item leaves discovery, and adds the appearing ride’s', async () => {
+      const { simulator, dataSource } = source();
+      expect(describePreviews(await readFor(dataSource, 'place_ala_too'))).toContain('Bakyt excellent +0');
+      expect(describePreviews(await readFor(dataSource, 'place_osh_bazaar'))).toEqual([]);
+
+      simulator.advanceTime(21 * SECOND);
+
+      const alaToo = await readFor(dataSource, 'place_ala_too');
+      expect(describePreviews(alaToo)).not.toContain('Bakyt excellent +0');
+      expect(describePreviews(alaToo)).toContain('group good +3');
+      expect(describePreviews(await readFor(dataSource, 'place_osh_bazaar'))).toEqual(['Nurlan excellent +0']);
+    });
+
+    it('previews only items within the limit, and repeats exactly', async () => {
+      const { dataSource } = source('map-density');
+      const all = await readFor(dataSource, 'place_asia_mall');
+      const few = await readFor(dataSource, 'place_asia_mall', undefined, 10);
+
+      expect(all.previews.length).toBeGreaterThan(few.previews.length);
+      const targets = new Set(few.items.map((item) => `${item.kind}:${item.id}`));
+      for (const preview of few.previews) expect(targets).toContain(`${preview.target.kind}:${preview.target.id}`);
+      expect(await readFor(dataSource, 'place_asia_mall')).toEqual(all);
+      expect(NearbySnapshotSchema.parse(all)).toEqual(all);
+    });
   });
 
   it('refuses a viewport outside the covered city', async () => {

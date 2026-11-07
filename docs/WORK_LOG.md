@@ -2465,3 +2465,26 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** the preview states and why the source decides `gone`, the reread on every open, the group join rule, the panel's public-only rule and what the join action does not do, the home screen's preview flow.
 - **Remaining/next:** the native pass for MAP-001-B and MAP-002-A/B/C. DESTINATION-001-A depends on MAP-002.
 - **Ownership:** Released; no active task.
+
+## 2026-11-07 — DESTINATION-001-A: Supplied destination matches in the mock
+
+- **Actor/session:** Claude Code / destination-001-a.
+- **Status:** `Completed`; parent DESTINATION-001 `In progress`. Ownership released. Started at the user's request ("Start DESTINATION-001-A") while MAP-002's native checks are pending.
+- **Working copy:** `main` at `33d97e0` (MAP-002-C); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** extend mock places/search and supplied preview matches. Acceptance: deterministic bounded/cancellable queries; compatibility fixture results; no geocoder, routing or production matching.
+- **Changes:**
+  - `src/data/mock/world.ts`: `SuppliedMatchRecord` and `MockWorld.suppliedMatches`.
+  - `src/data/mock/serializers.ts`: `toMatchPreviewDto`.
+  - `src/data/mock/discovery.ts`: `readNearby` fills `previews` for a destination through `matchPreviews` (returned items only, item order, each target once, departure choice filter).
+  - `src/data/mock/scenarios.ts`: `MatchSeed`, `matches` on ride and group seeds, `supplyMatches`; scenario A fixtures (including the ride appearing at +8 s), scenario M per-block matches.
+  - Tests: `tests/mockDataSource.test.ts` replaces the empty-previews case with six supplied-match tests.
+- **Decisions:**
+  - Matches are hand-written seed data keyed by destination and target; nothing is computed.
+  - A match without departure choices fits any; a read without a departure choice gets every match for its destination.
+  - The ready group gets no match, since it takes no riders.
+  - Place search needed no change: MOCK-001-B's search is already deterministic, bounded by `limit` and area, and cancellable (existing tests cover it).
+- **Checks:** `pnpm typecheck`, `pnpm lint`, `npx jest` in `apps/mobile` (26 suites, 425 tests) passed. The mock files did not follow 120-column Prettier before this card and were left in their own style; `serializers.ts` (which did) was formatted. **Not run:** native builds (no app-visible change; the destination UI is DESTINATION-001-B).
+- **Docs:** MOCK_SCENARIOS (status, discovery rule, supplied-matches section), DEVELOPMENT (tests, 425), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line, DESTINATION-001 row), AI_CONTEXT. PRODUCT and ARCHITECTURE unchanged: no user-visible or boundary change.
+- **JSDoc:** `SuppliedMatchRecord`, `MatchSeed`, `supplyMatches`, `matchPreviews`, `toMatchPreviewDto`, the updated `readNearby` contract.
+- **Remaining/next:** DESTINATION-001-B (search sheet, selection, clear, map emphasis); the native pass.
+- **Ownership:** Released; no active task.

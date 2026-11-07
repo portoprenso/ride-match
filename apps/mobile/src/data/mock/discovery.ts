@@ -2,8 +2,11 @@ import {
   NearbyQueryInputSchema,
   SearchPlacesInputSchema,
   SubscriptionRequestSchema,
+  type DepartureOffsetMinutes,
   type GroupPreviewDto,
   type MapViewport,
+  type MatchPreviewDto,
+  type NearbyItemDto,
   type NearbySnapshotDto,
   type PlaceDto,
   type PlaceSearchResultsDto,
@@ -14,9 +17,16 @@ import {
 
 import { boundsIntersect, centerOf, circleReaches, contains, distanceMeters, viewportBounds } from './geometry';
 import { COVERAGE, CURATED_PLACES, findPlace } from './places';
-import { discoveryRecords, toGroupPreviewDto, toNearbyItemDto, toPlaceDto, toRideRequestDto } from './serializers';
+import {
+  discoveryRecords,
+  toGroupPreviewDto,
+  toMatchPreviewDto,
+  toNearbyItemDto,
+  toPlaceDto,
+  toRideRequestDto,
+} from './serializers';
 import type { WorkContext } from './simulator';
-import { isDiscoverableRide, isLiveGroup, type MockWorld } from './world';
+import { isDiscoverableRide, isLiveGroup, type MockWorld, type SuppliedMatchRecord } from './world';
 
 /*
  * Public reads: curated place search, nearby discovery, and one ride's or group's public view,
@@ -78,9 +88,9 @@ export function searchPlaces(context: Context, input: unknown): PlaceSearchResul
  * area's center lies in the viewport, nearest its center first, each once. A grouped request
  * never appears on its own; its group stands for it.
  *
- * Previews stay empty: no implemented scenario supplies match results yet (DESTINATION-001-A
- * adds them), and the mock never computes compatibility. A destination must still name a
- * curated place.
+ * With a destination (and optionally a departure choice), `previews` holds the scenario's
+ * supplied matches for it ({@link matchPreviews}); without one it is empty. The mock never
+ * computes compatibility. A destination must name a curated place.
  *
  * Fails with `VALIDATION_FAILED` for an invalid input or an unknown destination, and
  * `UNSUPPORTED_AREA` for a viewport entirely outside the covered city.
@@ -88,7 +98,7 @@ export function searchPlaces(context: Context, input: unknown): PlaceSearchResul
 export function readNearby(context: Context, input: unknown): NearbySnapshotDto {
   const parsed = NearbyQueryInputSchema.safeParse(input);
   if (!parsed.success) throw invalidInput(context);
-  const { viewport, destinationPlaceId, limit } = parsed.data;
+  const { viewport, destinationPlaceId, departureOffsetMinutes, limit } = parsed.data;
   if (destinationPlaceId !== undefined && findPlace(destinationPlaceId) === undefined) throw invalidInput(context);
   const bounds = viewportBounds(viewport);
   if (!boundsIntersect(bounds, COVERAGE)) throw outsideCoverage(context);
@@ -99,11 +109,38 @@ export function readNearby(context: Context, input: unknown): NearbySnapshotDto 
     .map((item) => ({ item, distance: distanceMeters(center, item.record.publicOrigin.center) }))
     .sort((first, second) => first.distance - second.distance);
 
+  const items = found.slice(0, limit).map(({ item }) => toNearbyItemDto(context.state, item));
   return {
-    items: found.slice(0, limit).map(({ item }) => toNearbyItemDto(context.state, item)),
+    items,
     truncated: found.length > limit,
-    previews: [],
+    previews:
+      destinationPlaceId === undefined ? [] : matchPreviews(context.state, items, destinationPlaceId, departureOffsetMinutes),
   };
+}
+
+/**
+ * The supplied matches for a destination choice, as previews of the returned items only, in the
+ * items' order (nearest the viewport's center first), each target once. A match whose
+ * `departures` leave out the read's departure choice is skipped. An item that left discovery
+ * (expired, grouped, closed) is not returned, so its match is not either.
+ */
+export function matchPreviews(
+  world: MockWorld,
+  items: readonly NearbyItemDto[],
+  destinationPlaceId: string,
+  departure: DepartureOffsetMinutes | undefined,
+): MatchPreviewDto[] {
+  const fitting = new Map<string, SuppliedMatchRecord>();
+  for (const match of world.suppliedMatches) {
+    const key = `${match.target.kind}:${match.target.id}`;
+    if (match.destinationPlaceId !== destinationPlaceId || fitting.has(key)) continue;
+    if (departure !== undefined && match.departures !== null && !match.departures.includes(departure)) continue;
+    fitting.set(key, match);
+  }
+  return items.flatMap((item) => {
+    const match = fitting.get(`${item.kind}:${item.id}`);
+    return match === undefined ? [] : [toMatchPreviewDto(match)];
+  });
 }
 
 /**
