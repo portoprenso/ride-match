@@ -15,9 +15,11 @@ import { IconButton } from '../../ui/IconButton';
 import { MapLayout, type MapCoverage } from '../../ui/MapLayout';
 import { colors, radii, spacing } from '../../ui/tokens';
 import { HomeLocationPanel, useLocationStatus } from '../location/HomeLocation';
-import type { NearbyItemDto } from '@ride-match/contracts';
+import type { NearbyItemDto, PlaceDto } from '@ride-match/contracts';
 import { useDemoSignIn } from '../../data/DemoSignInProvider';
 import { useRequireSignIn, useResumeIntent } from '../auth/PendingIntentProvider';
+import { DestinationPanel, summarizeDestination } from '../destinations/DestinationPanel';
+import { DestinationSheet } from '../destinations/DestinationSheet';
 import { DiscoveryMarkers } from '../discovery/DiscoveryMarkers';
 import { DiscoveryPanel } from '../discovery/DiscoveryPanel';
 import { clusterItems, clusterZoomRegion, itemKey } from '../discovery/nearbyItems';
@@ -37,6 +39,11 @@ import { CAMERA_ANIMATION_MS, streetRegion, useHomeCamera } from './mapCamera';
  * permission, and choose a pickup point by name from its sheet. The sheet starts with nearby
  * activity for the region the map last rested on (`useNearbyDiscovery`, MAP-002-A), which never
  * moves the camera. The first time the map shows in a session, `map_opened` is tracked.
+ *
+ * "Choose a destination" opens the curated destination search (screen 03, DESTINATION-001-B). With
+ * a destination, discovery reads its supplied matches: matched markers stand out, the others
+ * stay on the map quieter, and the sheet names the best match to inspect (screen 04). Clearing it
+ * returns to general browsing; the camera never moves for a destination.
  *
  * A marker, or a row of the nearby list, opens that ride or group's public preview in the sheet
  * (screens 05 and 19, MAP-002-C), with its marker highlighted. The preview reads the target again;
@@ -83,7 +90,11 @@ export function MapHomeScreen({
   const picker = useMapPointPicker(mapRef, coverage, picking);
   // The region the map last came to rest on; discovery reads it, and never moves the camera.
   const [region, setRegion] = useState<Region>(initialRegion);
-  const discovery = useNearbyDiscovery(region);
+  // The rider's chosen destination (designs 03 and 04): local to this screen, it only changes
+  // what discovery reads and emphasizes. Clearing it returns to general browsing.
+  const [destination, setDestination] = useState<PlaceDto | null>(null);
+  const [destinationOpen, setDestinationOpen] = useState(false);
+  const discovery = useNearbyDiscovery(region, destination?.id ?? null);
   const analytics = useAnalytics();
   const demo = useDemoSignIn() !== null;
   // What the map draws: this view's snapshot, the previous view's while this one loads, or the
@@ -124,6 +135,15 @@ export function MapHomeScreen({
     setJoinRequested(joinAsked);
   };
   const closePreview = () => setPreview(null);
+  const chooseDestination = (place: PlaceDto) => {
+    setDestination(place);
+    analytics.track('destination_selected');
+  };
+  /** "Inspect highlighted ride": the best match's preview, with the camera on it. */
+  const inspect = (item: NearbyItemDto) => {
+    openPreview(item);
+    moveTo(streetRegion(item.publicOrigin.center));
+  };
   const selectFromList = (item: NearbyItemDto) => {
     setList(null);
     openPreview(item);
@@ -188,6 +208,7 @@ export function MapHomeScreen({
                 fix={fixPoint}
                 now={now}
                 stale={staleSnapshot}
+                matches={discovery.matches}
                 onSelectItem={(item) => openPreview(item)}
                 onPressCluster={pressCluster}
               />
@@ -290,6 +311,7 @@ export function MapHomeScreen({
               now={now}
               demo={demo}
               joinRequested={joinRequested}
+              match={(previewKey === null ? undefined : discovery.matches?.get(previewKey)?.level) ?? null}
               onJoin={planToJoin}
               onRetry={previewState.retry}
               onRefreshNearby={() => {
@@ -300,6 +322,13 @@ export function MapHomeScreen({
             />
           ) : (
             <>
+              <DestinationPanel
+                destination={destination}
+                summary={destination === null ? { kind: 'unknown' } : summarizeDestination(discovery)}
+                onChoose={() => setDestinationOpen(true)}
+                onClear={() => setDestination(null)}
+                onInspect={inspect}
+              />
               <DiscoveryPanel
                 state={discovery}
                 onRetry={discovery.retry}
@@ -319,7 +348,9 @@ export function MapHomeScreen({
         fix={fixPoint}
         now={now}
         demo={demo}
+        matches={discovery.matches}
       />
+      <DestinationSheet open={destinationOpen} onClose={() => setDestinationOpen(false)} onChoose={chooseDestination} />
       <PickupPlaceSheet open={namedOpen} onClose={() => setNamedOpen(false)} onConfirmed={() => setPicking(false)} />
     </>
   );

@@ -31,7 +31,8 @@ function useDebouncedValue<Value>(value: Value, delayMs: number): Value {
 }
 
 /**
- * Searches the curated places by name through the data source, for choosing a pickup point.
+ * Searches the curated places by name through the data source, for choosing a pickup point or a
+ * destination (DESTINATION-001-B).
  * Empty text lists the area's places nearest its center first.
  *
  * Typing is debounced, a read the user moved past is aborted, and the previous results stay on

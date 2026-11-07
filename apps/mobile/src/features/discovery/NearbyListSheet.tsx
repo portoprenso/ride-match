@@ -9,6 +9,7 @@ import { Icon } from '../../ui/Icon';
 import { Notice } from '../../ui/Notice';
 import { SheetContent, SheetHost } from '../../ui/SheetHost';
 import { colors, radii, spacing } from '../../ui/tokens';
+import { matchLabel, type MatchIndex } from '../destinations/matches';
 import { describeItem, itemKey } from './nearbyItems';
 
 /** What the list shows: the whole snapshot on the map, or one cluster's items. */
@@ -31,6 +32,8 @@ type NearbyListSheetProps = {
   now: number;
   /** Synthetic riders: the list says so, as the design's badge does. */
   demo: boolean;
+  /** The destination's supplied matches, named on their rows; `null` without a destination. */
+  matches?: MatchIndex | null;
 };
 
 /**
@@ -41,7 +44,7 @@ type NearbyListSheetProps = {
  * It says when the source left items out, when the list is the last view, and that a group's
  * occupancy counts people while map counts count ride plans.
  */
-export function NearbyListSheet({ content, onClose, onSelect, fix, now, demo }: NearbyListSheetProps) {
+export function NearbyListSheet({ content, onClose, onSelect, fix, now, demo, matches = null }: NearbyListSheetProps) {
   return (
     <SheetHost open={content !== null} onDismiss={onClose}>
       {content ? (
@@ -74,11 +77,13 @@ export function NearbyListSheet({ content, onClose, onSelect, fix, now, demo }: 
           <View style={styles.list} accessibilityRole="list">
             {content.items.map((item) => {
               const words = describeItem(item, fix, now);
+              const match = matches?.get(itemKey(item));
+              const detail = match ? `${matchLabel(match.level)} · ${words.detail}` : words.detail;
               return (
                 <Pressable
                   key={itemKey(item)}
                   accessibilityRole="button"
-                  accessibilityLabel={`${words.title}, ${words.detail}`}
+                  accessibilityLabel={`${words.title}, ${detail}`}
                   accessibilityHint="Opens its preview and shows it on the map."
                   onPress={() => onSelect(item)}
                   style={({ pressed }) => [styles.row, pressed && styles.pressed]}
@@ -89,7 +94,7 @@ export function NearbyListSheet({ content, onClose, onSelect, fix, now, demo }: 
                   <View style={styles.copy}>
                     <AppText variant="label">{words.title}</AppText>
                     <AppText variant="small" color="muted">
-                      {words.detail}
+                      {detail}
                     </AppText>
                   </View>
                 </Pressable>

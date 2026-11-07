@@ -2488,3 +2488,28 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** `SuppliedMatchRecord`, `MatchSeed`, `supplyMatches`, `matchPreviews`, `toMatchPreviewDto`, the updated `readNearby` contract.
 - **Remaining/next:** DESTINATION-001-B (search sheet, selection, clear, map emphasis); the native pass.
 - **Ownership:** Released; no active task.
+
+## 2026-11-07 — DESTINATION-001-B: Destination search, selection and map emphasis
+
+- **Actor/session:** Claude Code / destination-001-b.
+- **Status:** implemented; `Paused` for its native check (next native pass). Parent DESTINATION-001 `Paused` (A completed, B implemented). Ownership released.
+- **Working copy:** `main` at `7f1c9b2` (DESTINATION-001-A); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start DESTINATION-001-B": the destination search sheet, selection, clear, and map emphasis (designs 03, 04). Acceptance: rapid changes reject stale results; map visible; unrelated activity retained; clear restores general browsing.
+- **Changes:**
+  - New `src/features/destinations/`: `DestinationSheet.tsx`, `DestinationPanel.tsx` (`DestinationPanel`, `DestinationSummary`, `summarizeDestination`), `matches.ts` (`MatchIndex`, `indexMatches`, `bestMatch`, `matchLabel`).
+  - New `src/features/location/PlaceSearchResults.tsx`, extracted from `PickupPlaceSheet.tsx` (which now uses it); `usePlaceSearch` comment covers both uses.
+  - `useNearbyDiscovery`: optional `destinationPlaceId` in the read; returns `matches` only for a snapshot read for the current destination (module-level `WeakMap` per snapshot object).
+  - `DiscoveryMarkers`: `matches` prop: outline and level for matched items, lime fill for excellent, faded unrelated items, cluster match counts; redraw keys include the emphasis. `NearbyListSheet`: optional `matches`, level on rows. `PreviewPanel`: optional `match` badge.
+  - `MapHomeScreen`: destination state, the sheet, the panel at the top of the sheet, "Inspect highlighted" as preview plus camera move, `destination_selected`.
+  - Tests: new `tests/destinations.test.tsx` (7).
+- **Decisions:**
+  - The destination is presentation state on the home screen until RIDE-001 needs it.
+  - Emphasis only from a snapshot read for the current destination, so neither a placeholder nor a stale older destination's snapshot can emphasize the wrong plans. A ref-based version broke the `react-hooks/refs` lint rule; a module-level `WeakMap` keyed by the immutable snapshot does the same.
+  - No arrival animation for highly compatible markers: Android draws custom markers as bitmaps (VERIFY-004); left for a later polish pass if wanted.
+  - "Create my ride request" from design 04 is RIDE-001's.
+- **Test note:** a single `wait` spanning the search debounce and the read does not start the new read until its `act` ends (React renders after act), so the newest-search test waits in two steps.
+- **Checks:** `pnpm typecheck`, `pnpm lint`, `npx jest` in `apps/mobile` (27 suites, 432 tests) passed; Prettier check on the changed files clean. **Not run:** native builds or device checks (DEVELOPMENT's destination check). Screen readers waived.
+- **Docs:** PRODUCT (destination), ARCHITECTURE, DEVELOPMENT (tests, 432; destination check), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line, DESTINATION-001 row), AI_CONTEXT.
+- **JSDoc:** the destination sheet and panel, `summarizeDestination`'s rule, the match helpers, the discovery hook's destination and `matches` rule, the marker emphasis, the shared place results.
+- **Remaining/next:** the native pass (MAP-001-B, MAP-002-A/B/C, DESTINATION-001-B); RIDE-001-A.
+- **Ownership:** Released; no active task.

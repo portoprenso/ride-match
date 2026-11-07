@@ -1,4 +1,4 @@
-import type { CoordinatesDto, NearbyItemDto } from '@ride-match/contracts';
+import type { CoordinatesDto, MatchLevel, NearbyItemDto } from '@ride-match/contracts';
 import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '../../ui/AppText';
@@ -6,6 +6,7 @@ import { Badge } from '../../ui/Badge';
 import { Button } from '../../ui/Button';
 import { Notice } from '../../ui/Notice';
 import { spacing } from '../../ui/tokens';
+import { matchLabel } from '../destinations/matches';
 import { approximateDistance, departureText, describeItem } from './nearbyItems';
 import type { PreviewState, PreviewTarget } from './useTargetPreview';
 
@@ -53,6 +54,8 @@ type PreviewPanelProps = {
   demo: boolean;
   /** The rider asked to join and is signed in: say what joining needs; nothing was reserved. */
   joinRequested: boolean;
+  /** The supplied match level for the chosen destination (design 05's badge), if any. */
+  match?: MatchLevel | null;
   onJoin: () => void;
   onRetry: () => void;
   /** Reads nearby activity again and closes the preview (screen 55). */
@@ -79,6 +82,7 @@ export function PreviewPanel({
   now,
   demo,
   joinRequested,
+  match = null,
   onJoin,
   onRetry,
   onRefreshNearby,
@@ -118,6 +122,11 @@ export function PreviewPanel({
 
   return (
     <View style={styles.panel}>
+      {match !== null && item !== null ? (
+        <View style={styles.heading}>
+          <Badge label={matchLabel(match)} tone="success" />
+        </View>
+      ) : null}
       {item === null ? null : item.kind === 'ride' ? (
         <RideSummary item={item} distance={distance} now={now} demo={demo} />
       ) : (

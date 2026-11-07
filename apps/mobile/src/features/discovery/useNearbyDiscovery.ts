@@ -1,6 +1,7 @@
 import { NEARBY_POLICY, type NearbyQueryInput, type NearbySnapshotDto } from '@ride-match/contracts';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
+import { indexMatches, type MatchIndex } from '../destinations/matches';
 import type { Region } from 'react-native-maps';
 
 import { useAnalytics } from '../../analytics/AnalyticsProvider';
@@ -86,15 +87,28 @@ export function describeDiscovery({
  *   count's bucket and whether the source truncated the list. Realtime updates do not count as
  *   new exposures.
  *
+ * - With a destination (DESTINATION-001-B) the read names it, so the source adds its supplied
+ *   match previews; a new destination is a new read, and an older destination's read can never
+ *   replace it. `matches` indexes the shown snapshot's previews only when that snapshot was read
+ *   for the current destination: while the previous destination's snapshot stands in, or with no
+ *   destination, it is `null`, so the map never emphasizes plans for a place the rider left.
+ *
  * @param region The visible map region, or `null` while there is no map to read for.
+ * @param destinationPlaceId The chosen destination's curated place ID, or `null`.
  */
-export function useNearbyDiscovery(region: Readonly<Region> | null): DiscoveryState & { retry: () => void } {
+export function useNearbyDiscovery(
+  region: Readonly<Region> | null,
+  destinationPlaceId: string | null = null,
+): DiscoveryState & { retry: () => void; matches: MatchIndex | null } {
   const dataSource = useDataSource();
   const viewer = useViewer();
   const analytics = useAnalytics();
   const connection = useConnectionState();
   const viewport = region === null ? null : toViewport(region);
-  const input: NearbyQueryInput | null = viewport === null ? null : { viewport, limit: NEARBY_POLICY.maxItems };
+  const input: NearbyQueryInput | null =
+    viewport === null
+      ? null
+      : { viewport, limit: NEARBY_POLICY.maxItems, ...(destinationPlaceId === null ? {} : { destinationPlaceId }) };
 
   const query = useQuery({
     // A disabled read still needs options; this input is never sent.
@@ -119,6 +133,14 @@ export function useNearbyDiscovery(region: Readonly<Region> | null): DiscoverySt
     });
   }, [fetching, query.data, query.isPlaceholderData, query.isError, connection, analytics]);
 
+  // Placeholder data is the previous read's own object, so it keeps that read's destination.
+  if (query.data !== undefined && !query.isPlaceholderData) SNAPSHOT_DESTINATIONS.set(query.data, destinationPlaceId);
+  const shownFor = query.data === undefined ? undefined : SNAPSHOT_DESTINATIONS.get(query.data);
+  const matches =
+    destinationPlaceId !== null && query.data !== undefined && shownFor === destinationPlaceId
+      ? indexMatches(query.data.previews)
+      : null;
+
   const state = describeDiscovery({
     viewportReadable: viewport !== null,
     connection,
@@ -127,8 +149,15 @@ export function useNearbyDiscovery(region: Readonly<Region> | null): DiscoverySt
     error: query.error,
     updatedAt: query.dataUpdatedAt,
   });
-  return { ...state, retry: () => void query.refetch() };
+  return { ...state, retry: () => void query.refetch(), matches };
 }
+
+/**
+ * Which destination each snapshot object was read for (`null` for none). Snapshots are immutable
+ * and Query hands back the same object as placeholder data, so this tells whether a shown
+ * snapshot answers the current destination. Weak keys let old snapshots go.
+ */
+const SNAPSHOT_DESTINATIONS = new WeakMap<NearbySnapshotDto, string | null>();
 
 const UNUSED_INPUT: NearbyQueryInput = {
   viewport: { southWest: { latitude: 0, longitude: 0 }, northEast: { latitude: 0.01, longitude: 0.01 } },

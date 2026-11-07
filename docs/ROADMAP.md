@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; DESTINATION-001 is in progress with A's supplied matches completed; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; MAP-002 is paused with A's discovery read and states, B's markers, clusters, list and tile notice, and C's ride and group previews and disappeared target implemented, their native checks pending; all other implementation tasks are planned.**
+Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; DESTINATION-001 is paused with A's supplied matches completed and B's destination search, selection and map emphasis implemented, its native check pending; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; MAP-002 is paused with A's discovery read and states, B's markers, clusters, list and tile notice, and C's ride and group previews and disappeared target implemented, their native checks pending; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -13,7 +13,20 @@ This roadmap covers only items 1–2. No backend implementation or real transpor
 
 ## Progress
 
-**DESTINATION-001-A — Completed (2026-11-07); DESTINATION-001 `In progress`.**
+**DESTINATION-001-B — Implemented (2026-11-07), native check pending; DESTINATION-001 `Paused`.**
+
+- **Done:**
+  - Home's sheet starts with "Where are you heading?" and "Choose a destination" (02). The destination sheet (03) searches the curated places ("Where to?", debounced, each search its own read, so older results never replace newer ones) and says it uses no live places service. Choosing a row sets the destination and records `destination_selected`; nothing is created or reserved, and the camera stays where it was.
+  - With a destination (04), discovery reads its supplied matches. The sheet names the destination, the best level ("Excellent match nearby", "2 plans share your direction.") and "Inspect highlighted ride" (its preview, with the camera on it); while the read is on its way it says it is looking, and with no match it says other plans stay on the map. "Change destination" and "Clear destination"; clearing returns to general browsing.
+  - Markers: matched plans outlined with their level in the accessible name, excellent ones filled lime; unrelated plans stay, faded. Clusters say how many plans go the rider's way. The nearby list and the preview show the level too.
+  - An earlier destination's snapshot never answers for a newer one: emphasis appears only for a snapshot read for the current destination.
+  - 432 mobile tests (7 new).
+- **Decisions:** the destination is local to the home screen (presentation state) until RIDE-001 needs it for a request; no arrival animation on native markers (they are bitmaps on Android); the place list is shared with the pickup sheet.
+- **Not covered here:** "Create my ride request" (RIDE-001); departure choice in discovery (RIDE-001's departure draft).
+- **Pending:** the native check (DEVELOPMENT, destination check).
+- **Next available:** RIDE-001-A (mock request operations; needs DESTINATION-001 and AUTH-001), or the native pass.
+
+**DESTINATION-001-A — Completed (2026-11-07).**
 
 - **Done:**
   - The mock source supplies destination matches as fixtures: a nearby read that names a destination (and optionally a departure choice) returns the scenario's matches for it as `previews`, only for the returned items and in their order; the items stay the same, so unrelated activity remains. A match leaves with its item.
@@ -416,7 +429,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | MAP-001 | Native map shell | Paused (A completed; B implemented, native check pending) |
 | ANALYTICS-001 | Typed analytics foundation | Completed |
 | MAP-002 | Live nearby activity | Paused (A, B and C implemented, native checks pending) |
-| DESTINATION-001 | Destination selection and compatibility | In progress (A completed; B planned) |
+| DESTINATION-001 | Destination selection and compatibility | Paused (A completed; B implemented, native check pending) |
 | RIDE-001 | Creation, matching, expiration | Planned |
 | GROUP-001 | Atomic mock group operations | Planned |
 | GROUP-002 | Group product flow | Planned |

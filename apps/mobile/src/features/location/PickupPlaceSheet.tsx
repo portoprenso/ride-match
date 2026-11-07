@@ -1,6 +1,6 @@
 import { PLACE_SEARCH_POLICY, type PlaceDto } from '@ride-match/contracts';
 import { useState, type RefObject } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { ActionFooter } from '../../ui/ActionFooter';
 import { AppText } from '../../ui/AppText';
@@ -9,8 +9,9 @@ import { ConfirmAction } from '../../ui/ConfirmAction';
 import { Notice } from '../../ui/Notice';
 import { SheetContent, SheetHost } from '../../ui/SheetHost';
 import { SearchField } from '../../ui/TextField';
-import { colors, radii, spacing } from '../../ui/tokens';
+import { spacing } from '../../ui/tokens';
 import { useLocationChoices } from './LocationChoicesProvider';
+import { PlaceSearchResults } from './PlaceSearchResults';
 import { usePlaceSearch } from './usePlaceSearch';
 
 type PickupPlaceSheetProps = {
@@ -63,7 +64,6 @@ function PickupPlaceFlow({ onClose, onConfirmed }: { onClose: () => void; onConf
     );
   }
 
-  const places = search.data;
   return (
     <SheetContent
       footer={
@@ -87,72 +87,13 @@ function PickupPlaceFlow({ onClose, onConfirmed }: { onClose: () => void; onConf
         onClear={() => setText('')}
         maxLength={PLACE_SEARCH_POLICY.maxQueryLength}
       />
-      {places === undefined ? (
-        search.isError ? (
-          <View style={styles.list}>
-            <Notice tone="danger" message="Places didn't load. Check the connection and try again." />
-            <Button label="Try again" variant="secondary" onPress={() => void search.refetch()} />
-          </View>
-        ) : (
-          <AppText color="muted" accessibilityLiveRegion="polite">
-            Loading places…
-          </AppText>
-        )
-      ) : places.length === 0 ? (
-        <Notice
-          message={
-            text.trim() === '' ? 'There are no places to choose in this area.' : 'No places match. Try another name.'
-          }
-        />
-      ) : (
-        <View style={styles.list} accessibilityRole="list">
-          {search.isError ? (
-            <Notice tone="danger" message="The newest results didn't load. These are the previous ones." />
-          ) : null}
-          {places.map((place) => (
-            <PlaceRow key={place.id} place={place} onPress={() => setChosen(place)} />
-          ))}
-        </View>
-      )}
+      <PlaceSearchResults search={search} text={text} onChoose={setChosen} />
     </SheetContent>
-  );
-}
-
-function PlaceRow({ place, onPress }: { place: PlaceDto; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={place.detail ? `${place.label}, ${place.detail}` : place.label}
-      onPress={onPress}
-      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
-    >
-      <AppText variant="label">{place.label}</AppText>
-      {place.detail ? (
-        <AppText variant="small" color="muted">
-          {place.detail}
-        </AppText>
-      ) : null}
-    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   heading: {
     gap: spacing.sm,
-  },
-  list: {
-    gap: spacing.sm,
-  },
-  row: {
-    minHeight: 48,
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: radii.sm,
-    backgroundColor: colors.soft,
-  },
-  pressed: {
-    opacity: 0.7,
   },
 });
