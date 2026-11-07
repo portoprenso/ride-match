@@ -2202,3 +2202,26 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **Remaining/next:** the native session check in the next native pass (with MAP-001-A's). Then SYNC-001-A; SYNC-001-B needs it and AUTH-001-B.
 - **Ownership:** Released; no active task.
 
+## 2026-11-07 — SYNC-001-A: Event synchronization
+
+- **Actor/session:** Claude Code / sync-001-a.
+- **Status:** `Completed`; ownership released. Parent SYNC-001 is `Paused` (B planned).
+- **Working copy:** `main` at `aac0cea` (AUTH-001-B); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start SYNC-001-A": event synchronization, version guards, invalidation and snapshot races, so that duplicate or out-of-order events and delayed reads converge without overwriting newer state, with deterministic integration tests.
+- **Changes:**
+  - `src/data/synchronizeEvents.ts`: `EventOutcome`, `EventSynchronizer`, `EventSynchronizerOptions`, `createEventSynchronizer(queryClient, options?)` and `synchronizeSubscription(events, synchronizer, request, viewer)`.
+  - Tests: `tests/synchronizeEvents.test.ts` (16).
+- **Decisions:**
+  - Known versions and tombstones are kept per viewer, because a tombstone may come from a block that hides an item from one rider only.
+  - Public upserts patch snapshots that already hold the item; anything else (absent item, snapshots with match previews) is invalidated, since ordering, limits and previews belong to the source. Private events never patch; they invalidate reads older than the event's version.
+  - Snapshot races are handled by reconciling each successful read through a query-cache subscription, plus one follow-up reread per known version (guarding against a source that keeps answering older) and a reread after an in-flight first read when an upsert arrived meanwhile — found by the mock-source test, because Query joins an invalidation to a first read in flight.
+  - Follow-up rereads are deferred with a promise, not `queueMicrotask`, which Jest's fake timers replace.
+  - Excluded: creating the synchronizer in the app, resubscribing on reconnect or foreground, resetting on identity or scenario changes (SYNC-001-B); chat message merging and catch-up (CHAT-001-C).
+- **Checks:**
+  - `pnpm typecheck` and `pnpm lint` passed; `pnpm --filter @ride-match/mobile test`: 18 suites, 321 tests passed (16 new). The in-flight-appearance test failed before the reread-after-read fix and passes after it.
+  - **Not run:** native builds (no native change).
+- **Docs:** api/realtime (implemented synchronization), ARCHITECTURE, DEVELOPMENT (tests, 321), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, SYNC-001 paused), AI_CONTEXT.
+- **JSDoc:** the synchronizer's rules and outcomes, options, the per-viewer knowledge, snapshot reconciliation, follow-up rereads, and `synchronizeSubscription`.
+- **Remaining/next:** SYNC-001-B wires it into the app with foreground/reconnect recovery and identity/scenario resets. The AUTH-001-B and MAP-001-A native checks remain for the next native pass.
+- **Ownership:** Released; no active task.
+

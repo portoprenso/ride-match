@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is paused with A's mock operations completed and B's session controller implemented, its native check pending; LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; MAP-001 is paused with A implemented and its native checks pending; all other implementation tasks are planned.**
+Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is paused with A's mock operations completed and B's session controller implemented, its native check pending; SYNC-001 is paused with A's event synchronization completed; LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; MAP-001 is paused with A implemented and its native checks pending; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,15 @@ Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**SYNC-001-A — Completed (2026-11-07).**
+
+- **Done:**
+  - `src/data/synchronizeEvents.ts`: `createEventSynchronizer(queryClient)` applies realtime events to the Query cache once (by event ID) and only when newer than the version known for that resource, kept per viewer. Nearby upserts patch snapshots that hold the item and its preview read, and invalidate the rest; removals leave tombstones. Private events are dropped for another user or a revoked group, and otherwise invalidate older own-request, match, group and chat reads; `access.revoked` removes the group's private data unless a newer version shows a rejoin. An invalid event is reported by type only and rereads the viewer's data.
+  - Snapshot/event races: every successful read is reconciled with what events taught (newer upserts replace older items, tombstones drop them, older single-resource reads are reread once), and an upsert during a first read in flight triggers one reread after it lands. `synchronizeSubscription` pipes a subscription into it.
+  - 321 mobile tests (16 new), including mock-source races at the scenario's 8-second appearance and 20-second expiry.
+- **Not covered here:** creating the synchronizer in the app, foreground/reconnect resubscription and rereads, and resets on identity or scenario change (SYNC-001-B); merging chat messages (CHAT-001-C). Nothing in the app subscribes yet (MAP-002-A).
+- **Next available:** SYNC-001-B (needs A and AUTH-001-B, whose code exists; its native check is pending but SYNC-001-B is JavaScript only). MAP-001-B follows MAP-001-A's native checks.
 
 **AUTH-001-B — Paused (2026-11-07): implemented; the native check of `expo-secure-store` is pending.**
 
@@ -290,7 +299,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | MOBILE-001 | Expo shell and navigation | Completed |
 | DATA-001 | Data-source and Query foundation | Completed |
 | MOCK-001 | Simulator foundation | Completed |
-| SYNC-001 | Event synchronization and recovery | Planned |
+| SYNC-001 | Event synchronization and recovery | Paused (A completed; B planned) |
 | AUTH-001 | Simulated authentication | Paused (A completed; B implemented, native check pending; C–D planned) |
 | LOCATION-001 | Foreground location | Completed |
 | MAP-001 | Native map shell | Paused (A implemented, native checks pending; B planned) |
@@ -420,7 +429,7 @@ Execution: [MOBILE-001-A through MOBILE-001-H](FIRST_STEPS.md#mobile-001-a--crea
 - **Expected files/modules:** `M/src/data/synchronizeEvents.ts`, lifecycle hooks and synchronization tests.
 - **Dependencies:** MOCK-001.
 - **Acceptance criteria:** Duplicate/stale/missed events converge to canonical state; session/scenario resets clear subscriptions and protected data.
-- **Verification:** `pnpm test:mobile --runTestsByPath src/data/synchronizeEvents.test.ts`; inject duplicate/out-of-order events during reads.
+- **Verification:** `pnpm test:mobile --runTestsByPath tests/synchronizeEvents.test.ts` (mobile tests live in `apps/mobile/tests/`); inject duplicate/out-of-order events during reads.
 - **Non-goals:** Socket.IO adapter, event-sourced client database, persistent offline mutation queue.
 
 ## AUTH-001 — Simulated authentication

@@ -1,6 +1,6 @@
 # Future API: realtime and notifications
 
-Status: planned; the event and subscription contracts (CONTRACT-004-A) and the notification and push-device contracts (CONTRACT-004-B) exist in `packages/contracts`. Last updated: 2026-11-01. The mobile MVP uses an in-process event emitter and local notifications, not a Socket.IO server or remote push backend.
+Status: planned; the event and subscription contracts (CONTRACT-004-A) and the notification and push-device contracts (CONTRACT-004-B) exist in `packages/contracts`, and the app-side synchronization of events with reads exists (SYNC-001-A). Last updated: 2026-11-07. The mobile MVP uses an in-process event emitter and local notifications, not a Socket.IO server or remote push backend.
 
 ## Event envelope
 
@@ -56,6 +56,23 @@ REST remains authoritative:
 Handle the snapshot/event race explicitly: an event during an in-flight snapshot must not be lost when an older snapshot resolves. Resource version guards and follow-up invalidation provide a small solution without an event-sourced client database.
 
 The future Socket.IO client lives inside the real data-source implementation. Connection-state recovery is an optimization, not the correctness mechanism. Socket.IO documents ordering but default at-most-once arrival; missed-event recovery must remain explicit. [Socket.IO delivery guarantees](https://socket.io/docs/v4/delivery-guarantees/)
+
+## Implemented synchronization (SYNC-001-A)
+
+`apps/mobile/src/data/synchronizeEvents.ts`, covered by `tests/synchronizeEvents.test.ts`. `createEventSynchronizer(queryClient)` applies events to the Query cache; `synchronizeSubscription` feeds it a subscription's events for one viewer. The app does not create or subscribe it yet: lifecycle, reconnect and identity resets are SYNC-001-B, and the first subscriber is discovery (MAP-002-A).
+
+| Rule | Behavior |
+| --- | --- |
+| Once | An event ID applies once (the last 1,000 IDs are remembered); a repeat is `duplicate` |
+| Versions | What events and reads taught is kept per viewer and per resource (`ride:<id>`, `group:<id>`, `matches:<rideId>`); an event not newer than the known version is `stale`. A rider's tombstones never hide items from another viewer |
+| Audience | A user event for another user, any private event for an anonymous viewer, and a group event after `access.revoked` (unless its version is newer, a rejoin) are `not-for-viewer` and touch nothing |
+| `nearby.upserted` | Replaces the item in cached snapshots that hold it, and the item's held ride or group preview read when older. Snapshots without the item, or with match previews (a destination selected), are invalidated: only the source knows ordering, limits and previews |
+| `nearby.removed` | Leaves a tombstone, removes the item (and its preview) from snapshots and invalidates its ride or group preview read |
+| `ride.changed`, `matches.changed`, `group.changed` | Invalidate the own request, ride, matches, group detail or preview read unless it already holds that version; `ride.changed` also rereads the current user's references |
+| `chat.message.created` | Invalidates the group's chat history; merging by message ID and catch-up arrive with CHAT-001-C |
+| `access.revoked` | Cancels and removes every private read of the group (`queryKeys.group`) and rereads the current user, unless a newer group version is held |
+| Snapshot race | Each successful read is reconciled: a snapshot item older than a known upsert is replaced by it, one not newer than a tombstone is dropped, a newer item teaches its version; a single-resource read older than a known version, or a snapshot item older than a version known only from a private event, is reread once per known version. An upsert that arrives while a snapshot's first read is in flight (Query joins the invalidation to that read) rereads it once it lands, unless it holds the item |
+| Invalid event | Reported by type only (`onInvalidEvent`, a warning by default), and every read of the viewer is invalidated, as after a missed event |
 
 ## Implemented contracts (CONTRACT-004-A)
 
