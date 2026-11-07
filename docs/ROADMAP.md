@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is paused with A's mock operations, C's sign-in screens and pending-intent gate, and D's settings and sign-out completed, and B's session controller implemented with its native check pending; SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; MAP-001 is paused with A implemented and its native checks pending; all other implementation tasks are planned.**
+Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; MAP-001 is paused with A implemented, its iOS checks passed and Android map rendering pending the user's Google Maps key; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,12 @@ Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**VERIFY-003 — Completed (2026-11-07): native pass for AUTH-001-B, AUTH-001-C, AUTH-001-D, MAP-001-A and LOCATION-001-B. AUTH-001-B and AUTH-001 are `Completed`; MAP-001-A stays `Paused`.**
+
+- **Done:** both development clients rebuilt from clean native folders (iOS 26.5 simulator, Android 16 emulator) and checked: session (no SecureStore error, no Face ID text, Android backup rules), sign-in (keyboards, footer above the keyboard, iOS paste, swipe/back/Close, sign-in back to the map), settings and sign-out (sheet, Keep me signed in, back or busy dismissal refused, confirmed and unconfirmed outcomes, back to the map), the iOS map (render, Bishkek, recenter, a pan stops following, approximate area only, denial without a dot, pickup pin), Android's no-key notice, and the location introduction, cards and settings path.
+- **Not covered:** Android map rendering (no key yet), a stale (grey) dot, Android paste (adb cannot set the emulator's clipboard without touching the Mac's), screen readers (waived).
+- **Next available:** MAP-001-B and MAP-002-A still follow MAP-001-A, which needs the Android key check; the user decides whether to provide the key or to proceed with iOS evidence.
 
 **AUTH-001-D — Completed (2026-11-07); AUTH-001 stays `Paused` (only B's native check is pending).**
 
@@ -330,9 +336,9 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | DATA-001 | Data-source and Query foundation | Completed |
 | MOCK-001 | Simulator foundation | Completed |
 | SYNC-001 | Event synchronization and recovery | Completed (A and B) |
-| AUTH-001 | Simulated authentication | Paused (A, C and D completed; B implemented, native check pending) |
+| AUTH-001 | Simulated authentication | Completed (A–D; B's native check in VERIFY-003) |
 | LOCATION-001 | Foreground location | Completed |
-| MAP-001 | Native map shell | Paused (A implemented, native checks pending; B planned) |
+| MAP-001 | Native map shell | Paused (A implemented; iOS checks passed in VERIFY-003, Android rendering needs the user's key; B planned) |
 | ANALYTICS-001 | Typed analytics foundation | Completed |
 | MAP-002 | Live nearby activity | Planned |
 | DESTINATION-001 | Destination selection and compatibility | Planned |

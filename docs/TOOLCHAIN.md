@@ -44,7 +44,7 @@ These are read-only probes from Claude Code's non-interactive shell. The user's 
 | AVD | `Pixel_9_Pro_XL`: android-36, google_apis_playstore, arm64-v8a |
 | adb | `PATH` resolves to Homebrew's `/opt/homebrew/bin/adb` (1.0.41, version 37.0.1) ahead of the SDK's platform-tools adb (1.0.41, version 36.0.2); the two versions differ |
 | Xcode | 26.6 (17F113); iOS 26.5 simulator runtime; 5 available iPhone simulators |
-| CocoaPods | 1.17.0 (Homebrew; Ruby 4.0.6). Warns without UTF-8; `LANG`/`LC_ALL` are unset |
+| CocoaPods | 1.17.0 (Homebrew; Ruby 4.0.6, 4.0.9 by 2026-11-07). Without UTF-8 it warned on Ruby 4.0.6; on Ruby 4.0.9 `pod install` stops with `Encoding::CompatibilityError` (VERIFY-003). `LANG`/`LC_ALL` are unset, so always run iOS builds with them set |
 | MEGAsync | App 6.4.0 installed, not running during the probe. The sync-root `.megaignore` excludes `node_modules`, every dot-entry (`.*`), symlinks, `**/ios/Pods`, `**/ios/build`, `**/android/app/build`, and `**/android/releases` |
 | Ancestor home folder | `package.json` (`packageManager: yarn@4.18.0`; 11 dependencies, 1 dev dependency), `yarn.lock`, `package-lock.json`, `.yarnrc.yml`, `app.json` (`{"expo": {}}`). `node_modules` has 205 entries, including `react` 18.2.0, `metro` 0.87.0, `@babel/core` 7.29.7, and `@types/{jest,mocha,node,react,react-native,…}` |
 | Other ancestor configs | None found for ESLint, Babel, tsconfig, Jest, Watchman, Metro, Turbo, pnpm workspace, or Node version files |
@@ -625,6 +625,7 @@ Run:
 LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pnpm mobile:ios
 ```
 
+- **VERIFY-003 (2026-11-07):** a run without the locale failed in `pod install` (`Encoding::CompatibilityError`, then Xcode's "sandbox is not in sync with the Podfile.lock"); `pod install` in `apps/mobile/ios` with the locale set, then the command above, built with 0 errors and the same two warnings.
 - **Result (MOBILE-001-H, final on 2026-10-30):** the command above worked as written with the iPhone 17 Pro simulator (iOS 26.5, Xcode 26.6) already booted.
   - **Build:** Expo generated `apps/mobile/ios/`, and CocoaPods installed 105 pods. Xcode reported "Build Succeeded" with 0 errors and two warnings: duplicate `-lc++` libraries, and the dev launcher's "Strip Local Network Keys for Release" script phase having ambiguous dependencies.
   - **Install and launch:** the app installed and opened through the development client.

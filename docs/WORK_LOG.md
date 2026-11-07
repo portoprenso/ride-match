@@ -2302,3 +2302,32 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** the settings screen and its variants, the location summary, the sign-out sheet's cleanup and no-group-leave behavior, the outcome codes and their copy rules, the route's stack reset, `MapHomeScreen`'s new prop.
 - **Remaining/next:** the native pass (MAP-001-A, LOCATION-001-B, AUTH-001-B, AUTH-001-C, AUTH-001-D) completes AUTH-001 and unblocks MAP-001-B and MAP-002-A.
 - **Ownership:** Released; no active task.
+
+## 2026-11-07 — VERIFY-003: Native pass for AUTH-001-B/C/D, MAP-001-A and LOCATION-001-B
+
+- **Actor/session:** Claude Code / verify-003.
+- **Status:** `Completed`; ownership released. AUTH-001-B is `Completed`, so AUTH-001 is `Completed`. MAP-001-A stays `Paused` (Android map rendering needs the user's key; the stale dot was not checked).
+- **Working copy:** `main` at `9679ba7` (AUTH-001-D); docs only, committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Run native pass": rebuild both development clients and run DEVELOPMENT's session, sign-in screens, settings and map shell checks, plus the location introduction and cards. Screen readers stay waived.
+- **Environment:** Node 24.17.0, pnpm 11.28.2; iPhone 17 Pro simulator (iOS 26.5, Xcode 26.6); Android 16 (API 36) `Pixel_9_Pro_XL` emulator; no `GOOGLE_MAPS_ANDROID_API_KEY`.
+- **Native builds:**
+  - `apps/mobile/ios/` and `apps/mobile/android/` were removed and regenerated.
+  - **iOS:** the first run without `LANG` failed in `pod install` (Ruby 4.0.9 `Encoding::CompatibilityError`); `pod install` with the locale, then `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pnpm mobile:ios`, built with 0 errors and the two known warnings. The Info.plist has no `NSFaceIDUsageDescription`.
+  - **Android:** the old app was uninstalled (about 460 MB free); BUILD SUCCESSFUL in 53 s, installed, Metro reused. The merged manifest sets `android:fullBackupContent="@xml/secure_store_backup_rules"` and `android:dataExtractionRules="@xml/secure_store_data_extraction_rules"`.
+- **Checks passed:**
+  - **Session (AUTH-001-B):** both apps reach the app with the mock source and no SecureStore error in the Metro log or logcat; demo sign-in from home returns to the map with Sign in gone.
+  - **Sign-in screens (AUTH-001-C):** iOS sheet and Android full screen; the phone field opens the phone keypad and the code field a number keypad (iOS on screen; Android by input type `0x80003`/`0x2`), the footer stays above the keyboard; iOS paste fills all six boxes; iOS swipe-down, Android back and Close return to the map; sign-in returns to the map.
+  - **Settings (AUTH-001-D):** the Settings button opens settings in both variants (signed in: name, Sign out, location, demo label; anonymous: Sign in, `approximate` shown when precise is off); the sheet shows design 48's copy; Keep me signed in and Android back keep the session; a back press or a background tap while signing out is ignored (Android showed the busy spinner); the confirmed outcome (Android) and, with "Next request gets no answer" queued, the unconfirmed warning (iOS) appear; back returns to the map with Sign in.
+  - **Map (MAP-001-A), iOS:** Apple Maps renders Bishkek at street scale with the logo and Legal above the sheet; the camera moved once to the first fix; Show my location recenters; after a pan a new position moved only the dot; approximate permission tints the area with no dot and shows the approximate card; a denial shows the demo city with no dot or recenter button; a confirmed pickup draws its pin and moves the camera. **Android:** with no key, the notice replaces the map and the app keeps working.
+  - **Location (LOCATION-001-B):** the introduction shows with no prompt until Use my location; the prompts offer no "always"; a denial gives the Location is off card (iOS Open device settings, Android Allow location); a named pickup is chosen and confirmed on both; returning from the iOS settings picks up the new permission.
+- **Not checked:** Android map rendering (no key), a stale (grey) dot on either platform, Android paste, Android approximate fix (the emulator gave no coarse fix within 15 s), screen readers (waived).
+- **Findings:**
+  - The Expo development client's floating Tools button covers home's Settings button at first; it can be dragged or switched off (development builds only).
+  - The Settings location row is a white card on a white screen, so its outline is invisible; a design polish item, not changed here.
+  - `xcrun simctl privacy … reset location` does not end a running app on the simulator, which keeps showing the last fix until relaunch; on a device iOS ends the app when a permission is revoked.
+  - The simulator panel's screenshots stopped updating; `xcrun simctl io booted screenshot` was used instead.
+- **Side effects outside the repository (deliberate):** simulator: Ride Match's location permission reset, then While Using with Precise Location off (left so); simulated position set in Bishkek; pasteboard holds the demo code. Emulator: app reinstalled, location granted then fine and coarse revoked (left revoked), developer-menu introduction dismissed and its Tools button switched off, `adb reverse` added then removed, emulator shut down (it was started for this pass). Gradle daemon and Metro stopped; the simulator stays booted.
+- **JavaScript checks:** none needed (no code changed).
+- **Docs:** ROADMAP (entry, status line, AUTH-001 and MAP-001 rows), MOBILE_IMPLEMENTATION_PLAN (AUTH-001-B and MAP-001-A rows), DEVELOPMENT (check statuses, native pass notes), TOOLCHAIN (CocoaPods locale), AI_CONTEXT.
+- **Remaining/next:** MAP-001-A needs the Android key check (and the stale dot) before MAP-001-B and MAP-002-A, unless the user decides to proceed on iOS evidence.
+- **Ownership:** Released; no active task.
