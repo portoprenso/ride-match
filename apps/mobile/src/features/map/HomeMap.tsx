@@ -18,8 +18,8 @@ type HomeMapProps = {
   onUserGesture: () => void;
   /** The camera started or kept moving, by a gesture or an animation. */
   onRegionChange?: () => void;
-  /** The camera came to rest. */
-  onRegionChangeComplete?: () => void;
+  /** The camera came to rest, showing `region`. */
+  onRegionChangeComplete?: (region: Region) => void;
   /** Google Maps drew the first view's tiles; Apple Maps never calls it (`useMapTileStatus`). */
   onMapLoaded?: () => void;
   /** The space the screen's overlays cover, kept clear of the camera's centre and the provider's notices. */

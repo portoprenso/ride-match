@@ -77,7 +77,8 @@ describe('home map', () => {
     expect(screen.getByTestId('map-circle').props.radius).toBe(5);
     expect(animateToRegion).toHaveBeenCalledTimes(1);
     expect(animateToRegion).toHaveBeenLastCalledWith(streetRegion(DEVICE), expect.any(Number));
-    expect(screen.getByRole('header', { name: 'Going the same way?' })).toBeOnTheScreen();
+    // No location card with a usable position; the sheet starts with nearby activity, still loading.
+    expect(screen.getByRole('header', { name: 'Finding nearby plans…' })).toBeOnTheScreen();
   });
 
   it('leaves the camera alone once the user moves the map, even when the first position arrives later', async () => {

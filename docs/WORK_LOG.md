@@ -2393,3 +2393,28 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** the picker hook, pin, panel and pin point; the nearest-place helpers and their privacy rule; the tile status and its limits; the pickup kinds and helpers; `MapHomeScreen`'s picker mode; the new props.
 - **Remaining/next:** the native check of the picker; MAP-002-A (discovery) is the next card.
 - **Ownership:** Released; no active task.
+
+## 2026-11-07 — MAP-002-A: Discovery read and honest states
+
+- **Actor/session:** Claude Code / map-002-a.
+- **Status:** implemented; `Paused` for its native check (next native pass). Parent MAP-002 `Paused`. Ownership released.
+- **Working copy:** `main` at `23328ac` (MAP-001-B); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start MAP-002-A": the discovery Query hook and the loading, empty, error and stale views (designs 02, 23–25, 54). Acceptance: obsolete viewport reads cannot win; no camera jumps; honest states and exposure semantics. Its prerequisite MAP-001 is still `Paused` (MAP-001-B's native check); the user asked to start anyway.
+- **Changes:**
+  - New `src/features/discovery/`: `viewport.ts` (`toViewport`), `useNearbyDiscovery.ts` (`useNearbyDiscovery`, `describeDiscovery`, `DiscoveryState`), `DiscoveryPanel.tsx` (`DiscoveryPanel`, `describeActivity`, `formatUpdatedAt`).
+  - New `src/data/useConnectionState.ts`.
+  - `MapHomeScreen.tsx`: keeps the rested region, renders `DiscoveryPanel` first in the sheet, tracks `map_opened`; `HomeMap.tsx` passes the region on rest; `HomeLocation.tsx`'s `fallback` is optional (the old "Going the same way?" intro moved into discovery).
+  - `composeAppDataSource.ts` creates the analytics client (disposed with the composition); `app/_layout.tsx` starts and provides it.
+  - Tests: new `tests/discovery.test.tsx` (15); `tests/mapHome.test.tsx` expects the loading header; `tests/mapPicker.test.tsx` passes a region with camera events.
+- **Decisions:**
+  - Each coarse viewport is its own read with `keepPreviousData`, so Query aborts and ignores the left view's read; the previous snapshot is labelled "Updating for this area…" rather than presented as the new view.
+  - A failed read while the previous view's snapshot stands in is reported as this view's failure (24), never as the other view's activity; "Showing the last view." (25) is only for this view's snapshot when offline or when its refresh failed. Moving while offline keeps the last view, since the read waits for the connection.
+  - The offline state before any snapshot has no retry button: reads resume by themselves on reconnect, and the app has no way to force a connection.
+  - The empty state omits "Create a ride request" until RIDE-001 and says "Move the map to explore another area." instead of "Explore another area".
+  - Exposure counts completed connected reads only, not realtime patches, so updates do not inflate exposures.
+  - The demo's ride plans are not on the map yet; the sheet says so instead of implying markers.
+- **Checks:** `pnpm typecheck`, `pnpm lint`, `pnpm test` (24 suites, 401 tests) passed; `git diff --check` clean. **Not run:** native builds or device checks (JS only; DEVELOPMENT's discovery check is for the next native pass). Screen readers waived.
+- **Docs:** PRODUCT (nearby activity), ARCHITECTURE, DEVELOPMENT (tests, 401; analytics now created; discovery check), MOBILE_IMPLEMENTATION_PLAN (MAP-002-A and ANALYTICS-001-A rows), ROADMAP (entry, status line, MAP-002 row), AI_CONTEXT.
+- **JSDoc:** the discovery states and their honesty rules, the viewport rounding, the read/subscription/exposure lifecycle, the panel, the connection hook, and the composition's analytics field.
+- **Remaining/next:** the native check; MAP-002-B (markers, clusters, nearby list, tile fallback).
+- **Ownership:** Released; no active task.

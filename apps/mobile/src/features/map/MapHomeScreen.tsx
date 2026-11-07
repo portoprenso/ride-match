@@ -1,8 +1,10 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { BackHandler, Platform, Pressable, StyleSheet, View } from 'react-native';
+import type { Region } from 'react-native-maps';
 
 import { isMapProviderConfigured } from '../../config/isMapProviderConfigured';
+import { useAnalytics } from '../../analytics/AnalyticsProvider';
 import { useLocationController } from '../../platform/location/LocationProvider';
 import { useMapTileStatus } from '../../platform/map/useMapTileStatus';
 import { AppText } from '../../ui/AppText';
@@ -13,6 +15,8 @@ import { IconButton } from '../../ui/IconButton';
 import { MapLayout, type MapCoverage } from '../../ui/MapLayout';
 import { colors, radii, spacing } from '../../ui/tokens';
 import { HomeLocationPanel, useLocationStatus } from '../location/HomeLocation';
+import { DiscoveryPanel } from '../discovery/DiscoveryPanel';
+import { useNearbyDiscovery } from '../discovery/useNearbyDiscovery';
 import { useLocationChoices } from '../location/LocationChoicesProvider';
 import { PickupPlaceSheet } from '../location/PickupPlaceSheet';
 import { HomeMap } from './HomeMap';
@@ -21,7 +25,9 @@ import { useHomeCamera } from './mapCamera';
 
 /**
  * The map-first home (screens 02 and 21): anyone can pan and zoom it, with or without location
- * permission, and choose a pickup point by name from its sheet.
+ * permission, and choose a pickup point by name from its sheet. The sheet starts with nearby
+ * activity for the region the map last rested on (`useNearbyDiscovery`, MAP-002-A), which never
+ * moves the camera. The first time the map shows in a session, `map_opened` is tracked.
  *
  * While home is the focused screen it keeps the controller's foreground observation running, so
  * the position on the map follows the device; another screen on top stops it. "Show my location"
@@ -60,8 +66,13 @@ export function MapHomeScreen({
   const [namedOpen, setNamedOpen] = useState(false);
   const [coverage, setCoverage] = useState<MapCoverage>(NO_COVERAGE);
   const picker = useMapPointPicker(mapRef, coverage, picking);
+  // The region the map last came to rest on; discovery reads it, and never moves the camera.
+  const [region, setRegion] = useState<Region>(initialRegion);
+  const discovery = useNearbyDiscovery(region);
+  const analytics = useAnalytics();
 
   useFocusEffect(useCallback(() => controller.observe(), [controller]));
+  useFocusEffect(useCallback(() => analytics.trackOncePerSession('map_opened'), [analytics]));
   // Android back leaves the picker before it leaves the screen.
   useFocusEffect(
     useCallback(() => {
@@ -86,7 +97,10 @@ export function MapHomeScreen({
               onMapReady={onMapReady}
               onUserGesture={onUserGesture}
               onRegionChange={picker.onRegionChange}
-              onRegionChangeComplete={picker.onRegionChangeComplete}
+              onRegionChangeComplete={(next) => {
+                setRegion(next);
+                picker.onRegionChangeComplete();
+              }}
               onMapLoaded={tiles.onMapLoaded}
               coverage={mapCoverage}
               location={status}
@@ -165,18 +179,8 @@ export function MapHomeScreen({
             />
           ) : (
             <>
-              <HomeLocationPanel
-                status={status}
-                onChooseOnMap={configured ? () => setPicking(true) : undefined}
-                fallback={
-                  <View style={styles.intro}>
-                    <AppText variant="section" accessibilityRole="header">
-                      Going the same way?
-                    </AppText>
-                    <AppText color="muted">Explore the map. Nearby ride plans aren&apos;t shown on it yet.</AppText>
-                  </View>
-                }
-              />
+              <DiscoveryPanel state={discovery} onRetry={discovery.retry} />
+              <HomeLocationPanel status={status} onChooseOnMap={configured ? () => setPicking(true) : undefined} />
               {onSignIn && <Button label="Sign in" variant="ghost" onPress={onSignIn} />}
             </>
           )
@@ -218,9 +222,6 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-  },
-  intro: {
     gap: spacing.sm,
   },
   pressed: {

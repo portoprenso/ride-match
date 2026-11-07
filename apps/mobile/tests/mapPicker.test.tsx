@@ -10,6 +10,7 @@ import {
   NEAREST_PLACE_MAX_METERS,
   toCoarse,
 } from '../src/features/location/nearestPlace';
+import { DEMO_CITY_REGION } from '../src/features/map/mapCamera';
 import { pinPoint } from '../src/features/map/MapPointPicker';
 import { TILE_CONFIRM_TIMEOUT_MS, useMapTileStatus } from '../src/platform/map/useMapTileStatus';
 import { BLOCKED, device, openHome, press, pressLast, wait } from './helpers/locationDevice';
@@ -45,7 +46,7 @@ async function openPicker(point = NEAR_SQUARE) {
 async function mapEvent(name: 'regionChange' | 'regionChangeComplete') {
   const map = screen.getByTestId('home-map');
   await act(async () => {
-    fireEvent(map, name);
+    fireEvent(map, name, DEMO_CITY_REGION);
   });
 }
 

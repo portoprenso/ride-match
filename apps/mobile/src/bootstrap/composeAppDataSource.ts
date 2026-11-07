@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import type { QueryClient } from '@tanstack/react-query';
 import { AppState } from 'react-native';
 
@@ -17,6 +18,8 @@ import { MOCK_DEMO_SIGN_IN } from '../data/mock/auth';
 import { createMockDevControls } from '../data/mock/createMockDevControls';
 import { isMockScenarioKey, MOCK_SCENARIO_KEYS } from '../data/mock/scenarios';
 import { createSecureCredentialStore, type CredentialStore } from '../platform/secureStorage/credentialStore';
+import { createAnalytics, type Analytics } from '../analytics/createAnalytics';
+import { selectAnalyticsSink } from '../analytics/sinks';
 import { createQueryClient } from './createQueryClient';
 
 /**
@@ -36,6 +39,11 @@ export type AppComposition =
       dispose: () => void;
       devControls: DevControls | null;
       demoSignIn: DemoSignIn | null;
+      /**
+       * The analytics client (MAP-002-A, the first instrumented card): memory in development and
+       * preview, nothing in production; never sent anywhere. The root layout starts it.
+       */
+      analytics: Analytics;
     }
   | { status: 'failed'; error: AppConfigError | DataSourceUnavailableError };
 
@@ -131,6 +139,13 @@ export function composeAppDataSource({
       viewer: sessionViewerSource(built),
       appState,
     });
+    const analytics = createAnalytics({
+      sink: selectAnalyticsSink(config.appEnv),
+      environment: config.appEnv,
+      appVersion: Constants.expoConfig?.version ?? 'unknown',
+      dataSource: config.dataSource,
+      appState,
+    });
     return {
       status: 'ready',
       dataSource: composed.dataSource,
@@ -140,7 +155,9 @@ export function composeAppDataSource({
       sync,
       devControls: composed.devControls && resetOnScenarioStart(composed.devControls, built, sync),
       demoSignIn: composed.demoSignIn,
+      analytics,
       dispose: () => {
+        analytics.dispose();
         sync.dispose();
         queryClient.clear();
         pendingIntents.dispose();

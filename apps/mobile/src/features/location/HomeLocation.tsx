@@ -72,8 +72,8 @@ function useNow(intervalMs: number | null): number {
 type HomeLocationPanelProps = {
   /** From {@link useLocationStatus}, which the map reads too. */
   status: LocationStatus;
-  /** Shown instead of the location card while location needs no explanation. */
-  fallback: ReactNode;
+  /** Shown instead of the location card while location needs no explanation; nothing by default. */
+  fallback?: ReactNode;
   /**
    * Chooses the pickup point on the map (MAP-001-B). Without it, "Choose pickup area" and "Change
    * pickup point" open the named list, as in a build that cannot draw a map.
@@ -90,7 +90,7 @@ type HomeLocationPanelProps = {
  * cause: ask again, open the settings, or retry a fix. A failed action is explained in the card
  * it came from.
  */
-export function HomeLocationPanel({ status, fallback, onChooseOnMap }: HomeLocationPanelProps) {
+export function HomeLocationPanel({ status, fallback = null, onChooseOnMap }: HomeLocationPanelProps) {
   const controller = useLocationController();
   const state = useLocationState();
   const { pickup } = useLocationChoices();

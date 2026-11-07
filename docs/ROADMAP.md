@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; all other implementation tasks are planned.**
+Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; MAP-002 is paused with A's discovery read and states implemented, its native check pending; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,17 @@ Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**MAP-002-A — Implemented (2026-11-07), native check pending; MAP-002 `Paused`.**
+
+- **Done:**
+  - Discovery for the region the map last rested on: the region is rounded outward to a 0.01° viewport (views wider than 0.5° ask to zoom in), read through `rides.getNearby` with a nearby subscription for the same viewport. Each viewport is its own read, so a read for a view the user left is aborted and cannot replace the newer one; while a moved view loads, the previous snapshot stays shown as "Updating for this area…". Discovery never moves the camera.
+  - The top of home's sheet says only what is known: loading (54, "not empty"), activity (02, a count of riders and groups that never claims completeness when truncated), empty (23), a failed read with nobody knowing whether anyone is nearby (24, "Retry discovery"; outside the demo area said as such), waiting for a connection, and the last view while offline or after a failed refresh (25, "last updated", nothing queued).
+  - Analytics is created by the app for the first time: `map_opened` once per session; `nearby_activity_exposed` once per completed connected read, with the count bucket and truncation, and never for a placeholder, stale or failed snapshot.
+  - 401 mobile tests (15 new).
+- **Not covered here:** markers, clusters, the nearby list and the tile fallback (MAP-002-B); previews (MAP-002-C); "Create a ride request" on the empty state (RIDE-001); destinations (DESTINATION-001).
+- **Pending:** the native check (DEVELOPMENT, discovery check) in the next native pass, with MAP-001-B's.
+- **Next available:** MAP-002-B (markers, list, tile fallback).
 
 **MAP-001-B — Implemented (2026-11-07), native check pending; MAP-001 stays `Paused`.**
 
@@ -365,7 +376,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | LOCATION-001 | Foreground location | Completed |
 | MAP-001 | Native map shell | Paused (A completed; B implemented, native check pending) |
 | ANALYTICS-001 | Typed analytics foundation | Completed |
-| MAP-002 | Live nearby activity | Planned |
+| MAP-002 | Live nearby activity | Paused (A implemented, native check pending; B and C planned) |
 | DESTINATION-001 | Destination selection and compatibility | Planned |
 | RIDE-001 | Creation, matching, expiration | Planned |
 | GROUP-001 | Atomic mock group operations | Planned |

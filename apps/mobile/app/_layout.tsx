@@ -2,6 +2,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 
+import { AnalyticsProvider } from '../src/analytics/AnalyticsProvider';
 import { ConfigurationErrorScreen } from '../src/bootstrap/ConfigurationErrorScreen';
 import { composeAppDataSource } from '../src/bootstrap/composeAppDataSource';
 import { DataSourceProvider } from '../src/data/DataSourceProvider';
@@ -33,6 +34,8 @@ export default function RootLayout() {
     if (composition.status !== 'ready') return;
     void composition.session.restore();
     composition.sync.start();
+    // Sessions and their `app_opened` begin here; nothing is sent off the device.
+    composition.analytics.start();
   }, [composition]);
   // The one location controller. It reads the permission without prompting; only the location
   // introduction or the home card shows the OS prompt.
@@ -46,28 +49,30 @@ export default function RootLayout() {
   if (composition.status === 'failed') return <ConfigurationErrorScreen error={composition.error} />;
 
   return (
-    <DataSourceProvider dataSource={composition.dataSource}>
-      <AuthSessionProvider controller={composition.session}>
-        <PendingIntentProvider gate={composition.pendingIntents}>
-          <DemoSignInProvider value={composition.demoSignIn}>
-            <DevControlsProvider controls={composition.devControls}>
-              <QueryClientProvider client={composition.queryClient}>
-                <SyncProvider coordinator={composition.sync}>
-                  <LocationProvider controller={location}>
-                    <LocationChoicesProvider>
-                      <Stack screenOptions={{ headerShown: false }}>
-                        <Stack.Screen name="index" />
-                        <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
-                      </Stack>
-                      <SessionExpiryRedirect />
-                    </LocationChoicesProvider>
-                  </LocationProvider>
-                </SyncProvider>
-              </QueryClientProvider>
-            </DevControlsProvider>
-          </DemoSignInProvider>
-        </PendingIntentProvider>
-      </AuthSessionProvider>
-    </DataSourceProvider>
+    <AnalyticsProvider analytics={composition.analytics}>
+      <DataSourceProvider dataSource={composition.dataSource}>
+        <AuthSessionProvider controller={composition.session}>
+          <PendingIntentProvider gate={composition.pendingIntents}>
+            <DemoSignInProvider value={composition.demoSignIn}>
+              <DevControlsProvider controls={composition.devControls}>
+                <QueryClientProvider client={composition.queryClient}>
+                  <SyncProvider coordinator={composition.sync}>
+                    <LocationProvider controller={location}>
+                      <LocationChoicesProvider>
+                        <Stack screenOptions={{ headerShown: false }}>
+                          <Stack.Screen name="index" />
+                          <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
+                        </Stack>
+                        <SessionExpiryRedirect />
+                      </LocationChoicesProvider>
+                    </LocationProvider>
+                  </SyncProvider>
+                </QueryClientProvider>
+              </DevControlsProvider>
+            </DemoSignInProvider>
+          </PendingIntentProvider>
+        </AuthSessionProvider>
+      </DataSourceProvider>
+    </AnalyticsProvider>
   );
 }
