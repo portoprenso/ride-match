@@ -1,6 +1,6 @@
-import type { RefObject } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import { StyleSheet, View } from 'react-native';
-import MapView, { Circle, Marker, type Region } from 'react-native-maps';
+import MapView, { Circle, Marker, type MapMarker, type Region } from 'react-native-maps';
 
 import { isMapProviderConfigured } from '../../config/isMapProviderConfigured';
 import type { LocationStatus } from '../../platform/location/createLocationController';
@@ -79,6 +79,14 @@ function DevicePosition({ status }: { status: Extract<LocationStatus, { kind: 'l
   const { fix } = status;
   const stale = status.assessment.age === 'stale';
   const tint = stale ? colors.muted : colors.teal;
+  const markerRef = useRef<MapMarker>(null);
+  // Android draws a custom marker's view once as an image and does not redraw it when only the
+  // view's colour changes, so the dot would stay teal once out of date. Ask for a redraw after the
+  // new colour is on screen; iOS shows the view itself and redraws anyway.
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => markerRef.current?.redraw());
+    return () => cancelAnimationFrame(frame);
+  }, [stale]);
   return (
     <>
       {fix.accuracyMeters !== null ? (
@@ -93,6 +101,7 @@ function DevicePosition({ status }: { status: Extract<LocationStatus, { kind: 'l
       ) : null}
       {fix.approximate ? null : (
         <Marker
+          ref={markerRef}
           coordinate={fix.coordinates}
           anchor={{ x: 0.5, y: 0.5 }}
           accessibilityLabel={stale ? 'Your location, out of date' : 'Your location'}

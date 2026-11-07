@@ -2350,3 +2350,21 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **Docs:** ROADMAP (entry, status line, MAP-001 row), MOBILE_IMPLEMENTATION_PLAN (MAP-001-A row), DEVELOPMENT (map check status, key notes), AI_CONTEXT.
 - **Remaining/next:** fix the Android stale dot within MAP-001-A (for example a marker image per state, or temporary `tracksViewChanges`), then check it on both platforms; MAP-001-B and MAP-002-A follow.
 - **Ownership:** Released; no active task.
+
+## 2026-11-07 — MAP-001-A: Android stale-dot fix
+
+- **Actor/session:** Claude Code / map-001-a-fix.
+- **Status:** `Completed`; MAP-001-A is `Completed` (its acceptance criteria passed on both platforms in VERIFY-003/004). Parent MAP-001 stays `Paused` (B planned). Ownership released.
+- **Working copy:** `main` at `d393f73`; committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "fix this dot and start MAP-001-B": the defect VERIFY-004 found, where an out-of-date position kept its teal dot on Android.
+- **Cause:** react-native-maps 1.27.2's Android `MapMarker` turns a custom view into an image and redraws it through its own `updated` counter; a child's colour change does not raise it. A `key` per state did not help (VERIFY-004).
+- **Change:** `src/features/map/HomeMap.tsx` — `DevicePosition` keeps a `MapMarker` ref and, a frame after `stale` changes, calls `redraw()` (supported on Android and iOS). `tests/setup/reactNativeMaps.ts` — the stand-in `Marker` exposes `redraw` through the shared `redrawMarker` mock. `tests/mapHome.test.tsx` — the stale test expects one redraw.
+- **Checks:**
+  - `pnpm typecheck`, `pnpm lint`, `pnpm test` (22 suites, 370 tests) passed.
+  - Android 16 emulator, with Metro restarted and the VERIFY-004 APK reinstalled (the emulator had booted from an older snapshot with a build that predates SecureStore): after 150 s without a fix the dot measured `#586D68` (muted) and the card said it is out of date; after Refresh location with a new fix it was teal again.
+  - **Not run:** the iOS stale dot; the simulator's Precise Location switch could not be turned back on (taps did not register, and `simctl privacy reset` kept the setting). iOS shows the marker view live; `RNMapsMarkerView` implements `redraw`.
+- **Side effects:** emulator location granted, app reinstalled, emulator shut down; simulator location permission reset and granted (Precise still off), Settings left open on Apple Intelligence & Siri's page, then backed out, nothing changed there; Metro stopped.
+- **Docs:** ROADMAP (entry, status line, MAP-001 row), MOBILE_IMPLEMENTATION_PLAN (MAP-001-A row), DEVELOPMENT (map check status), AI_CONTEXT.
+- **JSDoc:** the redraw's reason is commented at the effect.
+- **Remaining/next:** MAP-001-B, as the user asked.
+- **Ownership:** Released.

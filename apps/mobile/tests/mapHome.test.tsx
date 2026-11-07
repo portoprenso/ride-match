@@ -123,11 +123,16 @@ describe('home map', () => {
   it('greys the position once it is out of date', async () => {
     await openHome();
     expect(screen.getByLabelText('Your location')).toBeOnTheScreen();
+    const { redrawMarker } = jest.requireMock<{ redrawMarker: jest.Mock }>('react-native-maps');
+    redrawMarker.mockClear();
 
     await wait(2 * 60 * 1000 + 15_000);
 
     expect(screen.getByLabelText('Your location, out of date')).toBeOnTheScreen();
     expect(screen.getByText('Location out of date')).toBeOnTheScreen();
+    // Android keeps the old image of a custom marker unless it is asked to redraw, a frame later.
+    await wait(50);
+    expect(redrawMarker).toHaveBeenCalledTimes(1);
   });
 
   it('draws only the accuracy area for an approximate position', async () => {
