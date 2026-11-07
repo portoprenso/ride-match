@@ -2443,3 +2443,25 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** item wording and its public-only rule, distance rounding, the clustering grid and zoom rule, marker analytics, the list's notices, the clock hook, the density seed.
 - **Remaining/next:** the native check; MAP-002-C (previews and disappeared selection).
 - **Ownership:** Released; no active task.
+
+## 2026-11-07 — MAP-002-C: Ride and group previews, disappeared target
+
+- **Actor/session:** Claude Code / map-002-c.
+- **Status:** implemented; `Paused` for its native check (next native pass). Parent MAP-002 `Paused` (A, B and C implemented, native checks pending). Ownership released.
+- **Working copy:** `main` at `d98add7` (MAP-002-B); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start MAP-002-C": public ride and group sheets and the disappeared selection (designs 05, 19, 55). Acceptance: refresh/removal reconciles selection; no private fields; join intent reserves no seat; the rider's own request is preserved.
+- **Changes:**
+  - New in `src/features/discovery/`: `useTargetPreview.ts` (`PreviewTarget`, `describePreview`, `useTargetPreview`) and `PreviewPanel.tsx` (`PreviewPanel`, `describeGroupAvailability`, `previewTitle`).
+  - `MapHomeScreen.tsx`: the open preview replaces the MAP-002-B selection card; a marker or row opens it, the header shows its kind and marker label with a back button, Android back closes it; the join action goes through `useRequireSignIn`, and `useResumeIntent('join-ride' | 'join-group')` reopens the preview after sign-in.
+  - `NearbyListSheet.tsx`: comment and row hint now say a row opens the preview.
+  - Tests: new `tests/previews.test.tsx` (7); `tests/nearbyMap.test.tsx` checks the preview instead of the selection card.
+- **Decisions:**
+  - The preview is the home sheet's content, not a modal `SheetHost`: the highlighted marker stays visible, the list's modal never has to hand over to another modal on iOS, and sign-in can open over home.
+  - Each open rereads the target, and only a fresh confirmation offers the join. `TARGET_UNAVAILABLE` wins over older data. Removal and expiry reach an open preview through the synchronizer's invalidation of the same query, not through the snapshot (panning away must not make a target "gone").
+  - Joinable groups: `forming` with a free seat (`docs/api/groups.md`); a ready group says it is not taking riders.
+  - The join action only records the intent. `group_join_clicked` ("join intent confirmed") is left to the join confirmation (GROUP-002-A). The "Excellent match" badge is DESTINATION-001-B.
+- **Checks:** `pnpm typecheck`, `pnpm lint`, `npx jest` in `apps/mobile` (26 suites, 420 tests) passed; Prettier check on the changed files clean. **Not run:** native builds or device checks (DEVELOPMENT's previews check). Screen readers waived.
+- **Docs:** PRODUCT (previews), ARCHITECTURE, DEVELOPMENT (tests, 420; previews check), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line, MAP-002 row), AI_CONTEXT.
+- **JSDoc:** the preview states and why the source decides `gone`, the reread on every open, the group join rule, the panel's public-only rule and what the join action does not do, the home screen's preview flow.
+- **Remaining/next:** the native pass for MAP-001-B and MAP-002-A/B/C. DESTINATION-001-A depends on MAP-002.
+- **Ownership:** Released; no active task.

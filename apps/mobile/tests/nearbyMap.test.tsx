@@ -14,7 +14,7 @@ import {
 } from '../src/features/discovery/nearbyItems';
 import { NearbyListSheet } from '../src/features/discovery/NearbyListSheet';
 import { DEMO_CITY_REGION, streetRegion } from '../src/features/map/mapCamera';
-import { BLOCKED, device, openHome, press, wait } from './helpers/locationDevice';
+import { BLOCKED, device, openHome, press, pressLast, wait } from './helpers/locationDevice';
 import { flushTimersAndRestore } from './helpers/renderApp';
 
 /** The stand-in map's camera commands (`tests/setup/reactNativeMaps.ts`). */
@@ -106,22 +106,23 @@ describe('nearby markers and list', () => {
     expect(listRows()).toHaveLength(4);
   });
 
-  it('selects an item from the list, shows it on the map, and clears it', async () => {
+  it('opens an item from the list as a preview, shows it on the map, and goes back', async () => {
     await openScenario('active-neighborhood');
 
     await press('View nearby items');
     await press(/^Aida → Asia Mall, /);
 
     expect(screen.queryByRole('header', { name: 'Nearby, at a glance.' })).not.toBeOnTheScreen();
-    expect(screen.getByText('Selected on the map')).toBeOnTheScreen();
+    expect(screen.getByRole('header', { name: 'Heading to Asia Mall' })).toBeOnTheScreen();
     expect(screen.getByLabelText(/^Aida → Asia Mall, .*, selected$/)).toBeOnTheScreen();
     expect(animateToRegion).toHaveBeenLastCalledWith(
       streetRegion({ latitude: 42.815, longitude: 74.626 }),
       expect.any(Number),
     );
 
-    await press('Clear selection');
-    expect(screen.queryByText('Selected on the map')).not.toBeOnTheScreen();
+    await pressLast('Back to map');
+    expect(screen.queryByRole('header', { name: 'Heading to Asia Mall' })).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText(/, selected$/)).not.toBeOnTheScreen();
   });
 
   it('records a marker tap and a marker seen for a second, never a cluster', async () => {
@@ -137,7 +138,7 @@ describe('nearby markers and list', () => {
     expect(names).toContainEqual(['nearby_marker_tapped', { kind: 'ride' }]);
     const seen = events().filter((event) => event.name === 'nearby_marker_seen');
     expect(seen.length).toBe(itemMarkers().length);
-    expect(screen.getByText('Selected on the map')).toBeOnTheScreen();
+    expect(screen.getByRole('header', { name: 'Heading to Asia Mall' })).toBeOnTheScreen();
   });
 });
 

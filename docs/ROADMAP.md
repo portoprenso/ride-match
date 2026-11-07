@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; MAP-002 is paused with A's discovery read and states and B's markers, clusters, list and tile notice implemented, their native checks pending; all other implementation tasks are planned.**
+Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; MAP-002 is paused with A's discovery read and states, B's markers, clusters, list and tile notice, and C's ride and group previews and disappeared target implemented, their native checks pending; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,20 @@ Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**MAP-002-C — Implemented (2026-11-07), native check pending; MAP-002 `Paused`.**
+
+- **Done:**
+  - A marker or a list row opens that ride's or group's public preview in home's sheet, with the marker highlighted and a header naming it ("Ride preview · Asia Mall · ~350 m"). The back button, "Back to map" and Android back close it.
+  - Every open reads the target again (`GET /rides/{rideId}` or the group preview); until the source confirms it, the sheet shows the map's copy with "Checking it’s still available…" and no join action. A failed check shows "Try again" and no join.
+  - Ride preview (05): destination, approximate distance, departure, the rider's display name and "One seat · Public demo profile", and the approximate-pin note. Group preview (19): status and free seats ("Forming · one seat open", "Room for one more."), occupancy, departure, and that members, chat and the meeting point stay private; only a forming group with a free seat offers "Create a request to join".
+  - Disappeared target (55): when the source answers `TARGET_UNAVAILABLE` (expired, cancelled, grouped, closed), including while the preview is open, the sheet says "That plan has changed.", that nothing was reserved and the rider's own request stays active, and offers "Refresh nearby plans".
+  - The join action reserves nothing and sends nothing: it records the intent (through sign-in for an anonymous rider). After sign-in the preview reopens, reads the target again for the signed-in rider, and says joining starts from the rider's own request, which this build cannot create yet.
+  - 420 mobile tests (7 new).
+- **Decisions:** the preview replaces the sheet's content rather than opening a modal sheet, so the map and highlighted marker stay visible and sign-in can open over it; the source's answer, not the snapshot, decides `gone`; `group_join_clicked` belongs to the join confirmation (GROUP-002-A).
+- **Not covered here:** match emphasis ("Excellent match", DESTINATION-001-B); creating a request (RIDE-001) and the join confirmation (GROUP-002-A).
+- **Pending:** the native check (DEVELOPMENT, previews check).
+- **Next available:** the native pass for MAP-001-B and MAP-002 (A, B, C), which would complete MAP-001 and MAP-002; DESTINATION-001-A depends on MAP-002.
 
 **MAP-002-B — Implemented (2026-11-07), native check pending; MAP-002 `Paused`.**
 
@@ -390,7 +404,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | LOCATION-001 | Foreground location | Completed |
 | MAP-001 | Native map shell | Paused (A completed; B implemented, native check pending) |
 | ANALYTICS-001 | Typed analytics foundation | Completed |
-| MAP-002 | Live nearby activity | Paused (A and B implemented, native checks pending; C planned) |
+| MAP-002 | Live nearby activity | Paused (A, B and C implemented, native checks pending) |
 | DESTINATION-001 | Destination selection and compatibility | Planned |
 | RIDE-001 | Creation, matching, expiration | Planned |
 | GROUP-001 | Atomic mock group operations | Planned |

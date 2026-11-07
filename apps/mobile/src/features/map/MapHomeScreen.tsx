@@ -15,12 +15,15 @@ import { IconButton } from '../../ui/IconButton';
 import { MapLayout, type MapCoverage } from '../../ui/MapLayout';
 import { colors, radii, spacing } from '../../ui/tokens';
 import { HomeLocationPanel, useLocationStatus } from '../location/HomeLocation';
-import type { CoordinatesDto, NearbyItemDto } from '@ride-match/contracts';
+import type { NearbyItemDto } from '@ride-match/contracts';
 import { useDemoSignIn } from '../../data/DemoSignInProvider';
+import { useRequireSignIn, useResumeIntent } from '../auth/PendingIntentProvider';
 import { DiscoveryMarkers } from '../discovery/DiscoveryMarkers';
 import { DiscoveryPanel } from '../discovery/DiscoveryPanel';
-import { clusterItems, clusterZoomRegion, describeItem, itemKey } from '../discovery/nearbyItems';
+import { clusterItems, clusterZoomRegion, itemKey } from '../discovery/nearbyItems';
 import { NearbyListSheet, type NearbyListContent } from '../discovery/NearbyListSheet';
+import { PreviewPanel, previewTitle } from '../discovery/PreviewPanel';
+import { useTargetPreview, type PreviewTarget } from '../discovery/useTargetPreview';
 import { useClock } from '../discovery/useClock';
 import { useNearbyDiscovery } from '../discovery/useNearbyDiscovery';
 import { useLocationChoices } from '../location/LocationChoicesProvider';
@@ -34,6 +37,12 @@ import { CAMERA_ANIMATION_MS, streetRegion, useHomeCamera } from './mapCamera';
  * permission, and choose a pickup point by name from its sheet. The sheet starts with nearby
  * activity for the region the map last rested on (`useNearbyDiscovery`, MAP-002-A), which never
  * moves the camera. The first time the map shows in a session, `map_opened` is tracked.
+ *
+ * A marker, or a row of the nearby list, opens that ride or group's public preview in the sheet
+ * (screens 05 and 19, MAP-002-C), with its marker highlighted. The preview reads the target again;
+ * if the source no longer has it, the sheet says the plan changed and offers to refresh nearby
+ * plans (screen 55). Its join action reserves nothing: it records the intent, through sign-in for
+ * an anonymous rider, after which the preview reopens and reads the target again.
  *
  * While home is the focused screen it keeps the controller's foreground observation running, so
  * the position on the map follows the device; another screen on top stops it. "Show my location"
@@ -85,9 +94,14 @@ export function MapHomeScreen({
     () => (snapshot === null || picking ? [] : clusterItems(snapshot.items, region)),
     [snapshot, picking, region],
   );
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  // A selection only lasts while its item is still in what the map shows.
-  const selected = snapshot?.items.find((item) => itemKey(item) === selectedKey) ?? null;
+  // The open preview (screens 05, 19, 55). Its target is read again from the source; the map's
+  // copy only fills the sheet while that read is on its way.
+  const [preview, setPreview] = useState<PreviewTarget | null>(null);
+  const [joinRequested, setJoinRequested] = useState(false);
+  const previewKey = preview === null ? null : itemKey(preview);
+  const seed = snapshot?.items.find((item) => itemKey(item) === previewKey) ?? null;
+  const previewState = useTargetPreview(preview, seed);
+  const requireSignIn = useRequireSignIn();
   const [list, setList] = useState<NearbyListContent | null>(null);
   const now = useClock();
   const fixPoint = fix?.coordinates ?? null;
@@ -105,25 +119,47 @@ export function MapHomeScreen({
     if (zoom !== null) moveTo(zoom);
     else setList({ items, truncated: false, stale: staleSnapshot, fromCluster: true });
   };
+  const openPreview = (target: PreviewTarget, joinAsked = false) => {
+    setPreview({ kind: target.kind, id: target.id });
+    setJoinRequested(joinAsked);
+  };
+  const closePreview = () => setPreview(null);
   const selectFromList = (item: NearbyItemDto) => {
     setList(null);
-    setSelectedKey(itemKey(item));
+    openPreview(item);
     moveTo(streetRegion(item.publicOrigin.center));
   };
+  /**
+   * "Plan to join" / "Create a request to join": records the intent and reserves nothing. An
+   * anonymous rider signs in first; the preview then reopens and reads the target again.
+   */
+  const planToJoin = () => {
+    if (preview === null) return;
+    const intent =
+      preview.kind === 'ride'
+        ? ({ kind: 'join-ride', rideId: preview.id } as const)
+        : ({ kind: 'join-group', groupId: preview.id } as const);
+    if (requireSignIn(intent)) setJoinRequested(true);
+  };
+  useResumeIntent('join-ride', (intent) => openPreview({ kind: 'ride', id: intent.rideId }, true));
+  useResumeIntent('join-group', (intent) => openPreview({ kind: 'group', id: intent.groupId }, true));
 
   useFocusEffect(useCallback(() => controller.observe(), [controller]));
   useFocusEffect(useCallback(() => analytics.trackOncePerSession('map_opened'), [analytics]));
-  // Android back leaves the picker before it leaves the screen.
+  // Android back leaves the picker or the preview before it leaves the screen.
+  const inSubMode = picking || preview !== null;
   useFocusEffect(
     useCallback(() => {
-      if (!picking) return undefined;
+      if (!inSubMode) return undefined;
       const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
         setPicking(false);
+        setPreview(null);
         return true;
       });
       return () => subscription.remove();
-    }, [picking]),
+    }, [inSubMode]),
   );
+  const header = preview !== null && previewState !== null ? previewTitle(preview, previewState, fixPoint, now) : null;
 
   return (
     <>
@@ -148,11 +184,11 @@ export function MapHomeScreen({
             >
               <DiscoveryMarkers
                 entries={entries}
-                selectedKey={selected === null ? null : itemKey(selected)}
+                selectedKey={previewKey}
                 fix={fixPoint}
                 now={now}
                 stale={staleSnapshot}
-                onSelectItem={(item) => setSelectedKey(itemKey(item))}
+                onSelectItem={(item) => openPreview(item)}
                 onPressCluster={pressCluster}
               />
             </HomeMap>
@@ -172,6 +208,25 @@ export function MapHomeScreen({
                 <AppText variant="label" accessibilityRole="header">
                   Confirm pickup
                 </AppText>
+              </View>
+            </View>
+          ) : header !== null ? (
+            <View style={styles.pickerHeader}>
+              <IconButton
+                icon={<Icon name="back" />}
+                accessibilityLabel="Back to map"
+                tone="white"
+                onPress={closePreview}
+              />
+              <View style={styles.title}>
+                <AppText variant="label" accessibilityRole="header">
+                  {header.title}
+                </AppText>
+                {header.subtitle === null ? null : (
+                  <AppText variant="small" color="muted">
+                    {header.subtitle}
+                  </AppText>
+                )}
               </View>
             </View>
           ) : (
@@ -227,11 +282,24 @@ export function MapHomeScreen({
               onConfirmed={() => setPicking(false)}
               onChooseNamed={() => setNamedOpen(true)}
             />
+          ) : preview !== null && previewState !== null ? (
+            <PreviewPanel
+              target={preview}
+              state={previewState}
+              fix={fixPoint}
+              now={now}
+              demo={demo}
+              joinRequested={joinRequested}
+              onJoin={planToJoin}
+              onRetry={previewState.retry}
+              onRefreshNearby={() => {
+                closePreview();
+                discovery.retry();
+              }}
+              onClose={closePreview}
+            />
           ) : (
             <>
-              {selected !== null ? (
-                <SelectedItem item={selected} fix={fixPoint} now={now} onClear={() => setSelectedKey(null)} />
-              ) : null}
               <DiscoveryPanel
                 state={discovery}
                 onRetry={discovery.retry}
@@ -257,38 +325,6 @@ export function MapHomeScreen({
   );
 }
 
-/**
- * The item selected from a marker or the list, until its preview sheet arrives (MAP-002-C). It
- * reserves nothing and joins nothing.
- */
-function SelectedItem({
-  item,
-  fix,
-  now,
-  onClear,
-}: {
-  item: NearbyItemDto;
-  fix: Readonly<CoordinatesDto> | null;
-  now: number;
-  onClear: () => void;
-}) {
-  const words = describeItem(item, fix, now);
-  return (
-    <View style={styles.selected}>
-      <AppText variant="small" color="muted">
-        Selected on the map
-      </AppText>
-      <AppText variant="label" accessibilityLiveRegion="polite">
-        {words.title}
-      </AppText>
-      <AppText variant="small" color="muted">
-        {words.detail}
-      </AppText>
-      <Button label="Clear selection" variant="ghost" onPress={onClear} />
-    </View>
-  );
-}
-
 const NO_COVERAGE: MapCoverage = { top: 0, right: 0, bottom: 0, left: 0 };
 
 /** Copies the layout's coverage into state, where the picker reads it outside the render callback. */
@@ -299,12 +335,6 @@ function CoverageTracker({ coverage, onChange }: { coverage: MapCoverage; onChan
 }
 
 const styles = StyleSheet.create({
-  selected: {
-    gap: spacing.xs,
-    padding: spacing.lg,
-    borderRadius: radii.md,
-    backgroundColor: colors.soft,
-  },
   pickerHeader: {
     flexDirection: 'row',
     alignItems: 'center',

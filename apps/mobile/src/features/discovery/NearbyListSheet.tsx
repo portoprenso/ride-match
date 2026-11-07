@@ -35,8 +35,8 @@ type NearbyListSheetProps = {
 
 /**
  * The nearby list (design 20): the same items the map shows, in the source's order (nearest the
- * view's centre first), as an accessible alternative to inspecting markers. A row selects its
- * item on the map; it reserves nothing and opens nothing yet (previews are MAP-002-C).
+ * view's centre first), as an accessible alternative to inspecting markers. A row opens its
+ * item's preview and shows it on the map; it reserves nothing.
  *
  * It says when the source left items out, when the list is the last view, and that a group's
  * occupancy counts people while map counts count ride plans.
@@ -79,7 +79,7 @@ export function NearbyListSheet({ content, onClose, onSelect, fix, now, demo }: 
                   key={itemKey(item)}
                   accessibilityRole="button"
                   accessibilityLabel={`${words.title}, ${words.detail}`}
-                  accessibilityHint="Shows it on the map."
+                  accessibilityHint="Opens its preview and shows it on the map."
                   onPress={() => onSelect(item)}
                   style={({ pressed }) => [styles.row, pressed && styles.pressed]}
                 >
