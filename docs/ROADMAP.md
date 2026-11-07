@@ -18,7 +18,7 @@ This roadmap covers only items 1–2. No backend implementation or real transpor
 - **Done:** with `GOOGLE_MAPS_ANDROID_API_KEY` in `apps/mobile/.env.local`, `android/` regenerated and rebuilt; Google Maps draws Bishkek with the Google logo above the sheet, the dot and first camera move, a pan stops following, Show my location recenters at street scale (flat, north-up), a confirmed pickup draws its pin, and a denial shows the demo city with no dot or recenter button.
 - **Defect found:** after two minutes without a new fix the card says "Your location is out of date", but the dot stays teal (`#146B59`, measured) instead of muted. react-native-maps' Android marker draws its custom view as an image and redraws it only on its own updates; giving the marker a `key` per state did not change it (reverted). Fixing it needs its own change (for example a separate marker image per state, or `tracksViewChanges` handling) and a device check.
 - **Also seen:** the Android pickup pin is a light teal default pin, because Google Maps turns `pinColor` into a hue (ink is not reproducible); the iOS stale dot is still unchecked.
-- **Next available:** the stale-dot fix (MAP-001-A); then MAP-001-B and MAP-002-A.
+- **Next available:** the user deferred the stale-dot fix to the backlog (2026-11-07); MAP-001-B and MAP-002-A can start with the defect known.
 
 **VERIFY-003 — Completed (2026-11-07): native pass for AUTH-001-B, AUTH-001-C, AUTH-001-D, MAP-001-A and LOCATION-001-B. AUTH-001-B and AUTH-001 are `Completed`; MAP-001-A stays `Paused`.**
 
