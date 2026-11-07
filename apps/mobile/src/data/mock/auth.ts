@@ -18,6 +18,7 @@ import {
   toSessionCredentialsDto,
   type IssuedCredentials,
 } from './serializers';
+import type { DemoSignIn } from '../DemoSignIn';
 import type { WorkContext } from './simulator';
 import type { MockWorld, OtpChallengeRecord, UserRecord } from './world';
 
@@ -41,6 +42,13 @@ const DEMO_PHONE_NUMBER = /^\+447700900\d{3}$/;
 export function isDemoPhoneNumber(phoneNumber: string): boolean {
   return DEMO_PHONE_NUMBER.test(phoneNumber);
 }
+
+/** What the sign-in screens show for the mock source: a demo number to start from and the demo code. */
+export const MOCK_DEMO_SIGN_IN: DemoSignIn = Object.freeze({
+  phoneNumber: '+447700900123',
+  numbersHint: 'Demo numbers only: +44 7700 900000 to +44 7700 900999.',
+  code: DEMO_OTP_CODE,
+});
 
 type Context = WorkContext<MockWorld>;
 

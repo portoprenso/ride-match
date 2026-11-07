@@ -148,7 +148,7 @@ describe('home map', () => {
     await press('Sign in');
     expect(watch.remove).toHaveBeenCalledTimes(1);
 
-    await press('Close sign-in');
+    await press('Close and keep browsing');
     expect(Location.watchPositionAsync).toHaveBeenCalledTimes(2);
   });
 

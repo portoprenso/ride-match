@@ -6,11 +6,14 @@ import type { AppDataSource } from '../data/AppDataSource';
 import { createDataSource, type DataSourceFactories } from '../data/createDataSource';
 import { createSyncCoordinator, type SyncCoordinator } from '../data/createSyncCoordinator';
 import { DataSourceUnavailableError } from '../data/errors';
+import type { DemoSignIn } from '../data/DemoSignIn';
 import type { DevControls } from '../data/DevControls';
 import { createSessionController, type SessionController } from '../features/auth/createSessionController';
+import { createPendingIntentGate, type PendingIntentGate } from '../features/auth/pendingIntent';
 import { sessionViewerSource } from '../features/auth/sessionViewer';
 import type { AppStateSource } from '../platform/appState';
 import { createMockDataSource, createMockSimulator } from '../data/mock/createMockDataSource';
+import { MOCK_DEMO_SIGN_IN } from '../data/mock/auth';
 import { createMockDevControls } from '../data/mock/createMockDevControls';
 import { isMockScenarioKey, MOCK_SCENARIO_KEYS } from '../data/mock/scenarios';
 import { createSecureCredentialStore, type CredentialStore } from '../platform/secureStorage/credentialStore';
@@ -26,10 +29,13 @@ export type AppComposition =
       status: 'ready';
       dataSource: AppDataSource;
       session: SessionController;
+      /** Keeps a protected action across sign-in (AUTH-001-C). */
+      pendingIntents: PendingIntentGate;
       queryClient: QueryClient;
       sync: SyncCoordinator;
       dispose: () => void;
       devControls: DevControls | null;
+      demoSignIn: DemoSignIn | null;
     }
   | { status: 'failed'; error: AppConfigError | DataSourceUnavailableError };
 
@@ -46,6 +52,7 @@ const factories: DataSourceFactories = {
       dataSource: createMockDataSource(simulator, { accessToken }),
       dispose: () => simulator.dispose(),
       devControls: devControls ? createMockDevControls(simulator, scenario) : null,
+      demoSignIn: MOCK_DEMO_SIGN_IN,
     };
   },
 };
@@ -116,6 +123,7 @@ export function composeAppDataSource({
       resumeStoredSession: config.dataSource.kind !== 'mock',
     });
     session = built;
+    const pendingIntents = createPendingIntentGate(built);
     const queryClient = createQueryClient();
     const sync = createSyncCoordinator({
       queryClient,
@@ -127,12 +135,15 @@ export function composeAppDataSource({
       status: 'ready',
       dataSource: composed.dataSource,
       session: built,
+      pendingIntents,
       queryClient,
       sync,
       devControls: composed.devControls && resetOnScenarioStart(composed.devControls, built, sync),
+      demoSignIn: composed.demoSignIn,
       dispose: () => {
         sync.dispose();
         queryClient.clear();
+        pendingIntents.dispose();
         built.dispose();
         composed.dispose();
       },

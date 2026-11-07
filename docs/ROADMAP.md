@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is paused with A's mock operations completed and B's session controller implemented, its native check pending; SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; MAP-001 is paused with A implemented and its native checks pending; all other implementation tasks are planned.**
+Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is paused with A's mock operations and C's sign-in screens and pending-intent gate completed, B's session controller implemented with its native check pending, and D planned; SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; MAP-001 is paused with A implemented and its native checks pending; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,17 @@ Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**AUTH-001-C — Completed (2026-11-07); AUTH-001 stays `Paused` (B's native check pending, D planned).**
+
+- **Done:**
+  - Sign-in screens replace the placeholders: phone (07), code (08), fresh code (47) and session ended (31), in `src/features/auth/`. On the mock source they start from a demo number, show the demo code and say that no SMS is sent; autofill of the device's number is off. Refusals (format, a non-demo number, a resend too soon with its wait, wrong code, expired or used challenge, too many wrong codes, no connection) show the app's own copy and never repeat the number or code.
+  - The flow (`SignInFlow`, the auth layout) keeps the number and challenge in memory only, closes itself once a rider is signed in, and tells the gate when it closes without sign-in. A refused refresh opens the session-ended screen (`SessionExpiryRedirect`).
+  - Typed pending-intent gate (`pendingIntent.ts`, `PendingIntentProvider.tsx`): `useRequireSignIn()` keeps a create/join/send intent (data only) and opens sign-in; `useResumeIntent(kind, onResume)` hands it back to its screen after sign-in, which reads the target again and shows its confirmation. Nothing is created, joined or sent by signing in. Cancelling drops the intent; drafts stay on their screens.
+  - Home shows "Sign in" only while nobody is signed in. `DemoSignIn` (composition, `DemoSignInProvider`) tells the screens how to sign in to the mock.
+  - 351 mobile tests (20 new; the 5 placeholder navigation tests were replaced).
+- **Not covered here:** settings and the sign-out confirmation (AUTH-001-D); real protected actions and their confirmations (RIDE-001, GROUP-001, CHAT-001), which must use the gate.
+- **Next available:** AUTH-001-D (settings and sign-out). MAP-001-B and MAP-002-A follow MAP-001-A's native checks.
 
 **SYNC-001-B — Completed (2026-11-07); SYNC-001 is `Completed`.**
 
@@ -309,7 +320,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | DATA-001 | Data-source and Query foundation | Completed |
 | MOCK-001 | Simulator foundation | Completed |
 | SYNC-001 | Event synchronization and recovery | Completed (A and B) |
-| AUTH-001 | Simulated authentication | Paused (A completed; B implemented, native check pending; C–D planned) |
+| AUTH-001 | Simulated authentication | Paused (A and C completed; B implemented, native check pending; D planned) |
 | LOCATION-001 | Foreground location | Completed |
 | MAP-001 | Native map shell | Paused (A implemented, native checks pending; B planned) |
 | ANALYTICS-001 | Typed analytics foundation | Completed |
@@ -445,10 +456,10 @@ Execution: [MOBILE-001-A through MOBILE-001-H](FIRST_STEPS.md#mobile-001-a--crea
 
 - **Goal:** Protected actions authenticate while preserving context.
 - **Scope:** Mock OTP/session operations, phone/code screens, bootstrap/refresh/logout, credential boundary, pending-action continuation.
-- **Expected files/modules:** `M/src/features/auth/`, storage adapter, mock auth operations. AUTH-001-A added the mock operations (`M/src/data/mock/auth.ts`) and `tests/mockAuth.test.ts`.
+- **Expected files/modules:** `M/src/features/auth/`, storage adapter, mock auth operations. AUTH-001-A added the mock operations (`M/src/data/mock/auth.ts`) and `tests/mockAuth.test.ts`; AUTH-001-C the screens, flow and gate, with `tests/signIn.test.tsx` and `tests/pendingIntent.test.tsx`.
 - **Dependencies:** MOCK-001.
 - **Acceptance criteria:** Anonymous browsing remains usable; create/join/send are gated; cancelled auth returns to browsing; refresh failures clear private data.
-- **Verification:** `pnpm test:mobile --runTestsByPath src/features/auth/authFlow.test.tsx`; manually verify invalid/expired code, preserved draft, and refresh failure.
+- **Verification:** `pnpm test:mobile --runTestsByPath tests/signIn.test.tsx tests/pendingIntent.test.tsx`; manually verify invalid/expired code, preserved draft, and refresh failure.
 - **Non-goals:** Real SMS, production auth, collecting real phone numbers for demos.
 
 ## LOCATION-001 — Foreground location

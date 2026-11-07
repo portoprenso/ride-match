@@ -72,7 +72,7 @@ describe('parseAppConfig', () => {
 
 describe('createDataSource', () => {
   it('builds the simulator with the configured scenario, passing on whether demo controls are allowed and the token source', () => {
-    const simulator = { dataSource: createUnavailableDataSource('test simulator'), dispose: jest.fn(), devControls: null };
+    const simulator = { dataSource: createUnavailableDataSource('test simulator'), dispose: jest.fn(), devControls: null, demoSignIn: null };
     const mock = jest.fn(() => simulator);
 
     const accessToken = () => null;
@@ -84,7 +84,7 @@ describe('createDataSource', () => {
   });
 
   it('refuses the API kind clearly and never falls back to the simulator', () => {
-    const mock = jest.fn(() => ({ dataSource: createUnavailableDataSource('test simulator'), dispose: jest.fn(), devControls: null }));
+    const mock = jest.fn(() => ({ dataSource: createUnavailableDataSource('test simulator'), dispose: jest.fn(), devControls: null, demoSignIn: null }));
 
     expect(() => createDataSource({ kind: 'api' }, { mock }, { devControls: true, accessToken: () => null })).toThrow(DataSourceUnavailableError);
     expect(() => createDataSource({ kind: 'api' }, { mock }, { devControls: true, accessToken: () => null })).toThrow(

@@ -1,13 +1,8 @@
 import { useRouter } from 'expo-router';
 
-import { PhonePlaceholder } from '../../src/features/auth/AuthPlaceholderScreens';
+import { PhoneScreen } from '../../src/features/auth/PhoneScreen';
 
 export default function PhoneRoute() {
   const router = useRouter();
-  return (
-    <PhonePlaceholder
-      onPreviewCode={() => router.push('/auth/otp')}
-      onClose={() => router.dismissTo('/')}
-    />
-  );
+  return <PhoneScreen onCodeRequested={() => router.push('/auth/otp')} />;
 }

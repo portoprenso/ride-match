@@ -23,13 +23,13 @@ import { useHomeCamera } from './mapCamera';
  * the position on the map follows the device; another screen on top stops it. "Show my location"
  * appears only with a position to show: it moves the camera there and asks for a fresh fix.
  *
- * @param onSignIn - Opens the sign-in placeholder. This always-visible entry is temporary:
- *   the product asks for sign-in only when a protected action needs it, and AUTH-001
- *   replaces this button with that gating.
+ * @param onSignIn - Opens sign-in; given only while nobody is signed in. This entry is
+ *   temporary: the product asks for sign-in when a protected action needs it
+ *   (`useRequireSignIn`), and the first protected action (RIDE-001) replaces this button.
  * @param onOpenDemo - Opens the demo controls; given only in builds that have them, where the
  *   Demo badge becomes a button.
  */
-export function MapHomeScreen({ onSignIn, onOpenDemo }: { onSignIn: () => void; onOpenDemo?: () => void }) {
+export function MapHomeScreen({ onSignIn, onOpenDemo }: { onSignIn?: () => void; onOpenDemo?: () => void }) {
   const controller = useLocationController();
   const { pickup } = useLocationChoices();
   const status = useLocationStatus();
@@ -99,7 +99,7 @@ export function MapHomeScreen({ onSignIn, onOpenDemo }: { onSignIn: () => void; 
               </View>
             }
           />
-          <Button label="Sign in" variant="ghost" onPress={onSignIn} />
+          {onSignIn && <Button label="Sign in" variant="ghost" onPress={onSignIn} />}
         </>
       }
     />

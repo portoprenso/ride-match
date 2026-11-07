@@ -5,9 +5,12 @@ import { useEffect, useState } from 'react';
 import { ConfigurationErrorScreen } from '../src/bootstrap/ConfigurationErrorScreen';
 import { composeAppDataSource } from '../src/bootstrap/composeAppDataSource';
 import { DataSourceProvider } from '../src/data/DataSourceProvider';
+import { DemoSignInProvider } from '../src/data/DemoSignInProvider';
 import { DevControlsProvider } from '../src/data/DevControlsProvider';
 import { SyncProvider } from '../src/data/SyncProvider';
 import { AuthSessionProvider } from '../src/features/auth/AuthSessionProvider';
+import { PendingIntentProvider } from '../src/features/auth/PendingIntentProvider';
+import { SessionExpiryRedirect } from '../src/features/auth/SessionExpiryRedirect';
 import { LocationChoicesProvider } from '../src/features/location/LocationChoicesProvider';
 import { createLocationController } from '../src/platform/location/createLocationController';
 import { LocationProvider } from '../src/platform/location/LocationProvider';
@@ -45,20 +48,25 @@ export default function RootLayout() {
   return (
     <DataSourceProvider dataSource={composition.dataSource}>
       <AuthSessionProvider controller={composition.session}>
-        <DevControlsProvider controls={composition.devControls}>
-          <QueryClientProvider client={composition.queryClient}>
-            <SyncProvider coordinator={composition.sync}>
-              <LocationProvider controller={location}>
-                <LocationChoicesProvider>
-                  <Stack screenOptions={{ headerShown: false }}>
-                    <Stack.Screen name="index" />
-                    <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
-                  </Stack>
-                </LocationChoicesProvider>
-              </LocationProvider>
-            </SyncProvider>
-          </QueryClientProvider>
-        </DevControlsProvider>
+        <PendingIntentProvider gate={composition.pendingIntents}>
+          <DemoSignInProvider value={composition.demoSignIn}>
+            <DevControlsProvider controls={composition.devControls}>
+              <QueryClientProvider client={composition.queryClient}>
+                <SyncProvider coordinator={composition.sync}>
+                  <LocationProvider controller={location}>
+                    <LocationChoicesProvider>
+                      <Stack screenOptions={{ headerShown: false }}>
+                        <Stack.Screen name="index" />
+                        <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
+                      </Stack>
+                      <SessionExpiryRedirect />
+                    </LocationChoicesProvider>
+                  </LocationProvider>
+                </SyncProvider>
+              </QueryClientProvider>
+            </DevControlsProvider>
+          </DemoSignInProvider>
+        </PendingIntentProvider>
       </AuthSessionProvider>
     </DataSourceProvider>
   );

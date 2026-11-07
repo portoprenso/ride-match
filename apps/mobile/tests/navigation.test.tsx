@@ -19,62 +19,7 @@ describe('home', () => {
     expect(screen.getByRole('header', { name: 'along' })).toBeOnTheScreen();
     expect(screen.getByTestId('home-map')).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeOnTheScreen();
-    expect(screen.queryByText('Sign in with your phone')).not.toBeOnTheScreen();
-  });
-});
-
-describe('sign-in placeholders', () => {
-  it('goes from home to the phone step, the code step, and Back to the phone step', async () => {
-    const app = await renderApp('/');
-
-    await press('Sign in');
-    expect(app.getPathname()).toBe('/auth/phone');
-    expect(screen.getByRole('header', { name: 'Sign in with your phone' })).toBeOnTheScreen();
-
-    await press('Preview code step');
-    expect(app.getPathname()).toBe('/auth/otp');
-    expect(screen.getByRole('header', { name: 'Enter the code' })).toBeOnTheScreen();
-
-    await press('Back to phone step');
-    expect(app.getPathname()).toBe('/auth/phone');
-    expect(screen.getByRole('header', { name: 'Sign in with your phone' })).toBeOnTheScreen();
-  });
-
-  it('Close on the phone step returns to the existing home', async () => {
-    const app = await renderApp('/');
-    await press('Sign in');
-
-    await press('Close sign-in');
-    expect(app.getPathname()).toBe('/');
-    expect(app.getRootStack()).toEqual(['index']);
-    expect(screen.getByTestId('home-map')).toBeOnTheScreen();
-  });
-
-  it('Close on the code step returns to the existing home', async () => {
-    const app = await renderApp('/');
-    await press('Sign in');
-    await press('Preview code step');
-
-    await press('Close sign-in');
-    expect(app.getPathname()).toBe('/');
-    expect(app.getRootStack()).toEqual(['index']);
-    expect(screen.getByTestId('home-map')).toBeOnTheScreen();
-  });
-
-  it('Close after opening the code step directly falls back to home', async () => {
-    const app = await renderApp('/auth/otp');
-    expect(screen.getByRole('header', { name: 'Enter the code' })).toBeOnTheScreen();
-
-    await press('Close sign-in');
-    expect(app.getPathname()).toBe('/');
-    expect(screen.getByTestId('home-map')).toBeOnTheScreen();
-  });
-
-  it('Back after opening the code step directly reaches the phone step', async () => {
-    const app = await renderApp('/auth/otp');
-
-    await press('Back to phone step');
-    expect(app.getPathname()).toBe('/auth/phone');
+    expect(screen.queryByText('Sign in to continue')).not.toBeOnTheScreen();
   });
 });
 

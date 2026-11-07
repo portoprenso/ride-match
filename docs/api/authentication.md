@@ -1,6 +1,6 @@
 # Future API: authentication and users
 
-Status: planned API; all MVP authentication is simulated. The mock operations ([AUTH-001-A](#implemented-mock-auth-001-a)) and the app's session controller ([AUTH-001-B](#implemented-session-auth-001-b)) exist. Last updated: 2026-11-07.
+Status: planned API; all MVP authentication is simulated. The mock operations ([AUTH-001-A](#implemented-mock-auth-001-a)), the app's session controller ([AUTH-001-B](#implemented-session-auth-001-b)) and the sign-in screens with the pending-intent gate ([AUTH-001-C](#implemented-sign-in-and-gate-auth-001-c)) exist. Last updated: 2026-11-07.
 
 Paths are relative to `/v1`; response conventions and common failures are in [overview](overview.md).
 
@@ -98,7 +98,7 @@ The data source sends the access token it reads from an `AccessTokenSource` (`sr
 
 ## Implemented session (AUTH-001-B)
 
-`apps/mobile/src/features/auth/createSessionController.ts` (with `AuthSessionProvider.tsx`) and `apps/mobile/src/platform/secureStorage/credentialStore.ts`, covered by `tests/authSession.test.tsx`. Its native check (rebuilt development clients) is pending. No screen uses it yet: the sign-in screens and gate are AUTH-001-C, settings and the sign-out confirmation AUTH-001-D.
+`apps/mobile/src/features/auth/createSessionController.ts` (with `AuthSessionProvider.tsx`) and `apps/mobile/src/platform/secureStorage/credentialStore.ts`, covered by `tests/authSession.test.tsx`. Its native check (rebuilt development clients) is pending. The sign-in screens (AUTH-001-C) use it; settings and the sign-out confirmation are AUTH-001-D.
 
 | Rule | Behavior |
 | --- | --- |
@@ -111,7 +111,7 @@ The data source sends the access token it reads from an `AccessTokenSource` (`sr
 | Ordering | Storage writes and removals run one at a time in call order, so a late save never brings back a token that signing out removed. A result that arrives after the session was replaced or ended (sign-out, a new sign-in, a demo reset) changes nothing |
 | Demo reset | Starting or restarting a scenario from the demo controls signs everyone out of the simulator, so the composition root discards the app's session first (`reset`) |
 
-Not yet: clearing cached private queries and stopping private subscriptions when the identity changes (SYNC-001-B); the session-expired screen and pending-intent gate (AUTH-001-C).
+Since SYNC-001-B, an identity change also clears the previous rider's cached private reads and subscriptions; since AUTH-001-C, an `expired` session opens the session-ended screen.
 
 ## Protected-action continuation
 
@@ -120,6 +120,21 @@ Browsing the map, viewing public ride/group previews, and destination search are
 Keep a mobile-only pending action/draft, not an executable callback in a shared DTO. On sign-in return, revalidate the target and restore the final create/join confirmation. Restore unsent chat text without automatically sending it. Dismissing authentication returns to browsing.
 
 Expired/removed targets must not become successful actions just because authentication succeeded. Authentication also does not substitute for ownership or group membership checks.
+
+## Implemented sign-in and gate (AUTH-001-C)
+
+`apps/mobile/src/features/auth/` (`PhoneScreen`, `OtpScreen`, `SessionEndedScreen`, `SignInFlow`, `SessionExpiryRedirect`, `pendingIntent.ts`, `PendingIntentProvider.tsx`, `signInMessages.ts`), routed by `app/auth/{_layout,phone,otp,session-ended}.tsx`, covered by `tests/signIn.test.tsx` and `tests/pendingIntent.test.tsx`.
+
+| Rule | Behavior |
+| --- | --- |
+| Demo identity | On the mock source (`DemoSignIn` from the composition) the phone field starts with `+447700900123`, says which numbers work and that no SMS is sent, and turns autofill off so the device's real number is never offered; the code screen shows the demo code. A real source supplies no `DemoSignIn` and gets neutral copy |
+| Phone step | Typed input is normalized (spaces, dashes, dots and brackets dropped, `00` read as `+`) and checked as E.164 before anything is sent. Source refusals map to the app's own copy: a field error for `VALIDATION_FAILED` (a non-demo number gets the demo hint), a wait for `OTP_RESEND_THROTTLED`/`RATE_LIMITED` with `retryAfterSeconds`, a connection notice for network or `SERVICE_UNAVAILABLE`. No message repeats the number |
+| Flow state | The number and challenge live in the auth layout's memory (`SignInFlow`), never in a route or storage. Opening `/auth/otp` without a challenge offers only the phone step |
+| Code step | Verify is enabled with all six digits and signs in through the session controller. `OTP_INVALID` shows under the field; `OTP_EXPIRED` and `OTP_ATTEMPTS_EXCEEDED` switch to the fresh-code state (47), whose main action requests a new challenge for the same number. A new code can be requested at any time; the source decides: a refusal disables the action for its `retryAfterSeconds`, counted on the device. The challenge's timestamps are not compared with the device clock, which can differ from the source's (the demo controls move it) |
+| Leaving | A rider signed in closes the whole auth stack, back to the screen it opened over. Closing it any other way (Close and keep browsing, Browse anonymously, a back gesture) cancels the pending intent |
+| Session ended | A session ending as `expired` (a refused refresh, or a stored session refused at launch) opens `/auth/session-ended` (31): Sign in again continues to the phone step with the intent kept; Browse anonymously closes it. Private reads and subscriptions are already gone (SYNC-001-B) |
+| Pending intent | `ProtectedIntent` is `create-request`, `join-ride`, `join-group` or `send-message` with the target ID: data only. `useRequireSignIn()(intent)` returns `true` for a signed-in rider; otherwise it keeps the intent (replacing an older one) and opens sign-in. After sign-in the intent is `ready`, and `useResumeIntent(kind, onResume)` hands it once to its screen, which must read the target again and show its own confirmation. An expiry puts a ready intent back to waiting; a sign-out or demo reset drops it. Sign-in never creates, joins or sends anything |
+| Home | "Sign in" shows only while nobody is signed in; it is a temporary entry until the first protected action (RIDE-001) uses the gate |
 
 ## User projections
 

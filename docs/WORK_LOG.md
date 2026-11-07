@@ -2252,3 +2252,28 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **Remaining/next:** AUTH-001-C is next in the auth line; MAP-001-B and MAP-002-A follow MAP-001-A's native checks, which together with AUTH-001-B's remain for the next native pass.
 - **Ownership:** Released; no active task.
 
+## 2026-11-07 — AUTH-001-C: Sign-in screens and pending-intent gate
+
+- **Actor/session:** Claude Code / auth-001-c.
+- **Status:** `Completed`; ownership released. Parent AUTH-001 stays `Paused` (AUTH-001-B's native check pending, AUTH-001-D planned).
+- **Working copy:** `main` at `0bf5030` (SYNC-001-B); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start AUTH-001-C": replace the auth placeholders (designs 07, 08, 31, 47) and add the typed pending-intent gate. Acceptance: invalid/expired/resend/cancel work; draft survives; target revalidated then confirmed; no automatic mutation or send.
+- **Changes:**
+  - New in `src/features/auth/`: `AuthScreenLayout.tsx`, `PhoneScreen.tsx`, `OtpScreen.tsx`, `SessionEndedScreen.tsx`, `SignInFlow.tsx`, `SessionExpiryRedirect.tsx`, `pendingIntent.ts`, `PendingIntentProvider.tsx`, `signInMessages.ts`, `useMounted.ts`. Removed `AuthPlaceholderScreens.tsx`.
+  - Routes: `app/auth/_layout.tsx` (wraps the stack in `SignInFlow`), `phone.tsx`, `otp.tsx`, new `session-ended.tsx`; `app/_layout.tsx` adds `PendingIntentProvider`, `DemoSignInProvider` and `SessionExpiryRedirect`; `app/index.tsx` passes `onSignIn` only while signed out (`MapHomeScreen`'s prop is optional).
+  - Data and composition: `src/data/DemoSignIn.ts`, `src/data/DemoSignInProvider.tsx`; `ComposedDataSource.demoSignIn`; `MOCK_DEMO_SIGN_IN` in `src/data/mock/auth.ts`; `composeAppDataSource` returns `pendingIntents` and `demoSignIn` and disposes the gate.
+  - Tests: `tests/signIn.test.tsx` (11), `tests/pendingIntent.test.tsx` (14); `tests/navigation.test.tsx` lost its 5 placeholder tests; `tests/mapHome.test.tsx` and `tests/dataSource.test.tsx` adjusted.
+- **Decisions:**
+  - The intent is data (kind and target ID). Drafts stay in their screens, which remain mounted beneath the modal auth stack; after sign-in the owner rereads the target and shows its confirmation. The gate never runs anything.
+  - The flow closes itself from one place (`SignInFlow`, on `signed-in`) and treats every other exit, including gestures, as cancel (unmount without sign-in).
+  - The resend action is always offered; the source's `retryAfterSeconds` disables it for that long. The challenge timestamps are not compared with the device clock, because the source's clock can differ (demo controls), consistent with AUTH-001-B's expiry rule.
+  - The mock's demo number and code reach the screens through the composition (`DemoSignIn`), keeping features free of mock imports; autofill is off for the demo field so a real number is never offered.
+  - Copy follows the designs, adjusted where the design text was an example ("Asia Mall plan") to what the app actually keeps.
+  - Home keeps a Sign in entry only while signed out, until RIDE-001's first protected action.
+- **Checks:**
+  - `pnpm typecheck` and `pnpm lint` passed; `pnpm --filter @ride-match/mobile test`: 21 suites, 351 tests passed. One pre-existing `console.warn` (fake-timer warning from `tests/mapHome.test.tsx`) also appears without these changes.
+  - **Not run:** native builds (no new native module); the screens join the next native pass (DEVELOPMENT, sign-in screens check). TalkBack and VoiceOver are waived to final device testing.
+- **Docs:** api/authentication (implemented sign-in and gate), ARCHITECTURE, DEVELOPMENT (tests, 351; native checks), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, AUTH-001 row), AI_CONTEXT.
+- **JSDoc:** the gate and its hooks, the flow, every screen's behavior, the expiry redirect, the message helpers, `DemoSignIn`, the composition fields.
+- **Remaining/next:** AUTH-001-D (settings and sign-out confirmation) is next in the auth line. The native pass (MAP-001-A, LOCATION-001-B, AUTH-001-B, AUTH-001-C screens) is still pending.
+- **Ownership:** Released; no active task.

@@ -1,5 +1,6 @@
 import type { DataSourceConfig } from '../config/appConfig';
 import type { AccessTokenSource, AppDataSource } from './AppDataSource';
+import type { DemoSignIn } from './DemoSignIn';
 import type { DevControls } from './DevControls';
 import { DataSourceUnavailableError } from './errors';
 
@@ -13,6 +14,8 @@ export type ComposedDataSource = {
   dispose: () => void;
   /** The mock source's demo controls in development and preview builds; otherwise `null`. */
   devControls: DevControls | null;
+  /** How to sign in to a synthetic source, shown by the sign-in screens; `null` for a real one. */
+  demoSignIn: DemoSignIn | null;
 };
 
 /** Builders of the implementations that exist, supplied by the composition root. */
