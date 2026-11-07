@@ -1,16 +1,24 @@
+import type { QueryClient } from '@tanstack/react-query';
+import { AppState } from 'react-native';
+
 import { AppConfigError, readAppConfig, type AppConfig } from '../config/appConfig';
 import type { AppDataSource } from '../data/AppDataSource';
 import { createDataSource, type DataSourceFactories } from '../data/createDataSource';
+import { createSyncCoordinator, type SyncCoordinator } from '../data/createSyncCoordinator';
 import { DataSourceUnavailableError } from '../data/errors';
 import type { DevControls } from '../data/DevControls';
 import { createSessionController, type SessionController } from '../features/auth/createSessionController';
+import { sessionViewerSource } from '../features/auth/sessionViewer';
+import type { AppStateSource } from '../platform/appState';
 import { createMockDataSource, createMockSimulator } from '../data/mock/createMockDataSource';
 import { createMockDevControls } from '../data/mock/createMockDevControls';
 import { isMockScenarioKey, MOCK_SCENARIO_KEYS } from '../data/mock/scenarios';
 import { createSecureCredentialStore, type CredentialStore } from '../platform/secureStorage/credentialStore';
+import { createQueryClient } from './createQueryClient';
 
 /**
- * The data source the app runs on, the auth session that supplies its access token, and the
+ * The data source the app runs on, the auth session that supplies its access token, the Query
+ * cache and the sync coordinator that keeps it true to the session and the connection, and the
  * release of what they hold, or why this build's configuration cannot run.
  */
 export type AppComposition =
@@ -18,6 +26,8 @@ export type AppComposition =
       status: 'ready';
       dataSource: AppDataSource;
       session: SessionController;
+      queryClient: QueryClient;
+      sync: SyncCoordinator;
       dispose: () => void;
       devControls: DevControls | null;
     }
@@ -41,20 +51,24 @@ const factories: DataSourceFactories = {
 };
 
 /**
- * Starting a demo scenario signs everyone out of the simulator, so the demo controls first
- * forget the app's session; otherwise the app would keep sending credentials of a world that no
- * longer exists.
+ * Starting a demo scenario signs everyone out of the simulator and ends every subscription, so
+ * the demo controls then forget the app's session (otherwise the app would keep sending
+ * credentials of a world that no longer exists) and subscribe again into the new world.
  */
-function signOutOnScenarioStart(controls: DevControls, session: SessionController): DevControls {
+function resetOnScenarioStart(controls: DevControls, session: SessionController, sync: SyncCoordinator): DevControls {
+  const afterStart = () => {
+    void session.discard();
+    sync.resetWorld();
+  };
   return {
     ...controls,
     selectScenario(key) {
       controls.selectScenario(key);
-      void session.discard();
+      afterStart();
     },
     reset() {
       controls.reset();
-      void session.discard();
+      afterStart();
     },
   };
 }
@@ -64,13 +78,16 @@ export type CompositionOptions = {
   readConfig?: () => AppConfig;
   /** The refresh-token store; the SecureStore one for the data source's namespace unless a test passes its own. */
   credentialStore?: CredentialStore;
+  /** Foreground and background; React Native's `AppState` unless a test passes its own. */
+  appState?: AppStateSource;
 };
 
 /**
  * The composition root: reads the build configuration and builds the one data source and the
  * auth session, once per app launch. The mock data source starts its scenario at once, timed
  * events included. The session starts when the root layout calls `restore()`; on the mock data
- * source it never resumes a stored session, because the simulator's world starts empty.
+ * source it never resumes a stored session, because the simulator's world starts empty. The sync
+ * coordinator starts when the root layout calls `sync.start()`.
  *
  * Demo controls exist only in development and preview builds on the mock data source; a
  * production build never creates them, so nothing in it can reach the simulator's controls.
@@ -82,6 +99,7 @@ export type CompositionOptions = {
 export function composeAppDataSource({
   readConfig = readAppConfig,
   credentialStore,
+  appState = AppState,
 }: CompositionOptions = {}): AppComposition {
   try {
     const config = readConfig();
@@ -98,12 +116,23 @@ export function composeAppDataSource({
       resumeStoredSession: config.dataSource.kind !== 'mock',
     });
     session = built;
+    const queryClient = createQueryClient();
+    const sync = createSyncCoordinator({
+      queryClient,
+      events: composed.dataSource.events,
+      viewer: sessionViewerSource(built),
+      appState,
+    });
     return {
       status: 'ready',
       dataSource: composed.dataSource,
       session: built,
-      devControls: composed.devControls && signOutOnScenarioStart(composed.devControls, built),
+      queryClient,
+      sync,
+      devControls: composed.devControls && resetOnScenarioStart(composed.devControls, built, sync),
       dispose: () => {
+        sync.dispose();
+        queryClient.clear();
         built.dispose();
         composed.dispose();
       },

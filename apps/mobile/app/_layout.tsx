@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 
 import { ConfigurationErrorScreen } from '../src/bootstrap/ConfigurationErrorScreen';
 import { composeAppDataSource } from '../src/bootstrap/composeAppDataSource';
-import { createQueryClient } from '../src/bootstrap/createQueryClient';
 import { DataSourceProvider } from '../src/data/DataSourceProvider';
 import { DevControlsProvider } from '../src/data/DevControlsProvider';
+import { SyncProvider } from '../src/data/SyncProvider';
 import { AuthSessionProvider } from '../src/features/auth/AuthSessionProvider';
 import { LocationChoicesProvider } from '../src/features/location/LocationChoicesProvider';
 import { createLocationController } from '../src/platform/location/createLocationController';
@@ -21,13 +21,15 @@ export const unstable_settings = { anchor: 'index' };
 export default function RootLayout() {
   // Composed once per launch. A configuration that cannot run replaces every route.
   const [composition] = useState(() => composeAppDataSource());
-  const [queryClient] = useState(createQueryClient);
   // Releases the simulator's timers and listeners if the root ever unmounts, as in a Fast
   // Refresh remount or a test.
   useEffect(() => (composition.status === 'ready' ? composition.dispose : undefined), [composition]);
-  // Restores the stored session, or clears the demo one. Browsing stays anonymous meanwhile.
+  // Restores the stored session, or clears the demo one; browsing stays anonymous meanwhile. The
+  // sync coordinator then follows the session, the connection and the foreground.
   useEffect(() => {
-    if (composition.status === 'ready') void composition.session.restore();
+    if (composition.status !== 'ready') return;
+    void composition.session.restore();
+    composition.sync.start();
   }, [composition]);
   // The one location controller. It reads the permission without prompting; only the location
   // introduction or the home card shows the OS prompt.
@@ -44,15 +46,17 @@ export default function RootLayout() {
     <DataSourceProvider dataSource={composition.dataSource}>
       <AuthSessionProvider controller={composition.session}>
         <DevControlsProvider controls={composition.devControls}>
-          <QueryClientProvider client={queryClient}>
-            <LocationProvider controller={location}>
-              <LocationChoicesProvider>
-                <Stack screenOptions={{ headerShown: false }}>
-                  <Stack.Screen name="index" />
-                  <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
-                </Stack>
-              </LocationChoicesProvider>
-            </LocationProvider>
+          <QueryClientProvider client={composition.queryClient}>
+            <SyncProvider coordinator={composition.sync}>
+              <LocationProvider controller={location}>
+                <LocationChoicesProvider>
+                  <Stack screenOptions={{ headerShown: false }}>
+                    <Stack.Screen name="index" />
+                    <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
+                  </Stack>
+                </LocationChoicesProvider>
+              </LocationProvider>
+            </SyncProvider>
           </QueryClientProvider>
         </DevControlsProvider>
       </AuthSessionProvider>

@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is paused with A's mock operations completed and B's session controller implemented, its native check pending; SYNC-001 is paused with A's event synchronization completed; LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; MAP-001 is paused with A implemented and its native checks pending; all other implementation tasks are planned.**
+Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is paused with A's mock operations completed and B's session controller implemented, its native check pending; SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; MAP-001 is paused with A implemented and its native checks pending; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,15 @@ Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**SYNC-001-B — Completed (2026-11-07); SYNC-001 is `Completed`.**
+
+- **Done:**
+  - `src/data/createSyncCoordinator.ts`: features `watch` logical subscriptions (shared when equal, `user`/`group` only when signed in, refusals reported and retried after the next reconnect or identity change); events from a subscription that has since ended are dropped. An identity change ends every subscription, cancels and removes the previous rider's reads (so a late result cannot restore them), resets the synchronizer and subscribes again for the new viewer. Reconnect subscribes again and rereads the viewer's data; Query's online state follows the connection and its focus follows `AppState`. A demo scenario start subscribes again into the new world.
+  - `SyncProvider` and `useEventSubscription(request, onError?)`; `useViewer()` and `viewerOfSession` derive the query viewer from the session. The composition root now builds the Query client and the coordinator; the root layout starts it. Mutations never wait for the connection (no offline queue).
+  - 331 mobile tests (10 new): late private reads after the session ends, dropped stale deliveries, resubscription per viewer, reconnect rereads, focus, five rounds of reset and reconnect leaving one live subscription.
+- **Not covered here:** the stale/offline banner (MAP-002-A), the session-expired screen (AUTH-001-C), chat catch-up (CHAT-001-C). Nothing watches a subscription yet; discovery is the first (MAP-002-A).
+- **Next available:** AUTH-001-C (its dependencies AUTH-001-B, SYNC-001-B, UI-001-C and UI-001-D have code; AUTH-001-B's native check is still pending). MAP-001-B and MAP-002-A follow MAP-001-A's native checks.
 
 **SYNC-001-A — Completed (2026-11-07).**
 
@@ -299,7 +308,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | MOBILE-001 | Expo shell and navigation | Completed |
 | DATA-001 | Data-source and Query foundation | Completed |
 | MOCK-001 | Simulator foundation | Completed |
-| SYNC-001 | Event synchronization and recovery | Paused (A completed; B planned) |
+| SYNC-001 | Event synchronization and recovery | Completed (A and B) |
 | AUTH-001 | Simulated authentication | Paused (A completed; B implemented, native check pending; C–D planned) |
 | LOCATION-001 | Foreground location | Completed |
 | MAP-001 | Native map shell | Paused (A implemented, native checks pending; B planned) |

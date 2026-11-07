@@ -2225,3 +2225,30 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **Remaining/next:** SYNC-001-B wires it into the app with foreground/reconnect recovery and identity/scenario resets. The AUTH-001-B and MAP-001-A native checks remain for the next native pass.
 - **Ownership:** Released; no active task.
 
+## 2026-11-07 — SYNC-001-B: Foreground, reconnect and session-reset integration
+
+- **Actor/session:** Claude Code / sync-001-b.
+- **Status:** `Completed`; ownership released. Parent SYNC-001 is `Completed`.
+- **Working copy:** `main` at `4c71839` (SYNC-001-A); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start SYNC-001-B": identity change cancels reads and subscriptions, late results cannot restore private data, repeated reset and reconnect leak nothing.
+- **Changes:**
+  - `src/data/createSyncCoordinator.ts`: `ViewerSource`, `SyncCoordinatorOptions`, `SubscriptionErrorListener`, `SyncCoordinator`, `createSyncCoordinator`.
+  - `src/data/SyncProvider.tsx`: `SyncProvider`, `useEventSubscription`. `src/features/auth/sessionViewer.ts`: `viewerOfSession`, `sessionViewerSource`; `useViewer()` added to `AuthSessionProvider.tsx`.
+  - `src/bootstrap/composeAppDataSource.ts`: builds the Query client and the coordinator, takes `appState?`, returns `queryClient` and `sync`, disposes them; the demo-controls wrapper also calls `sync.resetWorld()`. `src/bootstrap/createQueryClient.ts`: mutations `networkMode: 'always'`. `app/_layout.tsx`: the composition's Query client, `SyncProvider`, `sync.start()`.
+  - Tests: `tests/syncCoordinator.test.ts` (10).
+- **Decisions:**
+  - The coordinator lives in the data layer and learns the viewer through a small `ViewerSource`, so it does not import the auth feature; the composition root adapts the session to it.
+  - A generation counter, not unsubscribe alone, guards deliveries, as the realtime spec requires.
+  - On identity change only the previous signed-in rider's reads are removed; anonymous reads are public and stay.
+  - Query's online state follows the data source's connection, so reads pause while disconnected and keep what they showed; mutations are set to `always` so Query never holds them for the reconnect (no offline queue).
+  - Removed queries that settle late still start Query's own garbage-collection timer, which finds nothing; the late-result test advances past it.
+  - The demo screen keeps clearing the cache on scenario start; the coordinator only resubscribes and forgets synchronizer knowledge.
+  - Excluded: the stale banner (MAP-002-A), the session-expired screen and gate (AUTH-001-C), chat catch-up (CHAT-001-C).
+- **Checks:**
+  - `pnpm typecheck` and `pnpm lint` passed; `pnpm --filter @ride-match/mobile test`: 19 suites, 331 tests passed (10 new). With the cancel-and-remove step taken out, the late-result test fails with the old rider's data in the cache; with it, it passes.
+  - **Not run:** native builds (no native change; `AppState` and the connection are JavaScript here).
+- **Docs:** api/realtime (implemented lifecycle), ARCHITECTURE, DEVELOPMENT (tests, 331), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, SYNC-001 completed), AI_CONTEXT.
+- **JSDoc:** the coordinator's rules and methods, the viewer source, the subscription hook, the session viewer helpers, the composition and Query client notes.
+- **Remaining/next:** AUTH-001-C is next in the auth line; MAP-001-B and MAP-002-A follow MAP-001-A's native checks, which together with AUTH-001-B's remain for the next native pass.
+- **Ownership:** Released; no active task.
+

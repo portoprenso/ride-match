@@ -59,7 +59,7 @@ The future Socket.IO client lives inside the real data-source implementation. Co
 
 ## Implemented synchronization (SYNC-001-A)
 
-`apps/mobile/src/data/synchronizeEvents.ts`, covered by `tests/synchronizeEvents.test.ts`. `createEventSynchronizer(queryClient)` applies events to the Query cache; `synchronizeSubscription` feeds it a subscription's events for one viewer. The app does not create or subscribe it yet: lifecycle, reconnect and identity resets are SYNC-001-B, and the first subscriber is discovery (MAP-002-A).
+`apps/mobile/src/data/synchronizeEvents.ts`, covered by `tests/synchronizeEvents.test.ts`. `createEventSynchronizer(queryClient)` applies events to the Query cache; `synchronizeSubscription` feeds it a subscription's events for one viewer. SYNC-001-B's coordinator creates and drives it; the first subscriber is discovery (MAP-002-A).
 
 | Rule | Behavior |
 | --- | --- |
@@ -73,6 +73,21 @@ The future Socket.IO client lives inside the real data-source implementation. Co
 | `access.revoked` | Cancels and removes every private read of the group (`queryKeys.group`) and rereads the current user, unless a newer group version is held |
 | Snapshot race | Each successful read is reconciled: a snapshot item older than a known upsert is replaced by it, one not newer than a tombstone is dropped, a newer item teaches its version; a single-resource read older than a known version, or a snapshot item older than a version known only from a private event, is reread once per known version. An upsert that arrives while a snapshot's first read is in flight (Query joins the invalidation to that read) rereads it once it lands, unless it holds the item |
 | Invalid event | Reported by type only (`onInvalidEvent`, a warning by default), and every read of the viewer is invalidated, as after a missed event |
+
+## Implemented lifecycle (SYNC-001-B)
+
+`apps/mobile/src/data/createSyncCoordinator.ts`, built by the composition root with the app's Query client and started by the root layout; covered by `tests/syncCoordinator.test.ts`. Features keep a subscription with `useEventSubscription(request)` (`src/data/SyncProvider.tsx`) and key reads with `useViewer()`.
+
+| Situation | Behavior |
+| --- | --- |
+| Watching | Equal requests share one subscription, ended when the last holder releases. `user` and `group` requests are subscribed only for a signed-in viewer. A refusal goes to the watchers' `onError` and is tried again after the next reconnect or identity change |
+| Stale delivery | Each subscription carries a generation; an event or acknowledgement from a subscription that has since ended (identity change, disconnect, reset) is dropped, and a late acknowledgement is unsubscribed at once |
+| Identity change | Sign-in, sign-out, an expired session or a demo reset: every subscription ends, the previous rider's reads are cancelled and removed (a read still on its way cannot settle into the cache), the synchronizer forgets what it learned, and watched subscriptions are made again for the new viewer. Anonymous reads stay when someone signs in |
+| Disconnect | The source ends every subscription; Query's online state turns off, so reads wait (keeping what they showed) instead of failing |
+| Reconnect | Watched subscriptions are made again and the viewer's reads are invalidated, so what is on screen is read anew (own request, group, discovery, matches) |
+| Foreground | Query's focus follows `AppState`: returning to the foreground refetches stale reads on screen |
+| Scenario start | The demo controls' wrapper discards the session and calls `resetWorld()`: subscriptions are made again into the new world; the demo screen clears the cached reads |
+| Mutations | Never wait for the connection (`networkMode: 'always'`), so nothing is queued while offline |
 
 ## Implemented contracts (CONTRACT-004-A)
 

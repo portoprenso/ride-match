@@ -1,5 +1,6 @@
-import { createContext, use, useSyncExternalStore, type ReactNode } from 'react';
+import { createContext, use, useMemo, useSyncExternalStore, type ReactNode } from 'react';
 
+import { ANONYMOUS_VIEWER, type Viewer } from '../../data/queryKeys';
 import type { SessionController, SessionState } from './createSessionController';
 
 const SessionContext = createContext<SessionController | null>(null);
@@ -31,4 +32,15 @@ export function useSessionController(): SessionController {
 export function useSessionState(): SessionState {
   const controller = useSessionController();
   return useSyncExternalStore(controller.subscribe, controller.getState);
+}
+
+/**
+ * Returns who reads as the session, for query keys: the signed-in rider or anonymous (as
+ * `viewerOfSession`). The object stays the same while the identity does, so it is safe in effect
+ * dependencies.
+ */
+export function useViewer(): Viewer {
+  const state = useSessionState();
+  const userId = state.status === 'signed-in' ? state.user.id : null;
+  return useMemo(() => (userId === null ? ANONYMOUS_VIEWER : { kind: 'user', userId }), [userId]);
 }

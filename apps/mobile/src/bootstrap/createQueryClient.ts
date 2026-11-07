@@ -14,8 +14,8 @@ export const MAX_READ_RETRIES = 2;
  * - Mutations never retry automatically: a change whose outcome is unknown is retried only on
  *   purpose, with the same operation ID, and nothing is queued while offline.
  *
- * Connecting Query's focus and online state to the app state and the data source's connection
- * belongs to the foreground and reconnect work (SYNC-001-B).
+ * The sync coordinator (SYNC-001-B) connects Query's focus to `AppState` and its online state to
+ * the data source's connection: reads wait while disconnected and resume on reconnect.
  */
 export function createQueryClient(): QueryClient {
   return new QueryClient({
@@ -23,7 +23,9 @@ export function createQueryClient(): QueryClient {
       queries: {
         retry: (failureCount, error) => failureCount < MAX_READ_RETRIES && isRetryableRead(toDataError(error)),
       },
-      mutations: { retry: false },
+      // A mutation never waits for the connection: Query would otherwise hold it while offline
+      // and send it on reconnect, an automatic offline queue the product rules out.
+      mutations: { retry: false, networkMode: 'always' },
     },
   });
 }
