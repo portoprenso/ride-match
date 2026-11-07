@@ -30,7 +30,6 @@ describe('inert routes', () => {
     ['/groups/%E0%A4%A', 'Group details are not available yet.'],
     ['/groups/abc-123/chat', 'Group chat is not available yet.'],
     ['/groups/%E0%A4%A/chat', 'Group chat is not available yet.'],
-    ['/settings', 'Settings are not available yet.'],
   ])('%s shows only an unavailable state and a way to the map', async (url, message) => {
     const app = await renderApp(url);
 

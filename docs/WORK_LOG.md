@@ -2277,3 +2277,28 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** the gate and its hooks, the flow, every screen's behavior, the expiry redirect, the message helpers, `DemoSignIn`, the composition fields.
 - **Remaining/next:** AUTH-001-D (settings and sign-out confirmation) is next in the auth line. The native pass (MAP-001-A, LOCATION-001-B, AUTH-001-B, AUTH-001-C screens) is still pending.
 - **Ownership:** Released; no active task.
+
+## 2026-11-07 — AUTH-001-D: Settings and sign-out confirmation
+
+- **Actor/session:** Claude Code / auth-001-d.
+- **Status:** `Completed`; ownership released. Parent AUTH-001 stays `Paused` (only AUTH-001-B's native check is pending).
+- **Working copy:** `main` at `68814a7` (AUTH-001-C); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start AUTH-001-D": settings (design 40) and the sign-out confirmation (48). Acceptance: anonymous and signed-in variants; private routes and cache cleared; no implicit group leave; incomplete deregistration described honestly.
+- **Changes:**
+  - New `src/features/settings/SettingsScreen.tsx` (variants for signed-in, signed-out, restoring and failed restore; location summary `describeLocationSetting`; demo label; privacy line).
+  - New `src/features/auth/SignOutSheet.tsx` (`ConfirmAction` in a `SheetHost`, not dismissible while signing out, retryable error) and `src/features/auth/signOutOutcome.ts` (outcome codes, parsing, copy).
+  - `app/settings.tsx` replaces the inert route: back to the map, Sign in to `/auth/phone`, and after sign-out a root-stack reset to `index` + `settings` with the outcome code. `MapHomeScreen` gets a Settings icon button (`onOpenSettings`), wired in `app/index.tsx`.
+  - Tests: new `tests/settings.test.tsx` (20); `tests/navigation.test.tsx` lost the inert settings case.
+- **Decisions:**
+  - Design 48 is shown as a sheet with the existing `ConfirmAction` pattern (UI-001-D) rather than a separate route; the copy follows the design.
+  - Private cache cleanup stays the sync coordinator's job on identity change; the screen only resets navigation so no private screen remains beneath.
+  - The outcome travels as a code with no rider detail and is shown only while the session is signed out by a sign-out, so a link cannot claim a sign-out that did not happen.
+  - "Unconfirmed" covers the source not confirming revocation (offline or refused); there is no push-device deregistration yet (NOTIFICATION-001).
+  - Settings shows only what exists: the session, the location summary and the demo label. Notifications and blocked riders arrive with their cards.
+- **Checks:**
+  - `pnpm typecheck` and `pnpm lint` passed; `pnpm --filter @ride-match/mobile test`: 22 suites, 370 tests passed. One fake-timer `console.warn` comes from a suite this card did not change; `tests/settings.test.tsx` emits none. `git diff --check` is clean.
+  - **Not run:** native builds (no new native module); the screen joins the next native pass (DEVELOPMENT, settings check). TalkBack and VoiceOver are waived to final device testing.
+- **Docs:** api/authentication (implemented settings and sign-out), PRODUCT, ARCHITECTURE, DEVELOPMENT (tests, 370; settings check), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line, AUTH-001 row), AI_CONTEXT.
+- **JSDoc:** the settings screen and its variants, the location summary, the sign-out sheet's cleanup and no-group-leave behavior, the outcome codes and their copy rules, the route's stack reset, `MapHomeScreen`'s new prop.
+- **Remaining/next:** the native pass (MAP-001-A, LOCATION-001-B, AUTH-001-B, AUTH-001-C, AUTH-001-D) completes AUTH-001 and unblocks MAP-001-B and MAP-002-A.
+- **Ownership:** Released; no active task.

@@ -28,8 +28,17 @@ import { useHomeCamera } from './mapCamera';
  *   (`useRequireSignIn`), and the first protected action (RIDE-001) replaces this button.
  * @param onOpenDemo - Opens the demo controls; given only in builds that have them, where the
  *   Demo badge becomes a button.
+ * @param onOpenSettings - Opens settings, for anonymous and signed-in riders alike.
  */
-export function MapHomeScreen({ onSignIn, onOpenDemo }: { onSignIn?: () => void; onOpenDemo?: () => void }) {
+export function MapHomeScreen({
+  onSignIn,
+  onOpenDemo,
+  onOpenSettings,
+}: {
+  onSignIn?: () => void;
+  onOpenDemo?: () => void;
+  onOpenSettings: () => void;
+}) {
   const controller = useLocationController();
   const { pickup } = useLocationChoices();
   const status = useLocationStatus();
@@ -58,19 +67,27 @@ export function MapHomeScreen({ onSignIn, onOpenDemo }: { onSignIn?: () => void;
               along
             </AppText>
           </View>
-          {onOpenDemo ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Demo scenarios"
-              hitSlop={spacing.md}
-              onPress={onOpenDemo}
-              style={({ pressed }) => pressed && styles.pressed}
-            >
+          <View style={styles.actions}>
+            {onOpenDemo ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Demo scenarios"
+                hitSlop={spacing.md}
+                onPress={onOpenDemo}
+                style={({ pressed }) => pressed && styles.pressed}
+              >
+                <Badge label="Demo" />
+              </Pressable>
+            ) : (
               <Badge label="Demo" />
-            </Pressable>
-          ) : (
-            <Badge label="Demo" />
-          )}
+            )}
+            <IconButton
+              icon={<Icon name="sliders" />}
+              accessibilityLabel="Settings"
+              tone="white"
+              onPress={onOpenSettings}
+            />
+          </View>
         </View>
       }
       controls={
@@ -119,6 +136,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     borderRadius: radii.sm,
     backgroundColor: colors.white,
+  },
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   intro: {
     gap: spacing.sm,

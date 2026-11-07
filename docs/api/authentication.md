@@ -98,7 +98,7 @@ The data source sends the access token it reads from an `AccessTokenSource` (`sr
 
 ## Implemented session (AUTH-001-B)
 
-`apps/mobile/src/features/auth/createSessionController.ts` (with `AuthSessionProvider.tsx`) and `apps/mobile/src/platform/secureStorage/credentialStore.ts`, covered by `tests/authSession.test.tsx`. Its native check (rebuilt development clients) is pending. The sign-in screens (AUTH-001-C) use it; settings and the sign-out confirmation are AUTH-001-D.
+`apps/mobile/src/features/auth/createSessionController.ts` (with `AuthSessionProvider.tsx`) and `apps/mobile/src/platform/secureStorage/credentialStore.ts`, covered by `tests/authSession.test.tsx`. Its native check (rebuilt development clients) is pending. The sign-in screens (AUTH-001-C) and settings with the sign-out confirmation (AUTH-001-D) use it.
 
 | Rule | Behavior |
 | --- | --- |
@@ -135,6 +135,17 @@ Expired/removed targets must not become successful actions just because authenti
 | Session ended | A session ending as `expired` (a refused refresh, or a stored session refused at launch) opens `/auth/session-ended` (31): Sign in again continues to the phone step with the intent kept; Browse anonymously closes it. Private reads and subscriptions are already gone (SYNC-001-B) |
 | Pending intent | `ProtectedIntent` is `create-request`, `join-ride`, `join-group` or `send-message` with the target ID: data only. `useRequireSignIn()(intent)` returns `true` for a signed-in rider; otherwise it keeps the intent (replacing an older one) and opens sign-in. After sign-in the intent is `ready`, and `useResumeIntent(kind, onResume)` hands it once to its screen, which must read the target again and show its own confirmation. An expiry puts a ready intent back to waiting; a sign-out or demo reset drops it. Sign-in never creates, joins or sends anything |
 | Home | "Sign in" shows only while nobody is signed in; it is a temporary entry until the first protected action (RIDE-001) uses the gate |
+
+## Implemented settings and sign-out (AUTH-001-D)
+
+`apps/mobile/src/features/settings/SettingsScreen.tsx`, `apps/mobile/src/features/auth/{SignOutSheet.tsx,signOutOutcome.ts}`, routed by `app/settings.tsx` (opened from home's Settings button), covered by `tests/settings.test.tsx`.
+
+| Rule | Behavior |
+| --- | --- |
+| Variants | Settings (40) follows the session: signed in shows the rider's display name, a warning when the session could not be saved (it ends when the app closes) and Sign out; signed out shows anonymous browsing and Sign in, which returns to settings; restoring says so; a failed restore offers Try again. The location row summarizes the foreground permission. On the mock source it carries the demo label. Notifications (NOTIFICATION-001-B) and blocked riders (SAFETY-001-C) are not shown until their cards |
+| Confirmation | Sign out opens the confirmation (48) in a sheet: what is cleared, that anonymous browsing remains, and that signing out does not leave a group or cancel a request. "Keep me signed in" changes nothing. While signing out the sheet cannot be dismissed; an unexpected failure is shown in it and can be retried |
+| Cleanup | Confirming calls the session controller's `signOut` (revocation, then local credential removal); the identity change makes the sync coordinator drop private reads and subscriptions, and the gate drops a pending intent. No group or request operation runs. The root stack is then reset to the map with settings on top, so no private screen stays beneath |
+| Outcome | The result is reduced to `confirmed`, `unconfirmed` (the source did not confirm revocation), `storage-kept` (the stored token could not be removed) or both, carried as a route parameter with no rider detail, and shown on settings in those terms; only `confirmed` says private details were cleared. It shows only while signed out by a sign-out, so a link cannot claim one. Push-device deregistration joins it in NOTIFICATION-001 |
 
 ## User projections
 

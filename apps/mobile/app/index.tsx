@@ -26,6 +26,7 @@ export default function HomeRoute() {
     <MapHomeScreen
       onSignIn={signedIn ? undefined : () => router.push('/auth/phone')}
       onOpenDemo={devControls === null ? undefined : () => router.push('/dev/scenarios')}
+      onOpenSettings={() => router.push('/settings')}
     />
   );
 }

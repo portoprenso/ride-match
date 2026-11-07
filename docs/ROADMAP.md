@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is paused with A's mock operations and C's sign-in screens and pending-intent gate completed, B's session controller implemented with its native check pending, and D planned; SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; MAP-001 is paused with A implemented and its native checks pending; all other implementation tasks are planned.**
+Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is paused with A's mock operations, C's sign-in screens and pending-intent gate, and D's settings and sign-out completed, and B's session controller implemented with its native check pending; SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; MAP-001 is paused with A implemented and its native checks pending; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,16 @@ Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**AUTH-001-D — Completed (2026-11-07); AUTH-001 stays `Paused` (only B's native check is pending).**
+
+- **Done:**
+  - Settings (40) replaces the inert route and opens from home's new Settings button: signed-in (display name, a warning when the session could not be saved, Sign out), signed-out (anonymous browsing, Sign in returning to settings), restoring and failed-restore (Try again) variants; the location permission summary; the demo label on the mock source.
+  - Sign-out confirmation (48) in a sheet (`SignOutSheet`): what is cleared, that anonymous browsing remains, and that signing out does not leave a group or cancel a request; it cannot be dismissed while running, and an unexpected failure can be retried.
+  - Signing out uses the session controller; the sync coordinator clears private reads and subscriptions; the root stack is reset to map + settings so no private screen stays beneath. The outcome (`signOutOutcome.ts`) is shown honestly: only a confirmed revocation with storage cleared says private details were cleared.
+  - 370 mobile tests (20 new; the inert settings case was replaced).
+- **Not covered here:** notification permission (NOTIFICATION-001-B) and blocked riders (SAFETY-001-C) on settings; push-device deregistration on sign-out (NOTIFICATION-001).
+- **Next available:** the native pass (MAP-001-A, LOCATION-001-B, AUTH-001-B, AUTH-001-C, AUTH-001-D), which would complete AUTH-001 and unblock MAP-001-B and MAP-002-A.
 
 **AUTH-001-C — Completed (2026-11-07); AUTH-001 stays `Paused` (B's native check pending, D planned).**
 
@@ -320,7 +330,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | DATA-001 | Data-source and Query foundation | Completed |
 | MOCK-001 | Simulator foundation | Completed |
 | SYNC-001 | Event synchronization and recovery | Completed (A and B) |
-| AUTH-001 | Simulated authentication | Paused (A and C completed; B implemented, native check pending; D planned) |
+| AUTH-001 | Simulated authentication | Paused (A, C and D completed; B implemented, native check pending) |
 | LOCATION-001 | Foreground location | Completed |
 | MAP-001 | Native map shell | Paused (A implemented, native checks pending; B planned) |
 | ANALYTICS-001 | Typed analytics foundation | Completed |
