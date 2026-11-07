@@ -2418,3 +2418,28 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** the discovery states and their honesty rules, the viewport rounding, the read/subscription/exposure lifecycle, the panel, the connection hook, and the composition's analytics field.
 - **Remaining/next:** the native check; MAP-002-B (markers, clusters, nearby list, tile fallback).
 - **Ownership:** Released; no active task.
+
+## 2026-11-07 — MAP-002-B: Markers, clusters, nearby list and tile notice
+
+- **Actor/session:** Claude Code / map-002-b.
+- **Status:** implemented; `Paused` for its native check (next native pass). Parent MAP-002 `Paused`. Ownership released.
+- **Working copy:** `main` at `ba49a80` (MAP-002-A); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start MAP-002-B": markers, clusters, the nearby list and the tile fallback (designs 20, 26, 53). Acceptance: map and list agree; a group counts once; truncation disclosed; the 100-item scenario usable; accessible list selection; evaluate a small clustering utility only here.
+- **Changes:**
+  - New in `src/features/discovery/`: `nearbyItems.ts`, `DiscoveryMarkers.tsx`, `NearbyListSheet.tsx`, `useClock.ts`.
+  - `DiscoveryPanel.tsx`: "View nearby items" with activity and with the last view; screen 26's notice when tiles are `slow`; the "not drawn on the map yet" line removed.
+  - `MapHomeScreen.tsx`: clustered entries for the shown snapshot (none while picking), selection and its "Selected on the map" card, the list sheet, cluster zoom and row selection as user camera moves; `HomeMap.tsx` takes `children`; `src/ui/Icon.tsx` adds `arrow` and `users`.
+  - Mock: `src/data/mock/scenarios.ts` adds scenario M `map-density` (seed areas may be built per scenario).
+  - Tests: new `tests/nearbyMap.test.tsx` (11); `tests/mockDataSource.test.ts` checks the density seed; scenario lists in `tests/mockDataSource.test.ts` and `tests/dataSource.test.tsx` include `map-density`; `tests/mapHome.test.tsx`'s stale-dot test runs on the empty scenario.
+- **Decisions:**
+  - Clustering without a dependency: an absolute power-of-two grid (five cells across the view). supercluster was considered; at most 100 items do not need it.
+  - Many items share one public area (district centres), so a cluster that zooming cannot separate opens its items in the list.
+  - Markers count ride plans; occupancy counts people; the list says so, as design 20 does.
+  - Selection stays minimal until MAP-002-C's previews: a highlighted marker and a card that names the item; it reserves nothing.
+  - Screen 26 is a notice in the sheet pointing to the list rather than a separate screen, since the sheet already holds the nearby summary.
+  - Markers redraw through `redraw()` when their look changes (the Android image issue found in VERIFY-004).
+- **Checks:** `pnpm typecheck`, `pnpm lint`, `pnpm test` (25 suites, 413 tests) passed; `git diff --check` clean. **Not run:** native builds or device checks (DEVELOPMENT's markers and list check, including the 100-item scenario's smoothness). Screen readers waived.
+- **Docs:** PRODUCT (markers, clusters and list), ARCHITECTURE, DEVELOPMENT (tests, 413; markers and list check), MOCK_SCENARIOS (`map-density`), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line, MAP-002 row), AI_CONTEXT.
+- **JSDoc:** item wording and its public-only rule, distance rounding, the clustering grid and zoom rule, marker analytics, the list's notices, the clock hook, the density seed.
+- **Remaining/next:** the native check; MAP-002-C (previews and disappeared selection).
+- **Ownership:** Released; no active task.

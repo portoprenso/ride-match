@@ -96,10 +96,31 @@ afterEach(() => {
 
 describe('scenarios', () => {
   it('knows only the implemented scenario keys', () => {
-    expect(MOCK_SCENARIO_KEYS).toEqual(['active-neighborhood', 'empty-neighborhood']);
+    expect(MOCK_SCENARIO_KEYS).toEqual(['active-neighborhood', 'empty-neighborhood', 'map-density']);
     expect(isMockScenarioKey('empty-neighborhood')).toBe(true);
     expect(isMockScenarioKey('match-appears')).toBe(false);
     expect(isMockScenarioKey('toString')).toBe(false);
+  });
+
+  it('seeds map-density with a hundred items, each group counted once, and truncates past the limit', async () => {
+    const { simulator, dataSource } = source('map-density');
+    const snapshot = await readCity(dataSource);
+
+    expect(NearbySnapshotSchema.safeParse(snapshot).success).toBe(true);
+    expect(snapshot.items).toHaveLength(100);
+    expect(snapshot.truncated).toBe(false);
+    expect(snapshot.items.filter((item) => item.kind === 'ride')).toHaveLength(75);
+    expect(snapshot.items.filter((item) => item.kind === 'group')).toHaveLength(25);
+    // 75 solo requests plus two grouped requests per group, which appear only as their group.
+    expect(simulator.state.rides.size).toBe(125);
+    // Every item lies inside the demo city's opening view.
+    for (const item of snapshot.items) {
+      expect(item.publicOrigin.center.latitude).toBeGreaterThan(42.81);
+      expect(item.publicOrigin.center.latitude).toBeLessThan(42.93);
+    }
+    const limited = await readCity(dataSource, 40);
+    expect(limited.items).toHaveLength(40);
+    expect(limited.truncated).toBe(true);
   });
 
   it('seeds active-neighborhood with six solo rides and two groups, showing each rider once', async () => {

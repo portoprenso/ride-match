@@ -222,7 +222,7 @@ describe('DiscoveryPanel failure', () => {
   it('says nobody knows whether anyone is nearby, and retries on request', async () => {
     const onRetry = jest.fn();
     const state: DiscoveryState = { kind: 'failed', unsupported: false };
-    await render(<DiscoveryPanel state={state} onRetry={onRetry} />);
+    await render(<DiscoveryPanel state={state} onRetry={onRetry} onOpenList={jest.fn()} tileStatus="unknown" />);
 
     expect(screen.getByText('Couldn’t load ride plans')).toBeOnTheScreen();
     expect(screen.getByText('Nearby activity didn’t load. We don’t know whether anyone is nearby.')).toBeOnTheScreen();

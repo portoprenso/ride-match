@@ -82,6 +82,7 @@ Rechecking after delay enables actual last-seat and expired-target conflicts. Us
 | --- | --- | --- |
 | `active-neighborhood` | Six solo rides in six districts; a forming group of three, and a ready group of two with a member-only meeting point. Eleven riders, one live request each | +8 s: a seventh solo ride appears; +20 s: a seeded ride reaches its deadline. Every other ride and group ends at its own deadline, so the area is empty after 26 minutes until a reset |
 | `empty-neighborhood` | No riders; the curated places still exist | None |
+| `map-density` (MAP-002-B) | 100 discovery items in the demo city's opening view: 25 synthetic "Demo block N" areas on a 5 × 5 grid about 1.3 km apart, each with three solo rides and one forming group of two (75 rides, 25 groups, 125 requests). Names and values repeat deterministically | None; rides and groups end at their own deadlines |
 
 Tests check that every output and every event of a full 31-minute run validates against its contract schema, that no exact origin or meeting point appears in any of them, that each exact origin lies inside its public area but away from its center, and that grouped riders appear only through their group.
 

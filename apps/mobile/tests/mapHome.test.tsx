@@ -122,7 +122,10 @@ describe('home map', () => {
   });
 
   it('greys the position once it is out of date', async () => {
+    // No discovery markers, so every redraw counted here is the device position's.
+    process.env.EXPO_PUBLIC_MOCK_SCENARIO = 'empty-neighborhood';
     await openHome();
+    process.env.EXPO_PUBLIC_MOCK_SCENARIO = 'active-neighborhood';
     expect(screen.getByLabelText('Your location')).toBeOnTheScreen();
     const { redrawMarker } = jest.requireMock<{ redrawMarker: jest.Mock }>('react-native-maps');
     redrawMarker.mockClear();

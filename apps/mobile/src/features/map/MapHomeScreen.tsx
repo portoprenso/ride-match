@@ -1,5 +1,5 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BackHandler, Platform, Pressable, StyleSheet, View } from 'react-native';
 import type { Region } from 'react-native-maps';
 
@@ -15,13 +15,19 @@ import { IconButton } from '../../ui/IconButton';
 import { MapLayout, type MapCoverage } from '../../ui/MapLayout';
 import { colors, radii, spacing } from '../../ui/tokens';
 import { HomeLocationPanel, useLocationStatus } from '../location/HomeLocation';
+import type { CoordinatesDto, NearbyItemDto } from '@ride-match/contracts';
+import { useDemoSignIn } from '../../data/DemoSignInProvider';
+import { DiscoveryMarkers } from '../discovery/DiscoveryMarkers';
 import { DiscoveryPanel } from '../discovery/DiscoveryPanel';
+import { clusterItems, clusterZoomRegion, describeItem, itemKey } from '../discovery/nearbyItems';
+import { NearbyListSheet, type NearbyListContent } from '../discovery/NearbyListSheet';
+import { useClock } from '../discovery/useClock';
 import { useNearbyDiscovery } from '../discovery/useNearbyDiscovery';
 import { useLocationChoices } from '../location/LocationChoicesProvider';
 import { PickupPlaceSheet } from '../location/PickupPlaceSheet';
 import { HomeMap } from './HomeMap';
 import { CentrePin, MapPointPanel, useMapPointPicker } from './MapPointPicker';
-import { useHomeCamera } from './mapCamera';
+import { CAMERA_ANIMATION_MS, streetRegion, useHomeCamera } from './mapCamera';
 
 /**
  * The map-first home (screens 02 and 21): anyone can pan and zoom it, with or without location
@@ -70,6 +76,40 @@ export function MapHomeScreen({
   const [region, setRegion] = useState<Region>(initialRegion);
   const discovery = useNearbyDiscovery(region);
   const analytics = useAnalytics();
+  const demo = useDemoSignIn() !== null;
+  // What the map draws: this view's snapshot, the previous view's while this one loads, or the
+  // last view while it cannot be refreshed (drawn faded). Nothing while picking a pickup point.
+  const snapshot = discovery.kind === 'active' || discovery.kind === 'stale' ? discovery.snapshot : null;
+  const staleSnapshot = discovery.kind === 'stale';
+  const entries = useMemo(
+    () => (snapshot === null || picking ? [] : clusterItems(snapshot.items, region)),
+    [snapshot, picking, region],
+  );
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  // A selection only lasts while its item is still in what the map shows.
+  const selected = snapshot?.items.find((item) => itemKey(item) === selectedKey) ?? null;
+  const [list, setList] = useState<NearbyListContent | null>(null);
+  const now = useClock();
+  const fixPoint = fix?.coordinates ?? null;
+
+  /** A camera move the user asked for (a cluster or a list row), which ends any automatic one. */
+  const moveTo = (target: Region) => {
+    onUserGesture();
+    mapRef.current?.animateToRegion(target, CAMERA_ANIMATION_MS);
+  };
+  const openList = () =>
+    snapshot &&
+    setList({ items: snapshot.items, truncated: snapshot.truncated, stale: staleSnapshot, fromCluster: false });
+  const pressCluster = (items: NearbyItemDto[]) => {
+    const zoom = clusterZoomRegion(items, region);
+    if (zoom !== null) moveTo(zoom);
+    else setList({ items, truncated: false, stale: staleSnapshot, fromCluster: true });
+  };
+  const selectFromList = (item: NearbyItemDto) => {
+    setList(null);
+    setSelectedKey(itemKey(item));
+    moveTo(streetRegion(item.publicOrigin.center));
+  };
 
   useFocusEffect(useCallback(() => controller.observe(), [controller]));
   useFocusEffect(useCallback(() => analytics.trackOncePerSession('map_opened'), [analytics]));
@@ -105,7 +145,17 @@ export function MapHomeScreen({
               coverage={mapCoverage}
               location={status}
               pickup={pickup}
-            />
+            >
+              <DiscoveryMarkers
+                entries={entries}
+                selectedKey={selected === null ? null : itemKey(selected)}
+                fix={fixPoint}
+                now={now}
+                stale={staleSnapshot}
+                onSelectItem={(item) => setSelectedKey(itemKey(item))}
+                onPressCluster={pressCluster}
+              />
+            </HomeMap>
             {picking ? <CentrePin coverage={mapCoverage} /> : null}
           </View>
         )}
@@ -179,15 +229,63 @@ export function MapHomeScreen({
             />
           ) : (
             <>
-              <DiscoveryPanel state={discovery} onRetry={discovery.retry} />
+              {selected !== null ? (
+                <SelectedItem item={selected} fix={fixPoint} now={now} onClear={() => setSelectedKey(null)} />
+              ) : null}
+              <DiscoveryPanel
+                state={discovery}
+                onRetry={discovery.retry}
+                onOpenList={openList}
+                tileStatus={tiles.status}
+              />
               <HomeLocationPanel status={status} onChooseOnMap={configured ? () => setPicking(true) : undefined} />
               {onSignIn && <Button label="Sign in" variant="ghost" onPress={onSignIn} />}
             </>
           )
         }
       />
+      <NearbyListSheet
+        content={list}
+        onClose={() => setList(null)}
+        onSelect={selectFromList}
+        fix={fixPoint}
+        now={now}
+        demo={demo}
+      />
       <PickupPlaceSheet open={namedOpen} onClose={() => setNamedOpen(false)} onConfirmed={() => setPicking(false)} />
     </>
+  );
+}
+
+/**
+ * The item selected from a marker or the list, until its preview sheet arrives (MAP-002-C). It
+ * reserves nothing and joins nothing.
+ */
+function SelectedItem({
+  item,
+  fix,
+  now,
+  onClear,
+}: {
+  item: NearbyItemDto;
+  fix: Readonly<CoordinatesDto> | null;
+  now: number;
+  onClear: () => void;
+}) {
+  const words = describeItem(item, fix, now);
+  return (
+    <View style={styles.selected}>
+      <AppText variant="small" color="muted">
+        Selected on the map
+      </AppText>
+      <AppText variant="label" accessibilityLiveRegion="polite">
+        {words.title}
+      </AppText>
+      <AppText variant="small" color="muted">
+        {words.detail}
+      </AppText>
+      <Button label="Clear selection" variant="ghost" onPress={onClear} />
+    </View>
   );
 }
 
@@ -201,6 +299,12 @@ function CoverageTracker({ coverage, onChange }: { coverage: MapCoverage; onChan
 }
 
 const styles = StyleSheet.create({
+  selected: {
+    gap: spacing.xs,
+    padding: spacing.lg,
+    borderRadius: radii.md,
+    backgroundColor: colors.soft,
+  },
   pickerHeader: {
     flexDirection: 'row',
     alignItems: 'center',

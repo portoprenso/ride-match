@@ -4,7 +4,9 @@ import { StyleSheet, View } from 'react-native';
 
 import { AppText } from '../../ui/AppText';
 import { Badge } from '../../ui/Badge';
+import type { MapTileStatus } from '../../platform/map/useMapTileStatus';
 import { Button } from '../../ui/Button';
+import { Notice } from '../../ui/Notice';
 import { colors, radii, spacing } from '../../ui/tokens';
 import type { DiscoveryState } from './useNearbyDiscovery';
 
@@ -33,6 +35,10 @@ type DiscoveryPanelProps = {
   state: DiscoveryState;
   /** Reads the current view again. */
   onRetry: () => void;
+  /** Opens the nearby list (design 20) of what the map shows. */
+  onOpenList: () => void;
+  /** `slow` adds screen 26's notice: the list still works when the map cannot. */
+  tileStatus: MapTileStatus;
 };
 
 /**
@@ -41,10 +47,25 @@ type DiscoveryPanelProps = {
  * wide to read and a first read waiting for the connection.
  *
  * Every state says only what is known: loading is not empty, a failure is not "nobody nearby",
- * and a stale snapshot says when it was last true and that nothing will be queued. Markers for
- * the items arrive with MAP-002-B, so this section does not claim they are on the map.
+ * and a stale snapshot says when it was last true and that nothing will be queued. With items to
+ * show it offers the nearby list, the accessible alternative to the markers (MAP-002-B), which is
+ * also what a slow map (screen 26) points to.
  */
-export function DiscoveryPanel({ state, onRetry }: DiscoveryPanelProps) {
+export function DiscoveryPanel({ state, onRetry, onOpenList, tileStatus }: DiscoveryPanelProps) {
+  return (
+    <View style={styles.panel}>
+      {tileStatus === 'slow' ? (
+        <Notice
+          tone="warning"
+          message="The map can’t load right now. Nearby ride data may still be available in the list."
+        />
+      ) : null}
+      <DiscoveryStateView state={state} onRetry={onRetry} onOpenList={onOpenList} />
+    </View>
+  );
+}
+
+function DiscoveryStateView({ state, onRetry, onOpenList }: Omit<DiscoveryPanelProps, 'tileStatus'>) {
   switch (state.kind) {
     case 'too-wide':
       return <Section title="Zoom in to see ride plans." message="Discovery covers a smaller area than this view." />;
@@ -90,7 +111,8 @@ export function DiscoveryPanel({ state, onRetry }: DiscoveryPanelProps) {
     case 'active':
       return (
         <Section title="Going the same way?" message={describeActivity(state.snapshot)}>
-          <Small>{state.updating ? 'Updating for this area…' : 'Ride plans aren’t drawn on the map yet.'}</Small>
+          {state.updating ? <Small>Updating for this area…</Small> : null}
+          <Button label="View nearby items" variant="ghost" onPress={onOpenList} />
         </Section>
       );
     case 'empty':
@@ -116,6 +138,7 @@ export function DiscoveryPanel({ state, onRetry }: DiscoveryPanelProps) {
             <Button label="Try again" variant="secondary" onPress={onRetry} />
           )}
           <Small>Actions won’t be queued for later.</Small>
+          <Button label="View nearby items" variant="ghost" onPress={onOpenList} />
         </Section>
       );
   }
@@ -154,6 +177,9 @@ function Small({ children }: { children: string }) {
 }
 
 const styles = StyleSheet.create({
+  panel: {
+    gap: spacing.md,
+  },
   section: {
     gap: spacing.sm,
     alignItems: 'stretch',

@@ -9,6 +9,15 @@ import { colors, type ColorName } from './tokens';
  */
 const ICONS = {
   back: <Path d="m14 5-7 7 7 7" />,
+  /** A ride heading somewhere. */
+  arrow: <Path d="M5 12h14m-5-5 5 5-5 5" />,
+  /** A group, or several ride plans in one place. */
+  users: (
+    <>
+      <Circle cx={9} cy={8} r={3} />
+      <Path d="M3 20v-3a6 6 0 0 1 12 0v3m1-15a3 3 0 0 1 0 6m1 3c3 0 4 2 4 5" />
+    </>
+  ),
   /** Recenter on the device position. */
   locate: (
     <>

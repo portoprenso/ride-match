@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; MAP-002 is paused with A's discovery read and states implemented, its native check pending; all other implementation tasks are planned.**
+Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; MAP-002 is paused with A's discovery read and states and B's markers, clusters, list and tile notice implemented, their native checks pending; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,20 @@ Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**MAP-002-B — Implemented (2026-11-07), native check pending; MAP-002 `Paused`.**
+
+- **Done:**
+  - Markers for the snapshot the sheet describes, at each item's public area: a ride shows its destination (and approximate distance with a device position), a group its destination and occupancy. Where markers would overlap, a lime cluster counts ride plans; a group counts once. Clusters come from a power-of-two grid anchored to absolute coordinates, so they stay put while panning. A cluster tap zooms in when that can separate its items; items sharing one public area are listed instead. The last view is drawn faded.
+  - "View nearby items" opens the list (20): the same items in the source's order, with the demo badge, notices when the source left items out or the list is the last view, and what the counts mean. A row selects its item and moves the camera there; a marker tap selects it in place. "Selected on the map" names it until cleared. Nothing is reserved or opened (previews are MAP-002-C).
+  - Screen 26: when Google Maps has not reported its tiles, the sheet says the map can't load and points to the list.
+  - Mock scenario M `map-density`: 100 items (75 rides, 25 groups of two) on a grid of synthetic demo blocks.
+  - Analytics: `nearby_marker_seen` through marker visibility (single items only, after the 1 s dwell) and `nearby_marker_tapped`.
+  - 413 mobile tests (12 new, including the density seed).
+- **Decision:** no clustering dependency; a grid is enough for at most 100 items.
+- **Not covered here:** ride and group preview sheets and disappeared selections (MAP-002-C); match emphasis (DESTINATION-001-B).
+- **Pending:** the native check (DEVELOPMENT, markers and list check), with the 100-item scenario.
+- **Next available:** MAP-002-C (previews).
 
 **MAP-002-A — Implemented (2026-11-07), native check pending; MAP-002 `Paused`.**
 
@@ -376,7 +390,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | LOCATION-001 | Foreground location | Completed |
 | MAP-001 | Native map shell | Paused (A completed; B implemented, native check pending) |
 | ANALYTICS-001 | Typed analytics foundation | Completed |
-| MAP-002 | Live nearby activity | Paused (A implemented, native check pending; B and C planned) |
+| MAP-002 | Live nearby activity | Paused (A and B implemented, native checks pending; C planned) |
 | DESTINATION-001 | Destination selection and compatibility | Planned |
 | RIDE-001 | Creation, matching, expiration | Planned |
 | GROUP-001 | Atomic mock group operations | Planned |

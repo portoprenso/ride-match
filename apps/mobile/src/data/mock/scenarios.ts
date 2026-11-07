@@ -34,7 +34,8 @@ const AREAS = {
 
 type RideSeed = {
   rider: string;
-  area: keyof typeof AREAS;
+  /** A named area above, or one built for a scenario (`map-density`). */
+  area: keyof typeof AREAS | PublicLocationDto;
   /** The exact origin's offset from the area's center in degrees (latitude, longitude), well inside the area. */
   offset: readonly [number, number];
   destination: string;
@@ -120,7 +121,7 @@ function buildRide(
   link: { status: 'active'; groupId: null } | { status: 'grouped'; groupId: string },
 ): RideRecord {
   const userId = addRider(world, ids, seed.rider);
-  const area = AREAS[seed.area];
+  const area = typeof seed.area === 'string' ? AREAS[seed.area] : seed.area;
   return {
     id: ids.next('ride'),
     userId,
@@ -187,6 +188,90 @@ function createActiveNeighborhood({ now, ids }: SeedContext): MockWorld {
   return world;
 }
 
+/** Invented first names for the busy map; they repeat, as names do. */
+const DENSITY_NAMES = ['Aidai', 'Bolot', 'Chinara', 'Dastan', 'Eldiyar', 'Gulzat', 'Kairat', 'Medina', 'Nurbek', 'Saltanat'];
+const DENSITY_DESTINATIONS = [
+  'place_asia_mall',
+  'place_ala_too',
+  'place_tsum',
+  'place_dordoi_plaza',
+  'place_vefa_center',
+  'place_osh_bazaar',
+  'place_bishkek_park',
+  'place_philharmonic',
+];
+const DEPARTURES: readonly DepartureOffsetMinutes[] = [0, 5, 10];
+/** Rows and columns of the busy map's blocks; each block holds three rides and one group. */
+const DENSITY_GRID = 5;
+
+/** A synthetic public block of the busy map's grid, about 1.3 km apart, labelled as demo data. */
+function densityArea(row: number, column: number): PublicLocationDto {
+  return {
+    center: { latitude: round(42.846 + row * 0.012), longitude: round(74.565 + column * 0.016) },
+    radiusMeters: 500,
+    label: `Demo block ${row * DENSITY_GRID + column + 1}`,
+  };
+}
+
+/**
+ * Scenario M: a hundred discovery items in the demo city's view, 75 solo rides and 25 forming
+ * groups of two, spread over a 5 × 5 grid of blocks, so clusters, the list and the full snapshot
+ * limit can be tried. Every value is derived from its position, so the seed repeats exactly.
+ */
+function createMapDensity({ now, ids }: SeedContext): MockWorld {
+  const world = createEmptyWorld(now);
+  let index = 0;
+  const next = () => index++;
+  for (let row = 0; row < DENSITY_GRID; row += 1) {
+    for (let column = 0; column < DENSITY_GRID; column += 1) {
+      const area = densityArea(row, column);
+      for (let rider = 0; rider < 3; rider += 1) {
+        const i = next();
+        const seed: RideSeed = {
+          rider: DENSITY_NAMES[i % DENSITY_NAMES.length]!,
+          area,
+          offset: [((i % 5) - 2) * 0.0006, ((i % 3) - 1) * 0.0008],
+          destination: DENSITY_DESTINATIONS[i % DENSITY_DESTINATIONS.length]!,
+          createdSecondsAgo: 30 + ((i * 37) % 800),
+          departureOffsetMinutes: DEPARTURES[i % DEPARTURES.length]!,
+        };
+        const ride = buildRide(world, ids, seed, now - seed.createdSecondsAgo * SECOND, { status: 'active', groupId: null });
+        world.rides.set(ride.id, ride);
+      }
+      const g = next();
+      const groupCreated = 60 + ((g * 53) % 540);
+      addGroup(
+        world,
+        ids,
+        {
+          status: 'forming',
+          destination: DENSITY_DESTINATIONS[(g + 3) % DENSITY_DESTINATIONS.length]!,
+          createdSecondsAgo: groupCreated,
+          coordinator: {
+            rider: DENSITY_NAMES[g % DENSITY_NAMES.length]!,
+            area,
+            offset: [0.0005, -0.0005],
+            createdSecondsAgo: groupCreated + 60,
+            departureOffsetMinutes: DEPARTURES[g % DEPARTURES.length]!,
+          },
+          founder: {
+            rider: DENSITY_NAMES[(g + 1) % DENSITY_NAMES.length]!,
+            area,
+            offset: [-0.0005, 0.0005],
+            createdSecondsAgo: groupCreated + 30,
+            departureOffsetMinutes: DEPARTURES[g % DEPARTURES.length]!,
+          },
+          laterMembers: [],
+          meetingPoint: null,
+          version: 1,
+        },
+        now,
+      );
+    }
+  }
+  return world;
+}
+
 /** Scenario A's timed event: a new ride appears after 8 seconds (the expiry at 20 seconds is a seeded deadline). */
 function scheduleActiveNeighborhood(world: MockWorld, schedule: Schedule): void {
   const appearsAt = world.activatedAt + APPEARS_AFTER_MS;
@@ -205,6 +290,8 @@ const SCENARIOS = {
   'active-neighborhood': { createWorld: createActiveNeighborhood, scheduleEvents: scheduleActiveNeighborhood },
   // Scenario B: no activity at all, and nothing appears; the curated places still exist.
   'empty-neighborhood': { createWorld: ({ now }) => createEmptyWorld(now) },
+  // Scenario M: a hundred items for clusters, the list and the snapshot limit.
+  'map-density': { createWorld: createMapDensity },
 } satisfies Record<string, ScenarioDefinition>;
 
 /** Key of an implemented scenario, as `EXPO_PUBLIC_MOCK_SCENARIO` names it. */

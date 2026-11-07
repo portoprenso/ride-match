@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
 import { StyleSheet, View } from 'react-native';
 import MapView, { Circle, Marker, type MapMarker, type Region } from 'react-native-maps';
 
@@ -27,6 +27,8 @@ type HomeMapProps = {
   /** The device position is drawn only while `located`. */
   location: LocationStatus;
   pickup: ConfirmedPickup | null;
+  /** More map content, such as the discovery markers (MAP-002-B), drawn under the user's own. */
+  children?: ReactNode;
 };
 
 /**
@@ -53,6 +55,7 @@ export function HomeMap({
   coverage,
   location,
   pickup,
+  children,
 }: HomeMapProps) {
   if (!isMapProviderConfigured()) {
     return (
@@ -84,6 +87,7 @@ export function HomeMap({
       showsUserLocation={false}
       showsMyLocationButton={false}
     >
+      {children}
       {location.kind === 'located' ? <DevicePosition status={location} /> : null}
       {pickup !== null ? (
         <Marker
