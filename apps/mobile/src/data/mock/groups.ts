@@ -2,6 +2,8 @@ import {
   GROUP_POLICY,
   JoinGroupInputSchema,
   LeaveGroupInputSchema,
+  SubscriptionRequestSchema,
+  type SubscriptionAckDto,
   UpdateGroupStatusInputSchema,
   type GroupStatus,
   type JoinGroupResultDto,
@@ -184,7 +186,7 @@ function formGroup(context: Context, target: RideRecord, joiner: RideRecord): Gr
 }
 
 /** Whether `userId` is listed among the group's members now; a member who left is not. */
-function isMember(group: GroupRecord, userId: string): boolean {
+export function isMember(group: GroupRecord, userId: string): boolean {
   return group.members.some((member) => member.userId === userId);
 }
 
@@ -371,4 +373,28 @@ export function updateGroupStatus(
       return toRideGroupDto(state, group);
     },
   );
+}
+
+/**
+ * Accepts a `group` subscription for a signed-in member of that group: `VALIDATION_FAILED` for an
+ * invalid request, `UNAUTHENTICATED`/`SESSION_EXPIRED`, and `MEMBERSHIP_REQUIRED` for an unknown
+ * group or a non-member, as the group read answers, so a subscription never reveals whether a
+ * group exists. Delivery is the data source's job, and it stops once the subscriber is no longer
+ * a member ({@link isMember}).
+ */
+export function acceptGroupSubscription(
+  context: Context,
+  request: unknown,
+  accessToken: string | null,
+): SubscriptionAckDto & { subscription: { kind: 'group'; groupId: string } } & { userId: string } {
+  const parsed = SubscriptionRequestSchema.safeParse(request);
+  if (!parsed.success || parsed.data.kind !== 'group') {
+    throw context.sourceError('VALIDATION_FAILED', 'The subscription is not valid.');
+  }
+  const user = authenticate(context, accessToken);
+  const group = context.state.groups.get(parsed.data.groupId);
+  if (group === undefined || !isMember(group, user.id)) {
+    throw context.sourceError('MEMBERSHIP_REQUIRED', 'Only this group’s members can follow it.');
+  }
+  return { subscriptionId: context.ids.next('sub'), subscription: parsed.data, userId: user.id };
 }

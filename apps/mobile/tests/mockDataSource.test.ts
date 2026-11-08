@@ -491,7 +491,7 @@ describe('nearby subscriptions and timed events', () => {
     expect(simulator.stats().eventListeners).toBe(0);
   });
 
-  it('refuses invalid and uncovered viewports, an anonymous user subscription, and group subscriptions for now', async () => {
+  it('refuses invalid and uncovered viewports, and anonymous user and group subscriptions', async () => {
     const { dataSource } = source();
     const wide = { ...CITY, northEast: { latitude: 43.3, longitude: 74.8 } };
 
@@ -500,8 +500,8 @@ describe('nearby subscriptions and timed events', () => {
     await expect(settle(dataSource.events.subscribe({ kind: 'user' }, () => {}))).rejects.toEqual(
       sourceError('UNAUTHENTICATED'),
     );
-    await expect(dataSource.events.subscribe({ kind: 'group', groupId: 'group_1' }, () => {})).rejects.toThrow(
-      DataSourceUnavailableError,
+    await expect(settle(dataSource.events.subscribe({ kind: 'group', groupId: 'group_1' }, () => {}))).rejects.toEqual(
+      sourceError('UNAUTHENTICATED'),
     );
   });
 

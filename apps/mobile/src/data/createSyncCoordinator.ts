@@ -118,6 +118,7 @@ export function createSyncCoordinator({
             void subscription.unsubscribe();
             return null;
           }
+          readAgainCovered(entry.request, forViewer);
           return subscription;
         },
         (error: unknown) => {
@@ -129,6 +130,21 @@ export function createSyncCoordinator({
           return null;
         },
       );
+  }
+
+  /**
+   * A change between a private read and its subscription's acknowledgement reaches nobody, so
+   * once a `user` or `group` subscription is live, the reads it keeps current are read again.
+   * Nearby subscriptions need none: each viewport's read starts with the subscription.
+   */
+  function readAgainCovered(request: SubscriptionRequest, forViewer: Viewer) {
+    if (forViewer.kind !== 'user') return;
+    if (request.kind === 'group') {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.group(forViewer, request.groupId) });
+    } else if (request.kind === 'user') {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.ownRequest(forViewer) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.currentUser(forViewer) });
+    }
   }
 
   function unsubscribe(entry: Watched) {

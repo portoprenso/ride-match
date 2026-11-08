@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-08. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; RIDE-001 is paused with A's mock request operations completed and B's draft and review, C's request card, cancel and expiry, and D's matches and unknown-outcome recovery implemented, their native checks pending; DESTINATION-001 is paused with A's supplied matches completed and B's destination search, selection and map emphasis implemented, its native check pending; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; MAP-002 is paused with A's discovery read and states, B's markers, clusters, list and tile notice, and C's ride and group previews and disappeared target implemented, their native checks pending; GROUP-001 is completed (A's joins, B's leave and coordinator transfer, C's status changes, expiry and terminal access); GROUP-002 is in progress with A's join confirmation and conflict recovery implemented, its native check pending; all other implementation tasks are planned.**
+Last updated: 2026-11-08. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; RIDE-001 is paused with A's mock request operations completed and B's draft and review, C's request card, cancel and expiry, and D's matches and unknown-outcome recovery implemented, their native checks pending; DESTINATION-001 is paused with A's supplied matches completed and B's destination search, selection and map emphasis implemented, its native check pending; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; MAP-002 is paused with A's discovery read and states, B's markers, clusters, list and tile notice, and C's ride and group previews and disappeared target implemented, their native checks pending; GROUP-001 is completed (A's joins, B's leave and coordinator transfer, C's status changes, expiry and terminal access); GROUP-002 is in progress with A's join confirmation and conflict recovery and B's group screen implemented, their native checks pending; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,19 @@ Last updated: 2026-11-08. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**GROUP-002-B — Implemented (2026-11-08), native check pending; GROUP-002 `In progress`.**
+
+- **Done:**
+  - The group route shows the member-only group (13, 32): status and occupancy, departure and closing time, members with roles and "You", open seats, the meeting point or its absence, and the next step by role. Occupancy updates live 2 → 3 → 4 through a `group` subscription; a full group stays forming ("Full does not automatically mean ready.").
+  - Each other member has a menu titled with that member (report and block shown disabled until SAFETY-001); the viewer has none.
+  - Direct entry is decided by the source: signed out, a non-member, an unknown group or a malformed link all get "Group unavailable", with nothing from the link shown.
+  - Joining opens the group; a grouped request's card offers "Open my group".
+  - Found and fixed in the sync layer: the public tombstone of the rider's own ride or group made the private change of the same version look already known, so a ride joined by someone else (and an expired request) left the card unchanged; and a change between a private read and its subscription's acknowledgement was lost.
+  - 509 mobile tests (6 new).
+- **Not covered here:** ready, leave, reopen, complete, cancel and the revoked state (GROUP-002-C); the meeting point's sheet (MEETING-001-B); live occupancy on a device needs another rider (scenario D).
+- **Pending:** the native check (DEVELOPMENT, group check).
+- **Next available:** GROUP-002-C (group lifecycle screens), or the native pass.
 
 **GROUP-002-A — Implemented (2026-11-08), native check pending; GROUP-002 `In progress`.** Started at the user's request while RIDE-001's native checks are pending.
 
@@ -526,7 +539,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | DESTINATION-001 | Destination selection and compatibility | Paused (A completed; B implemented, native check pending) |
 | RIDE-001 | Creation, matching, expiration | Paused (A completed; B, C and D implemented, native checks pending) |
 | GROUP-001 | Atomic mock group operations | Completed |
-| GROUP-002 | Group product flow | In progress (A implemented, native check pending) |
+| GROUP-002 | Group product flow | In progress (A and B implemented, native checks pending) |
 | CHAT-001 | Temporary text chat | Planned |
 | MEETING-001 | Meeting point and readiness | Planned |
 | TAXI-001 | Yandex Go handoff | Planned |

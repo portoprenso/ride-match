@@ -86,15 +86,18 @@ import { CAMERA_ANIMATION_MS, streetRegion, useHomeCamera } from './mapCamera';
  * @param onOpenDemo - Opens the demo controls; given only in builds that have them, where the
  *   Demo badge becomes a button.
  * @param onOpenSettings - Opens settings, for anonymous and signed-in riders alike.
+ * @param onOpenGroup - Opens a group the rider belongs to: after a join, and from the card.
  */
 export function MapHomeScreen({
   onSignIn,
   onOpenDemo,
   onOpenSettings,
+  onOpenGroup,
 }: {
   onSignIn?: () => void;
   onOpenDemo?: () => void;
   onOpenSettings: () => void;
+  onOpenGroup: (groupId: string) => void;
 }) {
   const controller = useLocationController();
   const { pickup } = useLocationChoices();
@@ -427,7 +430,10 @@ export function MapHomeScreen({
               preview={previewState}
               ownRequest={ownRequest}
               now={now}
-              onJoined={closePreview}
+              onJoined={(group) => {
+                closePreview();
+                onOpenGroup(group.id);
+              }}
               onBack={() => setJoining(false)}
               onKeepLooking={closePreview}
               onRefreshNearby={() => {
@@ -477,6 +483,7 @@ export function MapHomeScreen({
                   setCreateStep('departure');
                 }}
                 onDismiss={(ended) => setDismissedId(ended.id)}
+                onOpenGroup={onOpenGroup}
               />
               <DestinationPanel
                 destination={destination}

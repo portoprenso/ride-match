@@ -2699,3 +2699,28 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** `JoinPanel` (revalidation, no optimistic membership, refusals, unknown outcome, analytics), `describeJoinError`, `describeJoinPlan`, the home screen's join flow, `useTargetPreview`'s `fetching`, `useOwnRequest`'s `known`, `PreviewPanel`'s join props.
 - **Remaining/next:** GROUP-002-B (group route, members, seats, role-aware menu); the native pass.
 - **Ownership:** Released; no active task.
+
+## 2026-11-08 — GROUP-002-B: Group screen, members, seats and member menu
+
+- **Actor/session:** Claude Code / group-002-b.
+- **Status:** implemented; `Paused` for its native check (next native pass). Parent GROUP-002 `In progress`. Ownership released.
+- **Working copy:** `main` at `09225ae` (GROUP-002-A); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "GROUP-002-B": the group route with member, seat and role-aware menu components (designs 13, 32). Acceptance: live 2→3→4 occupancy; full still forming; correct safety target; unauthorized direct entry rejected.
+- **Changes:**
+  - New `src/features/groups/GroupScreen.tsx` (`GroupScreen`, `describeGroup`, `describeGroupTimes`, `MemberRow`, `MemberMenu`); `app/groups/[groupId]/index.tsx` now renders it (it reads the ID only to send it to the source).
+  - Mock: `groups.ts` `acceptGroupSubscription`, exported `isMember`; `createMockDataSource.ts` `subscribeGroup`.
+  - Home: `MapHomeScreen` `onOpenGroup` (after a join), `RequestCard` "Open my group"; `app/index.tsx` pushes the route.
+  - Sync: `synchronizeEvents.ts` tracks private versions (`own-ride:`, `member-group:`) apart from public ones; `createSyncCoordinator.ts` rereads the own request, current user or the group's private reads once a `user` or `group` subscription is acknowledged.
+  - Tests: new `tests/groupScreen.test.tsx` (5) and `tests/helpers/groupFlow.ts` (moved from `tests/joinGroup.test.tsx`, plus other riders taking seats by a task due at once); `tests/synchronizeEvents.test.ts` (+1); `tests/joinGroup.test.tsx` lands on the group screen; `tests/navigation.test.tsx`, `tests/mockDataSource.test.ts`, `tests/syncCoordinator.test.ts` updated for the real route and group subscriptions.
+- **Found and fixed (sync, while testing the coordinator view):**
+  - When another rider joined the viewer's ride, discovery's `nearby.removed` for that ride (version 2) taught the shared `ride:` key first, so the owner's `ride.changed` (version 2) was `stale` and the card kept "Searching". The same order affects expiry (`expireRide`) and a member's group closing (`nearby.removed` then `group.changed`). Fixed by keying private resources apart.
+  - A `group.changed` published after the screen's read but before the subscription's acknowledgement was lost. Fixed by rereading on acknowledgement.
+- **Decisions:**
+  - Report and block are shown disabled in the member menu, with a note, rather than hidden, so the menu's target is visible and testable now; SAFETY-001 enables them.
+  - Closed groups get a minimal view (badge, "This group has closed.", no actions); their full screens are GROUP-002-C's.
+  - A demo profile is labelled on other members' rows.
+- **Checks:** `pnpm typecheck`, `pnpm lint`, `npx jest` in `apps/mobile` (34 suites, 509 tests) passed. Prettier clean on new and changed files except `src/data/synchronizeEvents.ts`, `tests/mockDataSource.test.ts`, `tests/syncCoordinator.test.ts` and `tests/synchronizeEvents.test.ts`, already unformatted at HEAD and edited without reformatting. **Not run:** native builds or device checks (DEVELOPMENT's group check). Screen readers waived.
+- **Docs:** PRODUCT (group screen), ARCHITECTURE, api/realtime.md (version keys, read after acknowledgement), MOCK_SCENARIOS (group subscriptions), DEVELOPMENT (tests, 509; group check), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line, GROUP-002 row), AI_CONTEXT.
+- **JSDoc:** `GroupScreen` (authorization by the source, live updates), `describeGroup`, `describeGroupTimes`, `MemberMenu`, `acceptGroupSubscription`, `subscribeGroup`, `readAgainCovered`, the key comment in the synchronizer, `RequestCard`'s and `MapHomeScreen`'s new props.
+- **Remaining/next:** GROUP-002-C (ready, leave, reopen, complete, cancel, revoked); the native pass.
+- **Ownership:** Released; no active task.

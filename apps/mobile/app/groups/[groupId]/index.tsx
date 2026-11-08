@@ -1,16 +1,18 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
-import { UnavailableScreen } from '../../../src/ui/UnavailableScreen';
+import { GroupScreen } from '../../../src/features/groups/GroupScreen';
 
-// Inert until GROUP-002. The group ID is deliberately not read: membership is never inferred
-// from a route parameter, and every ID, malformed or not, shows the same unavailable state.
+// The group ID is only sent to the source, which decides whether the viewer may see the group;
+// membership is never inferred from the route, and the ID is never shown.
 export default function GroupRoute() {
   const router = useRouter();
+  const { groupId } = useLocalSearchParams<{ groupId?: string }>();
   return (
-    <UnavailableScreen
-      title="Group"
-      message="Group details are not available yet."
+    <GroupScreen
+      groupId={typeof groupId === 'string' ? groupId : undefined}
+      onBack={() => (router.canGoBack() ? router.back() : router.dismissTo('/'))}
       onGoHome={() => router.dismissTo('/')}
+      onOpenChat={(id) => router.push({ pathname: '/groups/[groupId]/chat', params: { groupId: id } })}
     />
   );
 }

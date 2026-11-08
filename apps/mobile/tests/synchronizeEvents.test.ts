@@ -239,6 +239,21 @@ describe('private events', () => {
     expect(isInvalidated(client, queryKeys.currentUser(RIDER))).toBe(false); // not cached, nothing to mark
   });
 
+  it('still applies a private change after the public tombstone it caused, at the same version', () => {
+    const { client, synchronizer } = setup();
+    client.setQueryData(queryKeys.ownRequest(RIDER), { id: 'ride_own', version: 1 });
+    client.setQueryData(queryKeys.groupDetail(RIDER, 'group_1'), { id: 'group_1', version: 3 });
+
+    // Joined by someone else: discovery drops the ride, then its owner hears of it (GROUP-002-B).
+    expect(synchronizer.apply(removed({ kind: 'ride', id: 'ride_own' } as NearbyItemDto, 2), RIDER)).toBe('applied');
+    expect(synchronizer.apply(rideChanged(RIDER.userId, 'ride_own', 2), RIDER)).toBe('applied');
+    expect(isInvalidated(client, queryKeys.ownRequest(RIDER))).toBe(true);
+    // The same for a member's group that closes.
+    expect(synchronizer.apply(removed({ kind: 'group', id: 'group_1' } as NearbyItemDto, 4), RIDER)).toBe('applied');
+    expect(synchronizer.apply(groupChanged('group_1', 4), RIDER)).toBe('applied');
+    expect(isInvalidated(client, queryKeys.groupDetail(RIDER, 'group_1'))).toBe(true);
+  });
+
   it('rereads once more when an older group read lands after a newer event', async () => {
     const { client, synchronizer } = setup();
     const detailKey = queryKeys.groupDetail(RIDER, 'group_1');

@@ -90,8 +90,14 @@ type SingleResourceKind = 'rides' | 'groupPreviews' | 'ownRequest' | 'matches' |
 
 const DEFAULT_REMEMBERED_EVENTS = 1000;
 
+// Public versions (discovery items and their preview reads) and private ones (the owner's own
+// request, a member's group) are tracked apart. They share version numbers but not events: the
+// public tombstone of the rider's own ride, or of their group, carries the same version as the
+// private change that caused it, and must not make that private change look already known.
 const rideKey = (id: Id) => `ride:${id}`;
 const groupKey = (id: Id) => `group:${id}`;
+const ownRideKey = (id: Id) => `own-ride:${id}`;
+const memberGroupKey = (id: Id) => `member-group:${id}`;
 const matchesKey = (rideId: Id) => `matches:${rideId}`;
 const targetKey = (target: JoinTargetDto) => `${target.kind}:${target.id}`;
 
@@ -272,14 +278,14 @@ export function createEventSynchronizer(queryClient: QueryClient, options: Event
         key = groupKey(id as Id);
         break;
       case 'ownRequest':
-        key = hasVersion(data) && data.id !== undefined ? rideKey(data.id) : null;
+        key = hasVersion(data) && data.id !== undefined ? ownRideKey(data.id) : null;
         break;
       case 'matches':
         key = matchesKey(id as Id);
         break;
       case 'groups':
         // Only the group detail carries the group's version; chat pages do not.
-        key = split.rest[2] === 'detail' ? groupKey(id as Id) : null;
+        key = split.rest[2] === 'detail' ? memberGroupKey(id as Id) : null;
         break;
     }
     if (key === null || !hasVersion(data)) return;
@@ -300,7 +306,7 @@ export function createEventSynchronizer(queryClient: QueryClient, options: Event
     if (audience.kind === 'public') return true;
     if (viewer.kind !== 'user') return false;
     if (audience.kind === 'user') return audience.userId === viewer.userId;
-    const known = state.resources.get(groupKey(audience.groupId));
+    const known = state.resources.get(memberGroupKey(audience.groupId));
     if (!known?.revoked) return true;
     // A group event newer than the revocation means the viewer rejoined; a message has no group version.
     return event.type === 'group.changed' && event.payload.version > known.version;
@@ -352,7 +358,7 @@ export function createEventSynchronizer(queryClient: QueryClient, options: Event
       case 'ride.changed': {
         const { rideRequestId, version } = event.payload;
         // No public payload: a snapshot holding an older item is reread instead of patched.
-        if (!learn(state, rideKey(rideRequestId), version, {})) return 'stale';
+        if (!learn(state, ownRideKey(rideRequestId), version, {})) return 'stale';
         invalidateIfOlder(queryKeys.ownRequest(viewer), version);
         invalidateIfOlder(queryKeys.ride(viewer, rideRequestId), version);
         // The current user's request and group references may have changed (for example `grouped`).
@@ -367,7 +373,7 @@ export function createEventSynchronizer(queryClient: QueryClient, options: Event
       }
       case 'group.changed': {
         const { groupId, version } = event.payload;
-        if (!learn(state, groupKey(groupId), version, {})) return 'stale';
+        if (!learn(state, memberGroupKey(groupId), version, {})) return 'stale';
         invalidateIfOlder(queryKeys.groupDetail(viewer, groupId), version);
         invalidateIfOlder(queryKeys.groupPreview(viewer, groupId), version);
         return 'applied';
@@ -377,9 +383,9 @@ export function createEventSynchronizer(queryClient: QueryClient, options: Event
         return 'applied';
       case 'access.revoked': {
         const { groupId, version } = event.payload;
-        const known = state.resources.get(groupKey(groupId));
+        const known = state.resources.get(memberGroupKey(groupId));
         if (known && (known.version > version || (known.version === version && known.revoked))) return 'stale';
-        state.resources.set(groupKey(groupId), { version, item: null, removed: false, revoked: true });
+        state.resources.set(memberGroupKey(groupId), { version, item: null, removed: false, revoked: true });
         const privateKey = queryKeys.group(viewer, groupId);
         void queryClient.cancelQueries({ queryKey: privateKey });
         queryClient.removeQueries({ queryKey: privateKey });

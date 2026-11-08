@@ -37,6 +37,8 @@ type RequestCardProps = {
   onCreateAgain: (request: OwnRideRequestDto) => void;
   /** Hides an expired request's outcome until another request ends. */
   onDismiss: (request: OwnRideRequestDto) => void;
+  /** Opens the group a grouped request belongs to (GROUP-002-B). */
+  onOpenGroup: (groupId: string) => void;
 };
 
 /**
@@ -47,7 +49,7 @@ type RequestCardProps = {
  *   (screen 11) it says so, with "Review and join" (the match's preview) and "Keep looking".
  * - Ending: the device saw the deadline pass; no action is offered while the source's answer
  *   is read, so a cancel never races an expiry.
- * - Grouped: it joined a group (group screens arrive with GROUP-002).
+ * - Grouped: it joined a group; "Open my group" opens the group screen.
  * - Expired: "Your request expired." and an explicit "Review a new request"; nothing is
  *   re-created automatically. `ride_request_expired` is recorded once per request.
  */
@@ -68,6 +70,7 @@ function RequestCardContent({
   onDeadline,
   onCreateAgain,
   onDismiss,
+  onOpenGroup,
 }: RequestCardProps) {
   const analytics = useAnalytics();
   // Its own one-second clock, so the countdown does not re-render the whole map.
@@ -141,6 +144,9 @@ function RequestCardContent({
           <Badge label="In a group" tone="success" />
           {destination}
           <AppText color="muted">Your request joined a group. Leaving the group is how it ends.</AppText>
+          {request.groupId === null ? null : (
+            <Button label="Open my group" onPress={() => onOpenGroup(request.groupId!)} />
+          )}
         </View>
       );
     case 'expired':

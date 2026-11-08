@@ -14,7 +14,7 @@ import {
   readRide,
   searchPlaces,
 } from './discovery';
-import { joinGroup, leaveGroup, readGroup, updateGroupStatus } from './groups';
+import { acceptGroupSubscription, isMember, joinGroup, leaveGroup, readGroup, updateGroupStatus } from './groups';
 import { cancelRide, createRide, readMatches, readOwnRequest } from './rides';
 import { scenarioOptions, type MockScenarioKey } from './scenarios';
 import { createSimulator, type LatencyRange, type Simulator } from './simulator';
@@ -49,8 +49,8 @@ export function createMockSimulator(
  *   member-only group read (GROUP-001-B), and the coordinator's status changes (GROUP-001-C);
  *   nearby and `user` subscriptions and the connection state.
  * - Every other operation rejects at once with a `DataSourceUnavailableError` until the card
- *   that implements it lands, never with invented data. So do `group` subscriptions for now,
- *   although joins already emit `group.changed`; a later GROUP card delivers them.
+ *   that implements it lands, never with invented data. `group` subscriptions are
+ *   delivered since GROUP-002-B.
  * - Signed-in operations read the access token when they start, as an HTTP client sets its
  *   header. Discovery reads it too: a signed-in viewer's own request is left out.
  *
@@ -139,7 +139,9 @@ export function createMockDataSource(
       ) =>
         request.kind === 'user'
           ? subscribeUser(simulator, request, accessToken(), onEvent as (event: DomainEventDto) => void)
-          : subscribeNearby(simulator, request, accessToken(), onEvent as (event: PublicEventDto) => void),
+          : request.kind === 'group'
+            ? subscribeGroup(simulator, request, accessToken(), onEvent as (event: DomainEventDto) => void)
+            : subscribeNearby(simulator, request, accessToken(), onEvent as (event: PublicEventDto) => void),
       watchConnection: (listener) => simulator.watchConnection(listener),
     },
   };
@@ -198,6 +200,33 @@ async function subscribeUser(
   const ack = await simulator.run('events.subscribe', (context) => acceptUserSubscription(context, request, token));
   const stop = simulator.subscribe((event) => {
     if (event.audience.kind === 'user' && event.audience.userId === ack.userId) onEvent(event);
+  });
+  return {
+    ack: { subscriptionId: ack.subscriptionId, subscription: ack.subscription },
+    unsubscribe: async () => {
+      stop();
+    },
+  };
+}
+
+/**
+ * Accepts a `group` subscription for a member of that group after the simulated round trip, then
+ * delivers every event addressed to the group (`group.changed`), only while the subscriber is
+ * still a member: a member who leaves stops receiving it at once. It ends like a nearby
+ * subscription.
+ */
+async function subscribeGroup(
+  simulator: Simulator<MockWorld>,
+  request: SubscriptionRequest,
+  token: string | null,
+  onEvent: (event: DomainEventDto) => void,
+): Promise<EventSubscription> {
+  const ack = await simulator.run('events.subscribe', (context) => acceptGroupSubscription(context, request, token));
+  const { groupId } = ack.subscription;
+  const stop = simulator.subscribe((event) => {
+    if (event.audience.kind !== 'group' || event.audience.groupId !== groupId) return;
+    const group = simulator.state.groups.get(groupId);
+    if (group !== undefined && isMember(group, ack.userId)) onEvent(event);
   });
   return {
     ack: { subscriptionId: ack.subscriptionId, subscription: ack.subscription },

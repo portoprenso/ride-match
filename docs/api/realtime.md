@@ -64,7 +64,7 @@ The future Socket.IO client lives inside the real data-source implementation. Co
 | Rule | Behavior |
 | --- | --- |
 | Once | An event ID applies once (the last 1,000 IDs are remembered); a repeat is `duplicate` |
-| Versions | What events and reads taught is kept per viewer and per resource (`ride:<id>`, `group:<id>`, `matches:<rideId>`); an event not newer than the known version is `stale`. A rider's tombstones never hide items from another viewer |
+| Versions | What events and reads taught is kept per viewer and per resource: public ones (`ride:<id>`, `group:<id>`, from discovery and preview reads) apart from private ones (`own-ride:<id>` for the own request and `ride.changed`, `member-group:<id>` for the group detail, `group.changed` and `access.revoked`), and `matches:<rideId>`. An event not newer than the known version is `stale`. Public and private are apart because the public tombstone of the rider's own ride or group carries the same version as the private change behind it (fixed in GROUP-002-B: a ride joined by someone else, or an expired request, left the card unchanged). A rider's tombstones never hide items from another viewer |
 | Audience | A user event for another user, any private event for an anonymous viewer, and a group event after `access.revoked` (unless its version is newer, a rejoin) are `not-for-viewer` and touch nothing |
 | `nearby.upserted` | Replaces the item in cached snapshots that hold it, and the item's held ride or group preview read when older. Snapshots without the item, or with match previews (a destination selected), are invalidated: only the source knows ordering, limits and previews |
 | `nearby.removed` | Leaves a tombstone, removes the item (and its preview) from snapshots and invalidates its ride or group preview read |
@@ -81,6 +81,7 @@ The future Socket.IO client lives inside the real data-source implementation. Co
 | Situation | Behavior |
 | --- | --- |
 | Watching | Equal requests share one subscription, ended when the last holder releases. `user` and `group` requests are subscribed only for a signed-in viewer. A refusal goes to the watchers' `onError` and is tried again after the next reconnect or identity change |
+| Read after acknowledgement | Once a `user` or `group` subscription is acknowledged, the reads it keeps current are read again (own request and current user; the group's private reads), so a change between the first read and the acknowledgement is not lost (GROUP-002-B). Nearby reads start with their viewport's subscription and need none |
 | Stale delivery | Each subscription carries a generation; an event or acknowledgement from a subscription that has since ended (identity change, disconnect, reset) is dropped, and a late acknowledgement is unsubscribed at once |
 | Identity change | Sign-in, sign-out, an expired session or a demo reset: every subscription ends, the previous rider's reads are cancelled and removed (a read still on its way cannot settle into the cache), the synchronizer forgets what it learned, and watched subscriptions are made again for the new viewer. Anonymous reads stay when someone signs in |
 | Disconnect | The source ends every subscription; Query's online state turns off, so reads wait (keeping what they showed) instead of failing |

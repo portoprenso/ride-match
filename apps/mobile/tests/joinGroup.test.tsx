@@ -1,129 +1,21 @@
-import { act, fireEvent, screen, userEvent } from '@testing-library/react-native';
+import { act, fireEvent, screen } from '@testing-library/react-native';
 import type { NearbyItemDto } from '@ride-match/contracts';
 
-import * as sinks from '../src/analytics/sinks';
-import { createMemorySink } from '../src/analytics/sinks';
 import { DataError } from '../src/data/errors';
-import { DEMO_OTP_CODE } from '../src/data/mock/auth';
-import * as mockSource from '../src/data/mock/createMockDataSource';
-import type { Simulator } from '../src/data/mock/simulator';
-import type { MockWorld } from '../src/data/mock/world';
-import { joinGroup } from '../src/data/mock/groups';
 import { describeJoinError, describeJoinPlan } from '../src/features/groups/joinOutcome';
+import {
+  ANSWER_MS,
+  anotherRider,
+  captureSimulator,
+  confirmJoiningAida,
+  publishFromDraft,
+  recordAnalytics,
+  signInWithDemoCode,
+  tapMarker,
+  withActiveRequest,
+} from './helpers/groupFlow';
 import { BLOCKED, device, openHome, press, wait } from './helpers/locationDevice';
 import { flushTimersAndRestore } from './helpers/renderApp';
-
-// Longer than the mock source's largest simulated latency.
-const ANSWER_MS = 1000;
-const SEARCH_MS = 300 + ANSWER_MS;
-
-function recordAnalytics() {
-  const sink = createMemorySink();
-  jest.spyOn(sinks, 'selectAnalyticsSink').mockReturnValue(sink);
-  return () => sink.events();
-}
-
-/** Keeps the simulator the app composes, to queue failures and act as another rider. */
-function captureSimulator() {
-  const original = mockSource.createMockSimulator;
-  const captured: { simulator: Simulator<MockWorld> | null } = { simulator: null };
-  jest.spyOn(mockSource, 'createMockSimulator').mockImplementation((...args) => {
-    captured.simulator = original(...args);
-    return captured.simulator;
-  });
-  return captured;
-}
-
-/** Taps the discovery marker whose label matches, as a rider taps a pill on the map. */
-async function tapMarker(name: RegExp) {
-  const marker = screen.getAllByLabelText(name).find((node) => node.props.testID === 'map-marker')!;
-  await act(async () => {
-    fireEvent.press(marker);
-  });
-}
-
-/** From the draft's departure step: a named pickup, sign-in when asked, publish. */
-async function publishFromDraft(signIn: boolean) {
-  await press('Choose a named place');
-  await wait(SEARCH_MS);
-  await press('Ala-Too Square, City square');
-  await press('Confirm this pickup');
-  if (signIn) {
-    await press('Continue to sign in');
-    await signInWithDemoCode();
-  } else {
-    await press('Review my request');
-  }
-  await press('Publish my request');
-  await wait(ANSWER_MS);
-}
-
-async function signInWithDemoCode() {
-  await press('Continue with demo identity');
-  await wait(ANSWER_MS);
-  await userEvent.type(screen.getByLabelText('Demo code'), '123456');
-  await press('Verify demo code');
-  await wait(ANSWER_MS);
-}
-
-/** Scenario A, with the rider's own active request to Asia Mall already published. */
-async function withActiveRequest() {
-  process.env.EXPO_PUBLIC_MOCK_SCENARIO = 'active-neighborhood';
-  device({ permission: BLOCKED });
-  await openHome();
-  await wait(ANSWER_MS);
-  await press('Choose a destination');
-  await userEvent.type(screen.getByLabelText('Destination'), 'Asia');
-  await wait(SEARCH_MS);
-  await press('Asia Mall, Shopping centre');
-  await wait(ANSWER_MS);
-  await press('Create my ride request');
-  await publishFromDraft(true);
-  expect(screen.getByText(/^Searching · /)).toBeOnTheScreen();
-}
-
-/** Opens Aida's preview and the confirmation for joining her. */
-async function confirmJoiningAida() {
-  await tapMarker(/^Aida → Asia Mall, /);
-  await wait(ANSWER_MS);
-  await press('Plan to join this rider');
-  await wait(ANSWER_MS);
-}
-
-/**
- * Another synthetic rider with an active request on the same source, ready to take a seat. The
- * seat is taken by a task due at once, which the source runs just before the next operation's
- * work: so it lands while the rider's own join is on its way, as scenario E describes.
- */
-async function anotherRider(simulator: Simulator<MockWorld>) {
-  const session = { accessToken: null as string | null };
-  const other = mockSource.createMockDataSource(simulator, { accessToken: () => session.accessToken });
-  const settle = async <Value,>(call: Promise<Value>) => {
-    await wait(ANSWER_MS);
-    return call;
-  };
-  const challenge = await settle(other.auth.requestOtp({ phoneNumber: '+447700900199' }));
-  const signedIn = await settle(other.auth.verifyOtp({ challengeId: challenge.id, code: DEMO_OTP_CODE }));
-  session.accessToken = signedIn.accessToken;
-  const ride = await settle(
-    other.rides.create({
-      operationId: '00000000-0000-4000-8000-000000000999',
-      origin: { source: 'manual', coordinates: { latitude: 42.8746, longitude: 74.6122 } },
-      destinationPlaceId: 'place_tsum',
-      departureOffsetMinutes: 5,
-    }),
-  );
-  return {
-    takeSeatMeanwhile: (groupId: string) =>
-      simulator.schedule(0, (context) => {
-        joinGroup(context, signedIn.accessToken, {
-          operationId: '00000000-0000-4000-8000-000000000998',
-          rideRequestId: ride.id,
-          target: { kind: 'group', id: groupId },
-        });
-      }),
-  };
-}
 
 describe('joining from a preview', () => {
   afterEach(async () => {
@@ -148,9 +40,18 @@ describe('joining from a preview', () => {
     expect(screen.queryByText('In a group')).not.toBeOnTheScreen();
     await wait(ANSWER_MS);
 
+    // The group screen opens with the source's group: Aida coordinates, the rider is "You".
+    expect(screen.getByRole('header', { name: 'Your group' })).toBeOnTheScreen();
+    expect(screen.getByText('Forming · 2/4 people')).toBeOnTheScreen();
+    expect(screen.getByText('Aida')).toBeOnTheScreen();
+    expect(screen.getByText('You')).toBeOnTheScreen();
+    await press('Back to map');
     expect(screen.queryByRole('header', { name: 'Confirm joining' })).not.toBeOnTheScreen();
     expect(screen.getByText('In a group')).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'Cancel request' })).not.toBeOnTheScreen();
+    await press('Open my group');
+    await wait(ANSWER_MS);
+    expect(screen.getByRole('header', { name: 'Your group' })).toBeOnTheScreen();
     const joins = events().filter((event) => event.name.startsWith('group_join'));
     expect(joins).toEqual([
       expect.objectContaining({ name: 'group_join_clicked', properties: { kind: 'ride' } }),
@@ -163,7 +64,7 @@ describe('joining from a preview', () => {
     await withActiveRequest();
     const simulator = captured.simulator!;
     const tsum = [...simulator.state.groups.values()].find((group) => group.status === 'forming')!;
-    const other = await anotherRider(simulator);
+    const other = await anotherRider(simulator, 99);
     // The group shares a cluster with another plan on the map, so it is opened from the list.
     await press('View nearby items');
     await act(async () => {
@@ -193,7 +94,7 @@ describe('joining from a preview', () => {
     await withActiveRequest();
     const simulator = captured.simulator!;
     const tsum = [...simulator.state.groups.values()].find((group) => group.status === 'forming')!;
-    const other = await anotherRider(simulator);
+    const other = await anotherRider(simulator, 99);
     await press('View nearby items');
     await act(async () => {
       fireEvent.press(screen.getAllByRole('button', { name: /^Group → TSUM/ })[0]!);
@@ -241,7 +142,7 @@ describe('joining from a preview', () => {
     await press('Check my request');
     await wait(2 * ANSWER_MS);
 
-    expect(screen.getByText('In a group')).toBeOnTheScreen();
+    expect(screen.getByRole('header', { name: 'Your group' })).toBeOnTheScreen();
     expect([...simulator.state.groups.values()].filter((group) => group.status === 'forming')).toHaveLength(2);
   });
 
@@ -261,7 +162,7 @@ describe('joining from a preview', () => {
 
     await press('Retry this join');
     await wait(ANSWER_MS);
-    expect(screen.getByText('In a group')).toBeOnTheScreen();
+    expect(screen.getByRole('header', { name: 'Your group' })).toBeOnTheScreen();
   });
 
   it('drafts the request a join needs after sign-in, then opens the confirmation once it is published', async () => {
@@ -281,7 +182,7 @@ describe('joining from a preview', () => {
     expect(screen.getByRole('header', { name: 'Confirm joining' })).toBeOnTheScreen();
     await press('Join Aida');
     await wait(ANSWER_MS);
-    expect(screen.getByText('In a group')).toBeOnTheScreen();
+    expect(screen.getByRole('header', { name: 'Your group' })).toBeOnTheScreen();
   });
 });
 
