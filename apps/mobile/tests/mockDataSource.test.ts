@@ -14,7 +14,6 @@ import {
 } from '@ride-match/contracts';
 
 import type { AppDataSource } from '../src/data/AppDataSource';
-import { DataSourceUnavailableError } from '../src/data/errors';
 import { createMockDataSource, createMockSimulator } from '../src/data/mock/createMockDataSource';
 import { distanceMeters } from '../src/data/mock/geometry';
 import { isMockScenarioKey, MOCK_SCENARIO_KEYS, type MockScenarioKey } from '../src/data/mock/scenarios';
@@ -552,16 +551,5 @@ describe('a full active-neighborhood run', () => {
     expect((await readCity(dataSource)).items).toHaveLength(8);
     await jest.advanceTimersByTimeAsync(8 * SECOND);
     expect((await readCity(dataSource)).items).toHaveLength(9);
-  });
-});
-
-describe('operations without a mock yet', () => {
-  it('reject at once as unavailable, without simulated latency', async () => {
-    const { dataSource } = source();
-
-    await expect(dataSource.devices.register('install_1' as never, {} as never)).rejects.toThrow(DataSourceUnavailableError);
-    await expect(dataSource.devices.remove('install_1' as never)).rejects.toThrow(
-      'The mock data source does not support this operation yet.',
-    );
   });
 });

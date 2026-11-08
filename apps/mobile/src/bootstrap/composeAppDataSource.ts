@@ -17,9 +17,11 @@ import { createMockDataSource, createMockSimulator } from '../data/mock/createMo
 import { MOCK_DEMO_SIGN_IN } from '../data/mock/auth';
 import { createMockDevControls } from '../data/mock/createMockDevControls';
 import { isMockScenarioKey, MOCK_SCENARIO_KEYS } from '../data/mock/scenarios';
+import { createLocalNotifications, type LocalNotifications } from '../platform/notifications/localNotifications';
 import { createSecureCredentialStore, type CredentialStore } from '../platform/secureStorage/credentialStore';
 import { createAnalytics, type Analytics } from '../analytics/createAnalytics';
 import { selectAnalyticsSink } from '../analytics/sinks';
+import { clearNotificationsOnSignOut } from './clearNotificationsOnSignOut';
 import { createQueryClient } from './createQueryClient';
 import { withSessionRenewal } from './withSessionRenewal';
 
@@ -96,6 +98,8 @@ export type CompositionOptions = {
   credentialStore?: CredentialStore;
   /** Foreground and background; React Native's `AppState` unless a test passes its own. */
   appState?: AppStateSource;
+  /** The local-notification boundary; Expo Notifications unless a test passes its own. */
+  notifications?: LocalNotifications;
 };
 
 /**
@@ -116,6 +120,7 @@ export function composeAppDataSource({
   readConfig = readAppConfig,
   credentialStore,
   appState = AppState,
+  notifications = createLocalNotifications(),
 }: CompositionOptions = {}): AppComposition {
   try {
     const config = readConfig();
@@ -142,6 +147,8 @@ export function composeAppDataSource({
       viewer: sessionViewerSource(built),
       appState,
     });
+    // Local notifications belong to the rider signed in when they were made (NOTIFICATION-001-A).
+    const stopClearingNotifications = clearNotificationsOnSignOut(built, notifications);
     const analytics = createAnalytics({
       sink: selectAnalyticsSink(config.appEnv),
       environment: config.appEnv,
@@ -160,6 +167,7 @@ export function composeAppDataSource({
       demoSignIn: composed.demoSignIn,
       analytics,
       dispose: () => {
+        stopClearingNotifications();
         analytics.dispose();
         sync.dispose();
         queryClient.clear();

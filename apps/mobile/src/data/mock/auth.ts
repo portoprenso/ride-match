@@ -238,8 +238,8 @@ export function refreshSession(context: Context, input: unknown): SessionCredent
 
 /**
  * `auth.logout`: revokes the session the refresh token belongs to, so none of its tokens work
- * again. It succeeds the same way for a token already revoked, rotated or unknown, so repeating
- * it is safe and reveals nothing. Fails only with `VALIDATION_FAILED` for a malformed token.
+ * again, and drops the push devices that session registered. It succeeds the same way for a
+ * token already revoked, rotated or unknown, so repeating it is safe and reveals nothing. Fails only with `VALIDATION_FAILED` for a malformed token.
  */
 export function logout(context: Context, input: unknown): void {
   const parsed = LogoutInputSchema.safeParse(input);
@@ -247,7 +247,13 @@ export function logout(context: Context, input: unknown): void {
   const { auth } = context.state;
   const token = auth.refreshTokens.get(parsed.data.refreshToken);
   const session = token === undefined ? undefined : auth.sessions.get(token.sessionId);
-  if (session !== undefined) session.revoked = true;
+  if (session !== undefined) {
+    session.revoked = true;
+    // The installation's association ends with the session that registered it.
+    for (const [installationId, device] of context.state.pushDevices) {
+      if (device.sessionId === session.id) context.state.pushDevices.delete(installationId);
+    }
+  }
 }
 
 /**
@@ -265,6 +271,14 @@ export function readCurrentUser(context: Context, accessToken: string | null): C
  * once the token expired.
  */
 export function authenticate(context: Context, accessToken: string | null): UserRecord {
+  return authenticateSession(context, accessToken).user;
+}
+
+/** `authenticate`, also naming the caller's session, for records that end with it (push devices). */
+export function authenticateSession(
+  context: Context,
+  accessToken: string | null,
+): { user: UserRecord; sessionId: string } {
   const { auth, users } = context.state;
   const record = accessToken === null ? undefined : auth.accessTokens.get(accessToken);
   const session = record === undefined ? undefined : auth.sessions.get(record.sessionId);
@@ -273,7 +287,7 @@ export function authenticate(context: Context, accessToken: string | null): User
     throw context.sourceError('UNAUTHENTICATED', 'Sign in to continue.');
   }
   if (context.now >= record.expiresAt) throw context.sourceError('SESSION_EXPIRED', 'The session needs to be renewed.');
-  return user;
+  return { user, sessionId: session.id };
 }
 
 /**

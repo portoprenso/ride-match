@@ -2969,3 +2969,28 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** `BlockSheet` (states, retry identity, privacy), `describeBlockConsequences`, `BlockFailure`/`describeBlockError`, `applyBlockLeave`, `refreshAfterBlockChange`, `blockListQuery`, `BlockedRidersScreen`, `MemberMenu`, `ReportSheet.onBlock`, `GroupScreen`/`ChatScreen` notes, `SettingsScreen`.
 - **Remaining/next:** NOTIFICATION-001-A with the user's go-ahead, or the native pass (seventeen cards), which would complete SAFETY-001.
 - **Ownership:** Released; no active task.
+
+## 2026-11-08 — NOTIFICATION-001-A: Local-notification boundary and mock device registration
+
+- **Actor/session:** Claude Code / notification-001-a.
+- **Status:** implemented; `Paused` for its native check (next native pass). Parent NOTIFICATION-001 `Paused`. Ownership released.
+- **Working copy:** `main` at `ca309e1` (SAFETY-001-C); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "NOTIFICATION-001-A": a new local-notification adapter in Platform and mock device registration. Prerequisites CHAT-001 and MEETING-001 are paused for native checks; the user's request is taken as the go-ahead. Acceptance: validated generic payloads; cleanup; no remote push or private notification content.
+- **Changes:**
+  - Dependency: `expo-notifications` 57.0.23 (exact; SDK 57's `~57.0.23`), three lockfile packages. Config plugin not applied.
+  - New `src/platform/notifications/localNotifications.ts`: `createLocalNotifications` (`getPermission`, `requestPermission`, `present`, `clearAll`, `onTap`, `takeInitialTap`), `NOTIFICATION_COPY`, `readNotificationPayload`, `toNotificationPermission`.
+  - New `src/bootstrap/clearNotificationsOnSignOut.ts`; `composeAppDataSource` takes a `notifications` option (Expo by default), subscribes it, and unsubscribes on dispose.
+  - Mock: new `src/data/mock/devices.ts` (`registerPushDevice`, `removePushDevice`); `world.pushDevices` (`PushDeviceRecord`); `auth.ts` `authenticateSession` and logout dropping that session's registrations; `devices.*` in `createMockDataSource`.
+  - Tests: new `tests/localNotifications.test.ts` (8) and `tests/mockDevices.test.ts` (5); new Jest stand-in `tests/setup/expoNotifications.ts` (in `jest.config.js`); the unavailable-operation examples in `tests/mockDataSource.test.ts` (one test) and `tests/dataSource.test.tsx` (one line) removed, since every operation now has a mock.
+- **Decisions:**
+  - No config plugin: local notifications need no push entitlement, and Personal Team signing can't hold one. Android's `POST_NOTIFICATIONS` comes from the library's manifest.
+  - No push token is requested (`getExpoPushTokenAsync` needs a project ID and remote push); B decides what token, if any, the mock registration uses.
+  - The boundary never prompts by itself and keeps no state; notifications are scheduled under the payload's ID, so presenting one twice replaces it.
+  - Only body taps count (not action buttons); the opening tap is forgotten when read.
+  - Cleanup runs when a signed-in rider stops being the signed-in rider; restoring at launch clears nothing.
+  - Synthetic phone numbers `+4477009005nn` (a range no other test used).
+- **Checks:** with Node 24.17.0, `pnpm typecheck`, `pnpm lint` and `pnpm peers check` passed; `npx jest` in `apps/mobile` (45 suites, 617 tests) passed. Prettier (`--single-quote --print-width=120`) clean on new and changed files except `src/data/mock/auth.ts`, `tests/dataSource.test.tsx` and `tests/mockDataSource.test.ts` (unformatted at HEAD, edited without reformatting). **Not run:** doctor, exports and the native check (DEVELOPMENT, notification module check: rebuilt development clients on both platforms) — pending, not passed. Screen readers waived.
+- **Docs:** TOOLCHAIN (dependency row, install record), ARCHITECTURE, api/realtime.md (mock registration), MOCK_SCENARIOS (module table), DEVELOPMENT (tests, 617; notification module check), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line, NOTIFICATION-001 row), AI_CONTEXT.
+- **JSDoc:** the boundary's module rules, `NotificationRead`, `PresentOutcome`, `LocalNotifications` members, `toNotificationPermission`, `clearNotificationsOnSignOut`, `PushDeviceRecord`, `registerPushDevice`/`removePushDevice`, `authenticateSession`, `logout`, `createMockDataSource`, the Jest stand-in.
+- **Remaining/next:** NOTIFICATION-001-B with the user's go-ahead; the native pass (eighteen cards).
+- **Ownership:** Released; no active task.

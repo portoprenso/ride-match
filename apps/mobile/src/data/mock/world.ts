@@ -201,6 +201,22 @@ export type ReportRecord = {
 };
 
 /**
+ * A stored push-device registration (NOTIFICATION-001-A), keyed by installation in
+ * `MockWorld.pushDevices`. Inert: the mock never delivers remote push. The token is a secret;
+ * it stays in this record and never reaches a response, event, log or analytics.
+ */
+export type PushDeviceRecord = {
+  installationId: string;
+  userId: string;
+  /** The session that registered it; ending that session drops the registration. */
+  sessionId: string;
+  pushToken: string;
+  platform: 'ios' | 'android';
+  permission: 'granted' | 'denied' | 'undetermined';
+  registeredAt: number;
+};
+
+/**
  * The mock source's world. Curated places are not part of it: they are a fixed catalog shared by
  * every scenario (`places.ts`).
  */
@@ -229,6 +245,8 @@ export type MockWorld = {
   blocks: BlockRecord[];
   /** Accepted reports, oldest first (SAFETY-001-A). */
   reports: ReportRecord[];
+  /** Push-device registrations by installation ID (NOTIFICATION-001-A); never used to deliver anything. */
+  pushDevices: Map<string, PushDeviceRecord>;
   /** No sessions in any scenario, so a reset signs everyone out; only scenarios H, J and L link the demo number to a seeded rider. */
   auth: AuthRecords;
 };
@@ -247,6 +265,7 @@ export function createEmptyWorld(now: number): MockWorld {
     chatFaults: { lostAnswers: 0, echoTwice: new Set() },
     blocks: [],
     reports: [],
+    pushDevices: new Map(),
     auth: {
       accounts: new Map(),
       challenges: new Map(),

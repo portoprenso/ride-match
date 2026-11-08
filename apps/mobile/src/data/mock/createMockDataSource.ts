@@ -17,6 +17,7 @@ import {
   searchPlaces,
 } from './discovery';
 import { readChatHistory, sendChatMessage } from './chat';
+import { registerPushDevice, removePushDevice } from './devices';
 import { acceptGroupSubscription, isMember, joinGroup, leaveGroup, readGroup, updateGroupStatus } from './groups';
 import { cancelRide, createRide, readMatches, readOwnRequest } from './rides';
 import { blockUser, listBlocks, reportUser, unblockUser } from './safety';
@@ -52,8 +53,9 @@ export function createMockSimulator(
  *   `rides.ts`); joining a ride or group (GROUP-001-A, `groups.ts`), leaving it and the
  *   member-only group read (GROUP-001-B), and the coordinator's status changes (GROUP-001-C);
  *   chat history pages and sending (CHAT-001-A, `chat.ts`); reports, blocks, unblocks and the
- *   block list (SAFETY-001-A, `safety.ts`); nearby and `user` subscriptions and the connection
- *   state.
+ *   block list (SAFETY-001-A, `safety.ts`); push-device registration and removal, stored as
+ *   inert receipts (NOTIFICATION-001-A, `devices.ts`); nearby and `user` subscriptions and the
+ *   connection state.
  * - Every other operation rejects at once with a `DataSourceUnavailableError` until the card
  *   that implements it lands, never with invented data. `group` subscriptions are
  *   delivered since GROUP-002-B.
@@ -164,6 +166,18 @@ export function createMockDataSource(
       listBlocks: (input, options) => {
         const token = accessToken();
         return simulator.run('safety.listBlocks', (context) => listBlocks(context, token, input), options);
+      },
+    },
+    devices: {
+      register: (installationId, input) => {
+        const token = accessToken();
+        return simulator.run('devices.register', (context) =>
+          registerPushDevice(context, token, installationId, input),
+        );
+      },
+      remove: (installationId) => {
+        const token = accessToken();
+        return simulator.run('devices.remove', (context) => removePushDevice(context, token, installationId));
       },
     },
     events: {
