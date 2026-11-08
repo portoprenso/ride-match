@@ -9,6 +9,7 @@ import {
   RideGroupSchema,
   type ApiErrorCode,
   type DomainEventDto,
+  type GroupStatus,
   type JoinGroupInput,
   type JoinGroupResultDto,
   type MapViewport,
@@ -594,5 +595,165 @@ describe('leaving a group', () => {
     await expect(settle(anonymous.groups.leave(groupId, { operationId: nextOperationId() }))).rejects.toEqual(
       sourceError('UNAUTHENTICATED'),
     );
+  });
+});
+
+/** Gives a group a synthetic meeting point, as the source will (MEETING-001-A). */
+function supplyMeetingPoint(simulator: Simulator<MockWorld>, groupId: string) {
+  const record = simulator.state.groups.get(groupId);
+  if (record === undefined) throw new Error('No group.');
+  record.meetingPoint = { id: 'meeting_test', label: 'Synthetic corner', coordinates: { ...ORIGIN } };
+  record.version += 1;
+  return record;
+}
+
+const setStatus = (who: Rider, groupId: string, status: GroupStatus, expectedVersion: number, id = nextOperationId()) =>
+  settle(who.dataSource.groups.updateStatus(groupId, { operationId: id, status, expectedVersion }));
+
+describe('the coordinator’s status changes', () => {
+  it('marks a group with a meeting point ready, which stops joins, and reopens it', async () => {
+    const simulator = world('empty-neighborhood');
+    const { riders, groupId } = await formedGroup(simulator, 2);
+    const coordinator = riders[0] as Rider;
+    const record = supplyMeetingPoint(simulator, groupId);
+    const events = recordEvents(simulator);
+
+    const ready = await setStatus(coordinator, groupId, 'ready', record.version);
+
+    expect(RideGroupSchema.parse(ready)).toMatchObject({ status: 'ready', version: 3, closure: null });
+    expect(events.map((event) => event.type)).toEqual(['nearby.upserted', 'group.changed']);
+    expect(events[0]).toMatchObject({ payload: { item: { id: groupId, status: 'ready' } } });
+    expect(GroupChangedEventSchema.parse(events[1]).payload).toEqual({ groupId, version: 3, reason: 'ready' });
+    const late = await rider(simulator, 3);
+    await expect(join(late, { kind: 'group', id: groupId })).rejects.toEqual(sourceError('GROUP_CLOSED'));
+
+    const reopened = await setStatus(coordinator, groupId, 'forming', 3);
+    expect(reopened).toMatchObject({ status: 'forming', version: 4, meetingPoint: { id: 'meeting_test' } });
+    expect(events.at(-1)).toMatchObject({ payload: { reason: 'reopened', version: 4 } });
+    await expect(join(late, { kind: 'group', id: groupId })).resolves.toMatchObject({ group: { version: 5 } });
+  });
+
+  it('refuses transitions the status does not allow, including ready without a meeting point', async () => {
+    const simulator = world('empty-neighborhood');
+    const { riders, groupId } = await formedGroup(simulator, 2);
+    const coordinator = riders[0] as Rider;
+
+    await expect(setStatus(coordinator, groupId, 'ready', 1)).rejects.toEqual(sourceError('INVALID_TRANSITION'));
+    await expect(setStatus(coordinator, groupId, 'forming', 1)).rejects.toEqual(sourceError('INVALID_TRANSITION'));
+    await expect(setStatus(coordinator, groupId, 'completed', 1)).rejects.toEqual(sourceError('INVALID_TRANSITION'));
+    const record = supplyMeetingPoint(simulator, groupId);
+    await setStatus(coordinator, groupId, 'ready', record.version);
+    await expect(setStatus(coordinator, groupId, 'ready', 3)).rejects.toEqual(sourceError('INVALID_TRANSITION'));
+    expect(record).toMatchObject({ status: 'ready', version: 3 });
+  });
+
+  it('checks role, closure and version in the contract’s order', async () => {
+    const simulator = world('empty-neighborhood');
+    const { riders, groupId } = await formedGroup(simulator, 3);
+    const [coordinator, member] = riders as [Rider, Rider];
+    const stranger = await rider(simulator, 9);
+
+    await expect(setStatus(stranger, groupId, 'cancelled', 2)).rejects.toEqual(sourceError('MEMBERSHIP_REQUIRED'));
+    await expect(setStatus(stranger, 'group_unknown', 'cancelled', 1)).rejects.toEqual(
+      sourceError('MEMBERSHIP_REQUIRED'),
+    );
+    // A member who is not the coordinator is refused before the version is looked at.
+    await expect(setStatus(member, groupId, 'cancelled', 1)).rejects.toEqual(sourceError('FORBIDDEN'));
+    // A stale version is a conflict, even for a transition that is not allowed.
+    await expect(setStatus(coordinator, groupId, 'completed', 1)).rejects.toEqual(sourceError('VERSION_CONFLICT'));
+
+    await setStatus(coordinator, groupId, 'cancelled', 2);
+    // Closed comes before the version.
+    await expect(setStatus(coordinator, groupId, 'forming', 1)).rejects.toEqual(sourceError('GROUP_CLOSED'));
+    await expect(setStatus(member, groupId, 'forming', 3)).rejects.toEqual(sourceError('FORBIDDEN'));
+  });
+
+  it('returns the original group for a repeated change and refuses a reused ID with another input', async () => {
+    const simulator = world('empty-neighborhood');
+    const { riders, groupId } = await formedGroup(simulator, 2);
+    const coordinator = riders[0] as Rider;
+    const record = supplyMeetingPoint(simulator, groupId);
+    const id = nextOperationId();
+    const original = await setStatus(coordinator, groupId, 'ready', record.version, id);
+    const events = recordEvents(simulator);
+
+    // The point made it version 2; the change answered version 3.
+    await expect(setStatus(coordinator, groupId, 'ready', 3, id)).rejects.toEqual(sourceError('IDEMPOTENCY_CONFLICT'));
+    await expect(setStatus(coordinator, groupId, 'ready', 2, id)).resolves.toEqual(original);
+    expect(events).toEqual([]);
+  });
+});
+
+describe('closing a group', () => {
+  it('completes a ready group and its members’ requests, keeping the history for an hour', async () => {
+    const simulator = world('empty-neighborhood');
+    const { riders, groupId } = await formedGroup(simulator, 3);
+    const [coordinator, member] = riders as [Rider, Rider];
+    const record = supplyMeetingPoint(simulator, groupId);
+    await setStatus(coordinator, groupId, 'ready', record.version);
+    const events = recordEvents(simulator);
+
+    // Formed (1), joined (2), given a point (3), ready (4).
+    const completed = RideGroupSchema.parse(await setStatus(coordinator, groupId, 'completed', 4));
+
+    expect(completed).toMatchObject({ status: 'completed', closure: { reason: 'completed' }, version: 5 });
+    expect(completed.members).toHaveLength(3);
+    expect(Date.parse(completed.closure?.historyExpiresAt ?? '') - Date.parse(completed.closure?.closedAt ?? '')).toBe(
+      GROUP_POLICY.historyRetentionSeconds * SECOND,
+    );
+    for (const who of riders) {
+      await expect(settle(who.dataSource.rides.getOwnRequest())).resolves.toMatchObject({
+        status: 'completed',
+        groupId,
+      });
+    }
+    expect(events.map((event) => event.type)).toEqual([
+      'nearby.removed',
+      'group.changed',
+      'ride.changed',
+      'ride.changed',
+      'ride.changed',
+    ]);
+    expect(events[0]).toMatchObject({ payload: { reason: 'unavailable' } });
+    expect(events[1]).toMatchObject({ payload: { reason: 'completed' } });
+
+    // Read-only: no leave, no change; every member at closure can still read it.
+    await expect(leave(member, groupId)).rejects.toEqual(sourceError('GROUP_CLOSED'));
+    await expect(readGroup(member, groupId)).resolves.toMatchObject({ status: 'completed' });
+    for (let minute = 0; minute < 60; minute += 1) await jest.advanceTimersByTimeAsync(MINUTE);
+    const again = await rider(simulator, 2, { request: false });
+    await expect(readGroup(again, groupId)).rejects.toEqual(sourceError('HISTORY_EXPIRED'));
+  });
+
+  it('cancels a forming group with its members’ requests', async () => {
+    const simulator = world('empty-neighborhood');
+    const { riders, groupId } = await formedGroup(simulator, 2);
+    const [coordinator, member] = riders as [Rider, Rider];
+
+    const cancelled = await setStatus(coordinator, groupId, 'cancelled', 1);
+
+    expect(cancelled).toMatchObject({ status: 'cancelled', closure: { reason: 'coordinator_cancelled' } });
+    await expect(settle(member.dataSource.rides.getOwnRequest())).resolves.toMatchObject({ status: 'cancelled' });
+    await expect(readGroup(member, groupId)).resolves.toMatchObject({ status: 'cancelled' });
+    const nearby = await settle(member.dataSource.rides.getNearby({ viewport: CITY, limit: 100 }));
+    expect(nearby.items.map((item) => item.id)).not.toContain(groupId);
+  });
+
+  it('expires a ready group at its deadline, dated at the deadline even after time in the background', async () => {
+    const simulator = world('empty-neighborhood');
+    const { riders, groupId } = await formedGroup(simulator, 2);
+    const coordinator = riders[0] as Rider;
+    const record = supplyMeetingPoint(simulator, groupId);
+    await setStatus(coordinator, groupId, 'ready', record.version);
+
+    // The app was in the background past the deadline; the task runs late.
+    simulator.advanceTime(GROUP_POLICY.lifetimeSeconds * SECOND + 10 * MINUTE);
+    await jest.advanceTimersByTimeAsync(0);
+
+    expect(record).toMatchObject({ status: 'cancelled', closure: { reason: 'expired', closedAt: record.expiresAt } });
+    expect(record.closure?.historyExpiresAt).toBe(record.expiresAt + GROUP_POLICY.historyRetentionSeconds * SECOND);
+    expect(simulator.state.rides.get(coordinator.rideId)?.status).toBe('cancelled');
+    // Only the source's deadline and the coordinator's changes close a group; time alone does nothing else.
+    expect(record.version).toBe(4);
   });
 });

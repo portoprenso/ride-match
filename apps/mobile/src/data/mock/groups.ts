@@ -2,13 +2,15 @@ import {
   GROUP_POLICY,
   JoinGroupInputSchema,
   LeaveGroupInputSchema,
+  UpdateGroupStatusInputSchema,
+  type GroupStatus,
   type JoinGroupResultDto,
   type LeaveGroupResultDto,
   type RideGroupDto,
 } from '@ride-match/contracts';
 
 import { authenticate } from './auth';
-import { expireGroup } from './lifecycle';
+import { closeGroup, expireGroup } from './lifecycle';
 import {
   groupChanged,
   nearbyRemoved,
@@ -22,8 +24,8 @@ import type { WorkContext } from './simulator';
 import type { GroupRecord, MockWorld, RideRecord } from './world';
 
 /*
- * Joining a ride or a group (docs/api/groups.md, "Atomic joining"), leaving one, and the
- * member-only group read. The simulator runs each
+ * Joining a ride or a group (docs/api/groups.md, "Atomic joining"), leaving one, the
+ * coordinator's status changes, and the member-only group read. The simulator runs each
  * piece of work alone and to completion, so a join reads and changes the world in one step:
  * of two joins that arrive together, the second sees what the first did. That is the mock's
  * stand-in for the backend's transaction; it resolves the canonical group and checks seats at
@@ -293,6 +295,80 @@ export function leaveGroup(
 
       for (const ride of ended) context.emit(rideChanged(context.eventEnvelope(), ride));
       return { groupId: group.id, rideRequest: toOwnRideRequestDto(state, own) };
+    },
+  );
+}
+
+/** The coordinator's allowed transitions from each live status (`docs/api/groups.md`, state machine). */
+const ALLOWED: Record<'forming' | 'ready', readonly GroupStatus[]> = {
+  forming: ['ready', 'cancelled'],
+  ready: ['forming', 'completed', 'cancelled'],
+};
+
+/**
+ * `PATCH /groups/{groupId}/status`: the coordinator marks the group ready, reopens it, completes
+ * it or cancels it.
+ *
+ * In this order: `VALIDATION_FAILED`, `UNAUTHENTICATED`/`SESSION_EXPIRED`, the receipt (a retry
+ * returns the original group as it was then; the same ID with another input fails with
+ * `IDEMPOTENCY_CONFLICT`), then `MEMBERSHIP_REQUIRED` (unknown group, non-member, former member),
+ * `FORBIDDEN` (a member who is not the coordinator), `GROUP_CLOSED` (completed or cancelled),
+ * `VERSION_CONFLICT` (a stale `expectedVersion`), and only then `INVALID_TRANSITION` for a
+ * transition the current status does not allow, including the current status itself and marking
+ * ready without a meeting point.
+ *
+ * On success the version rises once:
+ *
+ * - `forming` → `ready` (`ready`) and `ready` → `forming` (`reopened`): discovery shows the new
+ *   status, so a ready group takes no joins; the members are told (`group.changed`).
+ * - `ready` → `completed` and either live status → `cancelled` (`coordinator_cancelled`): the
+ *   group closes now ({@link closeGroup}), its members' requests end with it, and its history
+ *   stays readable for an hour.
+ *
+ * Nothing else changes a group's status: opening a taxi link is not an operation of the source.
+ */
+export function updateGroupStatus(
+  context: Context,
+  accessToken: string | null,
+  groupId: string,
+  input: unknown,
+): RideGroupDto {
+  const parsed = UpdateGroupStatusInputSchema.safeParse(input);
+  if (!parsed.success) throw context.sourceError('VALIDATION_FAILED', 'The status change is not valid.');
+  const { operationId, status, expectedVersion } = parsed.data;
+  const user = authenticate(context, accessToken);
+
+  return context.receipts.once(
+    { actorId: user.id, operationId },
+    { operation: 'groups.updateStatus', input: { groupId, status, expectedVersion } },
+    () => {
+      const { state } = context;
+      const group = state.groups.get(groupId);
+      if (group === undefined || !isMember(group, user.id)) {
+        throw context.sourceError('MEMBERSHIP_REQUIRED', 'You are not a member of this group.');
+      }
+      if (group.coordinatorId !== user.id) {
+        throw context.sourceError('FORBIDDEN', 'Only the coordinator can change the group’s status.');
+      }
+      if (group.status === 'completed' || group.status === 'cancelled') {
+        throw context.sourceError('GROUP_CLOSED', 'This group has already closed.');
+      }
+      if (group.version !== expectedVersion) {
+        throw context.sourceError('VERSION_CONFLICT', 'This group changed. Read it again.');
+      }
+      if (!ALLOWED[group.status].includes(status) || (status === 'ready' && group.meetingPoint === null)) {
+        throw context.sourceError('INVALID_TRANSITION', 'The group cannot change to this status now.');
+      }
+
+      if (status === 'completed') closeGroup(context, group, 'completed', context.now);
+      else if (status === 'cancelled') closeGroup(context, group, 'coordinator_cancelled', context.now);
+      else {
+        group.status = status;
+        group.version += 1;
+        context.emit(nearbyUpserted(context.eventEnvelope(), toNearbyItemDto(state, { kind: 'group', record: group })));
+        context.emit(groupChanged(context.eventEnvelope(), group, status === 'ready' ? 'ready' : 'reopened'));
+      }
+      return toRideGroupDto(state, group);
     },
   );
 }

@@ -2653,3 +2653,26 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** `leaveGroup` (order of checks, survivor and under-two effects, events), `readGroup` (revocation, retention), `isMember`, `cancelGrouped`.
 - **Remaining/next:** GROUP-001-C (ready, reopen, complete, cancel, expiry, terminal access); the native pass.
 - **Ownership:** Released; no active task.
+
+## 2026-11-08 — GROUP-001-C: Mock group status, expiry and terminal access
+
+- **Actor/session:** Claude Code / group-001-c.
+- **Status:** `Completed`; parent GROUP-001 `Completed` (A, B, C). Ownership released.
+- **Working copy:** `main` at `873838e` (GROUP-001-B); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start GROUP-001-C": mock ready, reopen, complete, cancel, expiry and terminal access. Acceptance: role/version/prerequisites; grouped deadline; one-hour retention; no taxi-induced transition.
+- **Changes:**
+  - `src/data/mock/groups.ts`: `updateGroupStatus` (`PATCH /groups/{groupId}/status`) and its allowed-transition table.
+  - `src/data/mock/lifecycle.ts`: `closeGroup`, now used by `expireGroup` and the coordinator's completion and cancellation.
+  - `createMockDataSource.ts`: `groups.updateStatus`.
+  - Tests: `tests/mockGroups.test.ts` (+7); `tests/mockDataSource.test.ts` uses `safety.report` as the unbuilt operation.
+- **Decisions:**
+  - Terminal access reuses GROUP-001-B's `readGroup` (members at closure until `historyExpiresAt`).
+  - A completed group's members' requests become `completed`; a cancelled group's become `cancelled`; both keep the group's ID.
+  - Meeting points are MEETING-001-A's; tests set one on the group record (with a version bump, as the source will).
+  - "No taxi-induced transition" holds because the source has no taxi operation and only `updateGroupStatus`, `leaveGroup` and `expireGroup` change a group's status; recorded in MOCK_SCENARIOS rather than tested.
+- **Test notes:** two first-draft tests used wrong group versions (one read the live record after it changed); fixed in the tests, the code was unchanged.
+- **Checks:** `pnpm typecheck`, `pnpm lint`, `npx jest` in `apps/mobile` (32 suites, 494 tests) passed; Prettier clean on the new and changed files except `tests/mockDataSource.test.ts`, already unformatted at HEAD. No native check applies (mock only).
+- **Docs:** MOCK_SCENARIOS (status, module table, group status rules), api/groups.md (status), DEVELOPMENT (tests, 494), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line, GROUP-001 row and verification path), AI_CONTEXT.
+- **JSDoc:** `updateGroupStatus` (order of checks, effects, no taxi transition), the transition table, `closeGroup`, `expireGroup`.
+- **Remaining/next:** GROUP-002-A needs RIDE-001, which is paused for native checks: the native pass, or the user's waiver to start GROUP-002-A first.
+- **Ownership:** Released; no active task.

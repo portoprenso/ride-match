@@ -1,6 +1,6 @@
 # Mock simulator and scenarios
 
-Status: partly implemented: the simulator foundation (MOCK-001-A), the discovery world, seeds and public reads that the app runs on (MOCK-001-B), the demo controls (MOCK-001-C), sign-in and sessions (AUTH-001-A), supplied destination matches (DESTINATION-001-A), the rider's own request (RIDE-001-A), scenario C with own-request matches (RIDE-001-D), joining a ride or group (GROUP-001-A), and leaving it with the member-only group read (GROUP-001-B); the other operations and scenarios are planned. Last updated: 2026-11-08.
+Status: partly implemented: the simulator foundation (MOCK-001-A), the discovery world, seeds and public reads that the app runs on (MOCK-001-B), the demo controls (MOCK-001-C), sign-in and sessions (AUTH-001-A), supplied destination matches (DESTINATION-001-A), the rider's own request (RIDE-001-A), scenario C with own-request matches (RIDE-001-D), joining a ride or group (GROUP-001-A), leaving it with the member-only group read (GROUP-001-B), and the coordinator's status changes (GROUP-001-C); the other operations and scenarios are planned. Last updated: 2026-11-08.
 
 ## Purpose
 
@@ -69,11 +69,11 @@ Rechecking after delay enables actual last-seat and expired-target conflicts. Us
 | `serializers.ts` | The only way records leave the source: each public DTO and event is built field by field, so no private field can leak and callers never share world state. A ride that is not active has no public projection and a closed group no preview; the serializers throw rather than trust the caller |
 | `places.ts` | 12 curated Bishkek places with stable IDs such as `place_asia_mall` and approximate demo coordinates, shared by every scenario; the demo coverage box, 42.75–43.10° N and 74.40–74.80° E |
 | `scenarios.ts` | The implemented keys and their seeds. Riders are invented first names without avatars; each public area is a district around the rider's exact origin |
-| `lifecycle.ts` | Deadlines. An active ride expires at its `expiresAt`: it becomes `expired`, discovery removes it (`expired`) and its owner is told. A live group is cancelled at its `expiresAt`: closure `expired` dated at the deadline even after background time, history for one hour, members' requests cancelled; discovery removes it, and members and owners are told. `admitRide` adds another rider's new request with its deadline |
+| `lifecycle.ts` | Deadlines and `closeGroup` (shared by expiry and the coordinator's completion or cancellation). An active ride expires at its `expiresAt`: it becomes `expired`, discovery removes it (`expired`) and its owner is told. A live group is cancelled at its `expiresAt`: closure `expired` dated at the deadline even after background time, history for one hour, members' requests cancelled; discovery removes it, and members and owners are told. `admitRide` adds another rider's new request with its deadline |
 | `discovery.ts` | `places.search`, `rides.getNearby`, `rides.getRide`, `groups.getPreview` and accepting a nearby subscription, validating every input as the source would |
 | `auth.ts` (AUTH-001-A) | Demo-number challenges, the demo code, sessions, rotation, logout and the current user, with the world's private `auth` records (accounts, challenges, sessions, tokens); rules in [authentication](api/authentication.md#implemented-mock-auth-001-a) |
 | `rides.ts` (RIDE-001-A) | The signed-in rider's own request: create, read the current or latest one, cancel; [below](#own-ride-request-ride-001-a) |
-| `groups.ts` (GROUP-001-A, B) | Joining a solo ride or a group with the caller's active request, leaving it, and the member-only group read; [joining](#joining-group-001-a), [leaving](#leaving-group-001-b) |
+| `groups.ts` (GROUP-001) | Joining a solo ride or a group with the caller's active request, leaving it, the coordinator's status changes, and the member-only group read; [joining](#joining-group-001-a), [leaving](#leaving-group-001-b), [status](#group-status-group-001-c) |
 | `createMockDataSource.ts` | `createMockSimulator(scenario)` and the `AppDataSource` adapter. Each implemented call goes through `Simulator.run` (latency, failure controls, connection); every other operation rejects at once with `DataSourceUnavailableError` |
 
 - **Place search:** the curated places inside the area's circle, at most `limit`. Without a query, nearest the center first; with one (ignoring case), a label that starts with the text, then a label word that does, then a label or detail that contains it, each rank by distance. An area that does not reach the coverage box fails with `UNSUPPORTED_AREA`, and an invalid input with `VALIDATION_FAILED` (without field errors for now).
@@ -111,7 +111,7 @@ Rechecking after delay enables actual last-seat and expired-target conflicts. Us
 - **Ride already grouped:** resolved to its group, so two first joins of one ride end in one group of three, and a full or ready group answers as if the group itself were named.
 - **Group target:** the caller becomes the last member; the group stays `forming` even with four members, and its members are told (`group.changed`, `member_joined`).
 - **Every success:** discovery removes the caller's ride (`unavailable`, never saying it joined a group) and upserts the group with its new count; the caller is told (`ride.changed`). The result is the member-only group (`toRideGroupDto`; the meeting point's walking estimate is `null`) and the grouped request.
-- **Not yet:** blocks (no block records until SAFETY-001, so `BLOCKED_RELATIONSHIP` never occurs), status changes (GROUP-001-C), and `group` subscriptions, which stay unavailable.
+- **Not yet:** blocks (no block records until SAFETY-001, so `BLOCKED_RELATIONSHIP` never occurs), and `group` subscriptions, which stay unavailable.
 
 ### Leaving (GROUP-001-B)
 
@@ -123,6 +123,18 @@ Rechecking after delay enables actual last-seat and expired-target conflicts. Us
   - **Two or more remain:** a `ready` group returns to `forming` and keeps its meeting point; the earliest remaining member coordinates if the coordinator left. Discovery upserts the new count; `group.changed` (`member_left`).
   - **One remains:** `cancelled` with closure `members_left`, closed now, history for one hour; that member coordinates and their request is cancelled too. Discovery removes the group (`unavailable`); `group.changed` (`cancelled`). The group's later deadline finds it closed and does nothing.
   - Each owner whose request ended gets `ride.changed`.
+
+### Group status (GROUP-001-C)
+
+`groups.ts` and `lifecycle.ts`, covered by `tests/mockGroups.test.ts`. Rules follow the [state machine](api/groups.md#state-machine).
+
+- **Change (`groups.updateStatus`):** `VALIDATION_FAILED`, authentication, the receipt (same ID and input: the original group as it was then; another input: `IDEMPOTENCY_CONFLICT`), then `MEMBERSHIP_REQUIRED`, `FORBIDDEN` (a member who is not the coordinator), `GROUP_CLOSED`, `VERSION_CONFLICT`, and only then `INVALID_TRANSITION` (the current status itself, `forming` → `completed`, or `ready` without a meeting point).
+- **Ready and reopen:** `forming` → `ready` (`group.changed` `ready`) stops joins (`GROUP_CLOSED`); `ready` → `forming` (`reopened`) keeps the point and takes joins again. Discovery shows the new status.
+- **Complete and cancel:** `ready` → `completed`, or either live status → `cancelled` (`coordinator_cancelled`), closes the group now through `closeGroup`: the members' requests become `completed` or `cancelled` (keeping the group's ID), discovery removes it (`unavailable`), and the members and owners are told.
+- **Expiry:** the same `closeGroup` with reason `expired` at `expiresAt`, dated at the deadline even when the task runs late after time in the background; grouped requests follow this deadline, not their own.
+- **Terminal access:** a closed group is read-only (leave and status changes answer `GROUP_CLOSED`) and readable by its members at closure until `historyExpiresAt`, one hour after closing, then `HISTORY_EXPIRED`.
+- **Meeting points:** no scenario supplies one yet (MEETING-001-A); scenario A's ready group has a seeded point, and tests set one on the record.
+- **Nothing else changes a status:** the source has no taxi operation, so opening a taxi link can never complete or close a group.
 
 ### Supplied destination matches (DESTINATION-001-A)
 

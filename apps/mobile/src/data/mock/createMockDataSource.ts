@@ -14,7 +14,7 @@ import {
   readRide,
   searchPlaces,
 } from './discovery';
-import { joinGroup, leaveGroup, readGroup } from './groups';
+import { joinGroup, leaveGroup, readGroup, updateGroupStatus } from './groups';
 import { cancelRide, createRide, readMatches, readOwnRequest } from './rides';
 import { scenarioOptions, type MockScenarioKey } from './scenarios';
 import { createSimulator, type LatencyRange, type Simulator } from './simulator';
@@ -46,7 +46,8 @@ export function createMockSimulator(
  *   search, nearby discovery, one ride's public view and a group's public preview (reads that
  *   take an abort signal); the caller's own request: create, read and cancel (RIDE-001-A,
  *   `rides.ts`); joining a ride or group (GROUP-001-A, `groups.ts`), leaving it and the
- *   member-only group read (GROUP-001-B); nearby and `user` subscriptions and the connection state.
+ *   member-only group read (GROUP-001-B), and the coordinator's status changes (GROUP-001-C);
+ *   nearby and `user` subscriptions and the connection state.
  * - Every other operation rejects at once with a `DataSourceUnavailableError` until the card
  *   that implements it lands, never with invented data. So do `group` subscriptions for now,
  *   although joins already emit `group.changed`; a later GROUP card delivers them.
@@ -123,6 +124,10 @@ export function createMockDataSource(
       leave: (groupId, input) => {
         const token = accessToken();
         return simulator.run('groups.leave', (context) => leaveGroup(context, token, groupId, input));
+      },
+      updateStatus: (groupId, input) => {
+        const token = accessToken();
+        return simulator.run('groups.updateStatus', (context) => updateGroupStatus(context, token, groupId, input));
       },
       getPreview: (groupId, options) =>
         simulator.run('groups.getPreview', (context) => readGroupPreview(context, groupId), options),

@@ -1,8 +1,8 @@
-import { GROUP_POLICY } from '@ride-match/contracts';
+import { GROUP_POLICY, type GroupClosureReason } from '@ride-match/contracts';
 
 import { groupChanged, nearbyRemoved, nearbyUpserted, rideChanged, toNearbyItemDto } from './serializers';
 import type { WorkContext } from './simulator';
-import { isLiveGroup, type MockWorld, type RideRecord } from './world';
+import { isLiveGroup, type GroupRecord, type MockWorld, type RideRecord } from './world';
 
 /*
  * Time-driven transitions of rides and groups. Each runs as simulator work, so its events are
@@ -30,33 +30,50 @@ export function expireRide(context: Context, rideId: string): void {
 }
 
 /**
- * Cancels a live group at its deadline (`docs/api/groups.md`): the closure reason is `expired`,
- * dated at the deadline even when the task runs late after background time, and the history
- * stays readable for `GROUP_POLICY.historyRetentionSeconds`. Its members' grouped requests are
- * cancelled with it. Discovery removes the group with reason `expired`; the members and each
- * owner are told through their own audiences.
+ * Closes a live group (`docs/api/groups.md`, state machine): it becomes `completed` for reason
+ * `completed` and `cancelled` otherwise, with its closure dated `closedAt` and its history kept
+ * for `GROUP_POLICY.historyRetentionSeconds` after that. Its members' grouped requests end with
+ * it (`completed` with a completed group, `cancelled` otherwise) and keep the group's ID.
+ * Discovery removes the group (`expired` for an expiry, `unavailable` otherwise); the members
+ * are told (`group.changed`) and each owner through their own audience (`ride.changed`).
+ */
+export function closeGroup(
+  context: Context,
+  group: GroupRecord,
+  reason: Exclude<GroupClosureReason, 'members_left'>,
+  closedAt: number,
+): void {
+  const completed = reason === 'completed';
+  group.status = completed ? 'completed' : 'cancelled';
+  group.closure = {
+    reason,
+    closedAt,
+    historyExpiresAt: closedAt + GROUP_POLICY.historyRetentionSeconds * 1000,
+  };
+  group.version += 1;
+  const ended: RideRecord[] = [];
+  for (const member of group.members) {
+    const ride = context.state.rides.get(member.rideRequestId);
+    if (ride?.status !== 'grouped') continue;
+    ride.status = completed ? 'completed' : 'cancelled';
+    ride.version += 1;
+    ended.push(ride);
+  }
+  const removal = reason === 'expired' ? 'expired' : 'unavailable';
+  context.emit(nearbyRemoved(context.eventEnvelope(), { kind: 'group', id: group.id }, group.version, removal));
+  context.emit(groupChanged(context.eventEnvelope(), group, completed ? 'completed' : 'cancelled'));
+  for (const ride of ended) context.emit(rideChanged(context.eventEnvelope(), ride));
+}
+
+/**
+ * Cancels a live group at its deadline with reason `expired` ({@link closeGroup}), dated at the
+ * deadline even when the task runs late after background time. Its members' grouped requests
+ * are cancelled with it.
  */
 export function expireGroup(context: Context, groupId: string): void {
   const group = context.state.groups.get(groupId);
   if (group === undefined || !isLiveGroup(group)) return;
-  group.status = 'cancelled';
-  group.closure = {
-    reason: 'expired',
-    closedAt: group.expiresAt,
-    historyExpiresAt: group.expiresAt + GROUP_POLICY.historyRetentionSeconds * 1000,
-  };
-  group.version += 1;
-  const cancelled: RideRecord[] = [];
-  for (const member of group.members) {
-    const ride = context.state.rides.get(member.rideRequestId);
-    if (ride?.status !== 'grouped') continue;
-    ride.status = 'cancelled';
-    ride.version += 1;
-    cancelled.push(ride);
-  }
-  context.emit(nearbyRemoved(context.eventEnvelope(), { kind: 'group', id: group.id }, group.version, 'expired'));
-  context.emit(groupChanged(context.eventEnvelope(), group, 'cancelled'));
-  for (const ride of cancelled) context.emit(rideChanged(context.eventEnvelope(), ride));
+  closeGroup(context, group, 'expired', group.expiresAt);
 }
 
 /**
