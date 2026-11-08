@@ -14,6 +14,7 @@ import {
   readRide,
   searchPlaces,
 } from './discovery';
+import { joinGroup } from './groups';
 import { cancelRide, createRide, readMatches, readOwnRequest } from './rides';
 import { scenarioOptions, type MockScenarioKey } from './scenarios';
 import { createSimulator, type LatencyRange, type Simulator } from './simulator';
@@ -44,10 +45,10 @@ export function createMockSimulator(
  * - Implemented: sign-in, refresh, logout and the current user (AUTH-001-A, `auth.ts`); place
  *   search, nearby discovery, one ride's public view and a group's public preview (reads that
  *   take an abort signal); the caller's own request: create, read and cancel (RIDE-001-A,
- *   `rides.ts`); nearby and `user` subscriptions and the connection state.
+ *   `rides.ts`); joining a ride or group (GROUP-001-A, `groups.ts`); nearby and `user` subscriptions and the connection state.
  * - Every other operation rejects at once with a `DataSourceUnavailableError` until the card
- *   that implements it lands, never with invented data. So do `group` subscriptions, whose
- *   events come from operations later cards add.
+ *   that implements it lands, never with invented data. So do `group` subscriptions for now,
+ *   although joins already emit `group.changed`; a later GROUP card delivers them.
  * - Signed-in operations read the access token when they start, as an HTTP client sets its
  *   header. Discovery reads it too: a signed-in viewer's own request is left out.
  *
@@ -110,6 +111,10 @@ export function createMockDataSource(
     },
     groups: {
       ...unavailable.groups,
+      join: (input) => {
+        const token = accessToken();
+        return simulator.run('groups.join', (context) => joinGroup(context, token, input));
+      },
       getPreview: (groupId, options) =>
         simulator.run('groups.getPreview', (context) => readGroupPreview(context, groupId), options),
     },

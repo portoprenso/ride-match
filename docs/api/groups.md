@@ -1,6 +1,6 @@
 # Future API: groups, meeting points, chat, and safety
 
-Status: planned; the group, membership, join, leave and status contracts (CONTRACT-003-A), the chat contracts (CONTRACT-003-B) and the block and report contracts (CONTRACT-003-C) exist in `packages/contracts`. Last updated: 2026-11-01.
+Status: planned; the group, membership, join, leave and status contracts (CONTRACT-003-A), the chat contracts (CONTRACT-003-B) and the block and report contracts (CONTRACT-003-C) exist in `packages/contracts`. The mock source implements joining (GROUP-001-A; [mock rules](../MOCK_SCENARIOS.md#joining-group-001-a)). Last updated: 2026-11-08.
 
 Paths use `/v1`. Common envelopes/errors/idempotency are in [overview](overview.md). `Member` requires current membership; `Coordinator` also requires that role. Retained terminal history is accessible to members authorized at closure, not users who previously left.
 
@@ -59,6 +59,8 @@ The source checks in this order and answers the first failure:
 The caller's own ride as the target fails input validation. A block in either direction prevents the join, but only the blocker learns that a block is the reason: to the blocked user the target is unavailable, as in authenticated discovery.
 
 The join has no expected group version. It checks the group's current status and seats, so a group that changed in an unrelated way does not fail the join, and two last-seat joins end in one success and one `GROUP_FULL`, not a version conflict.
+
+The mock answers an unknown own request with `FORBIDDEN` too, so a join never reveals whether another rider's request exists. It has no block records yet (SAFETY-001), so its joins never answer `BLOCKED_RELATIONSHIP`.
 
 If own request creation succeeded before a join failure, that request remains active. The UI explains this partial sequence; it is not one cross-operation transaction.
 

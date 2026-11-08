@@ -17,6 +17,7 @@ import {
   type PlaceDto,
   type PublicLocationDto,
   type RideChangedEventDto,
+  type RideGroupDto,
   type RideRequestDto,
   type SessionCredentialsDto,
   type UserDto,
@@ -178,6 +179,49 @@ export function toGroupPreviewDto(group: GroupRecord): GroupPreviewDto {
     destination: toPlaceDto(requirePlace(group.destinationPlaceId)),
     departureAt: toTimestamp(group.departureAt),
     expiresAt: toTimestamp(group.expiresAt),
+    version: group.version,
+  };
+}
+
+/**
+ * The member-only view of a group (`RideGroupDto`): its members' public summaries in join order,
+ * the coordinator, the meeting point and the closure. Only the group's members may receive it;
+ * it never holds a member's exact origin. The meeting point's walking estimate is viewer-specific
+ * and the mock supplies none yet, so it is `null`.
+ */
+export function toRideGroupDto(world: MockWorld, group: GroupRecord): RideGroupDto {
+  const { meetingPoint, closure } = group;
+  return {
+    id: group.id,
+    status: group.status,
+    coordinatorId: group.coordinatorId,
+    members: group.members.map((member) => ({
+      user: toUserDto(requireUser(world, member.userId)),
+      joinedAt: toTimestamp(member.joinedAt),
+      rideRequestId: member.rideRequestId,
+    })),
+    capacity: GROUP_POLICY.capacity,
+    destination: toPlaceDto(requirePlace(group.destinationPlaceId)),
+    departureAt: toTimestamp(group.departureAt),
+    meetingPoint:
+      meetingPoint === null
+        ? null
+        : {
+            id: meetingPoint.id,
+            coordinates: { latitude: meetingPoint.coordinates.latitude, longitude: meetingPoint.coordinates.longitude },
+            label: meetingPoint.label,
+            walkingMinutes: null,
+          },
+    createdAt: toTimestamp(group.createdAt),
+    expiresAt: toTimestamp(group.expiresAt),
+    closure:
+      closure === null
+        ? null
+        : {
+            reason: closure.reason,
+            closedAt: toTimestamp(closure.closedAt),
+            historyExpiresAt: toTimestamp(closure.historyExpiresAt),
+          },
     version: group.version,
   };
 }

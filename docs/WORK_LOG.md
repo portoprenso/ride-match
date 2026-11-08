@@ -2610,3 +2610,25 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** the arrival plan and owner matches, `readMatches`, `supplyOwnerMatch`, `dropExpiredMatches`, `matchesChanged`, scenario C, `useOwnMatches`, `MatchArrival`, `UnknownOutcome`.
 - **Remaining/next:** GROUP-001-A (mock joins); the native pass, which would complete MAP-001, MAP-002, DESTINATION-001 and RIDE-001.
 - **Ownership:** Released; no active task.
+
+## 2026-11-08 — GROUP-001-A: Atomic mock joins
+
+- **Actor/session:** Claude Code / group-001-a.
+- **Status:** `Completed`. Parent GROUP-001 `In progress`. Ownership released.
+- **Working copy:** `main` at `29dcab9` (RIDE-001-D); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "переходи к GROUP-001-A" (start GROUP-001-A): mock atomic solo and group joins with the existing receipts. Acceptance: simultaneous first joins one group; last-seat race one winner; max four; rejected join preserves own request.
+- **Changes:**
+  - New `src/data/mock/groups.ts`: `joinGroup` (`POST /groups/join`), target resolution (a grouped ride resolves to its group), `formGroup` (group of two, target's rider coordinates, target's plan and public area, 30-minute deadline scheduled through `expireGroup`).
+  - `serializers.ts`: `toRideGroupDto` (member-only view; walking estimate `null`).
+  - `createMockDataSource.ts`: `groups.join`.
+  - Tests: new `tests/mockGroups.test.ts` (15), with several riders signed in on one simulator, each with its own token.
+- **Decisions:**
+  - Atomicity: the simulator already runs each work alone and to completion, so the join reads and changes the world in one step; concurrent joins are serialized at their arrival time. No lock or extra mechanism.
+  - An unknown own request answers `FORBIDDEN`, like another rider's, so the answer never reveals existence (the contract's table does not name this case); recorded in api/groups.md.
+  - Blocks are not checked: the world has no block records until SAFETY-001.
+  - Events: the joiner's and a solo target's rides leave discovery with `unavailable`; the group is upserted with its count; owners get `ride.changed`; joining an existing group also emits `group.changed` (`member_joined`). A newly formed group emits no `group.changed`, since its members learn of it from their `ride.changed` and the join result.
+- **Checks:** `pnpm typecheck`, `pnpm lint`, `npx jest` in `apps/mobile` (32 suites, 480 tests) passed; Prettier clean on the new and changed files. No native check applies (mock only). Screen readers not applicable.
+- **Docs:** MOCK_SCENARIOS (status, module table, joining rules), api/groups.md (status, mock notes), DEVELOPMENT (tests, 480), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line, GROUP-001 row), AI_CONTEXT.
+- **JSDoc:** `joinGroup` (order of checks, effects, events), `resolveTarget`, `formGroup`, `groupRide`, `toRideGroupDto`, the module's atomicity note.
+- **Remaining/next:** GROUP-001-B (leave and coordinator transfer); the native pass, which would complete MAP-001, MAP-002, DESTINATION-001 and RIDE-001.
+- **Ownership:** Released; no active task.
