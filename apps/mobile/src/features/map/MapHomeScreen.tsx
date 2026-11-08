@@ -30,6 +30,7 @@ import { useClock } from '../discovery/useClock';
 import { useNearbyDiscovery } from '../discovery/useNearbyDiscovery';
 import { useLocationChoices } from '../location/LocationChoicesProvider';
 import { PickupPlaceSheet } from '../location/PickupPlaceSheet';
+import { JoinPanel } from '../groups/JoinPanel';
 import { CreateRequestSheet, type CreateStep } from '../rides/CreateRequestSheet';
 import { CancelRequestSheet } from '../rides/CancelRequestSheet';
 import { OwnRequestMarker } from '../rides/OwnRequestMarker';
@@ -62,8 +63,12 @@ import { CAMERA_ANIMATION_MS, streetRegion, useHomeCamera } from './mapCamera';
  * A marker, or a row of the nearby list, opens that ride or group's public preview in the sheet
  * (screens 05 and 19, MAP-002-C), with its marker highlighted. The preview reads the target again;
  * if the source no longer has it, the sheet says the plan changed and offers to refresh nearby
- * plans (screen 55). Its join action reserves nothing: it records the intent, through sign-in for
- * an anonymous rider, after which the preview reopens and reads the target again.
+ * plans (screen 55). Its join action reserves nothing. An anonymous rider signs in first; the
+ * preview then reopens, reads the target again and goes on by itself. A rider without a live
+ * request gets a draft to the target's destination, whose publishing opens the join
+ * confirmation; one with an active request goes straight to it (screens 12, 29, 30, 55,
+ * GROUP-002-A, `JoinPanel`), a step of the same sheet. A grouped rider is told they are already
+ * in a group. Membership shows only once the source answers.
  *
  * While home is the focused screen it keeps the controller's foreground observation running, so
  * the position on the map follows the device; another screen on top stops it. "Show my location"
@@ -122,7 +127,13 @@ export function MapHomeScreen({
   // The open preview (screens 05, 19, 55). Its target is read again from the source; the map's
   // copy only fills the sheet while that read is on its way.
   const [preview, setPreview] = useState<PreviewTarget | null>(null);
+  // The rider asked to join from a preview before signing in; going on waits for the fresh read.
   const [joinRequested, setJoinRequested] = useState(false);
+  // The join confirmation (screen 12, GROUP-002-A) is a step of the open preview, in the same
+  // sheet, so no modal opens while another closes.
+  const [joining, setJoining] = useState(false);
+  // A join that waits for the rider's new request: publishing it opens the confirmation.
+  const [pendingJoin, setPendingJoin] = useState<PreviewTarget | null>(null);
   const previewKey = preview === null ? null : itemKey(preview);
   const seed = snapshot?.items.find((item) => itemKey(item) === previewKey) ?? null;
   const previewState = useTargetPreview(preview, seed);
@@ -135,7 +146,7 @@ export function MapHomeScreen({
   const [pickingForDraft, setPickingForDraft] = useState(false);
   const origin = resolveOrigin(pickup, status);
   // The rider's own request (RIDE-001-C): its card, its marker, and the cancel confirmation.
-  const { request: ownRequest, refresh: refreshOwnRequest } = useOwnRequest();
+  const { request: ownRequest, known: ownRequestKnown, refresh: refreshOwnRequest } = useOwnRequest();
   const liveRequest = isLive(ownRequest) ? ownRequest : null;
   const [cancelOpen, setCancelOpen] = useState(false);
   const [dismissedId, setDismissedId] = useState<string | null>(null);
@@ -184,8 +195,12 @@ export function MapHomeScreen({
   const openPreview = (target: PreviewTarget, joinAsked = false) => {
     setPreview({ kind: target.kind, id: target.id });
     setJoinRequested(joinAsked);
+    setJoining(false);
   };
-  const closePreview = () => setPreview(null);
+  const closePreview = () => {
+    setPreview(null);
+    setJoining(false);
+  };
   const chooseDestination = (place: PlaceDto) => {
     setDestination(place);
     analytics.track('destination_selected');
@@ -201,17 +216,48 @@ export function MapHomeScreen({
     moveTo(streetRegion(item.publicOrigin.center));
   };
   /**
-   * "Plan to join" / "Create a request to join": records the intent and reserves nothing. An
-   * anonymous rider signs in first; the preview then reopens and reads the target again.
+   * Goes on from a confirmed preview towards joining (GROUP-002-A), reserving nothing: with an
+   * active request, to the confirmation; without a live one, to a new request to the target's
+   * destination first, whose publishing opens the confirmation (a refused join then leaves that
+   * request active). A grouped rider is told instead.
+   */
+  const continueToJoin = (target: PreviewTarget, item: NearbyItemDto) => {
+    if (ownRequest?.status === 'active') {
+      setJoining(true);
+    } else if (ownRequest?.status !== 'grouped') {
+      setPendingJoin(target);
+      setDestination(item.destination);
+      setCreateStep('departure');
+    }
+  };
+  const joinNote =
+    ownRequest?.status === 'grouped'
+      ? 'You’re already in a group. One request can be in one group at a time; nothing was reserved.'
+      : null;
+  /**
+   * "Plan to join" / "Create a request to join": an anonymous rider signs in first; the preview
+   * then reopens, reads the target again and goes on by itself once it is confirmed.
    */
   const planToJoin = () => {
-    if (preview === null) return;
+    if (preview === null || previewState?.kind !== 'available') return;
     const intent =
       preview.kind === 'ride'
         ? ({ kind: 'join-ride', rideId: preview.id } as const)
         : ({ kind: 'join-group', groupId: preview.id } as const);
-    if (requireSignIn(intent)) setJoinRequested(true);
+    if (requireSignIn(intent)) continueToJoin(preview, previewState.item);
   };
+  // After sign-in: once the target is confirmed again and the rider's request is known, go on.
+  const resumeReady =
+    joinRequested &&
+    preview !== null &&
+    previewState?.kind === 'available' &&
+    !previewState.fetching &&
+    ownRequestKnown;
+  if (resumeReady && previewState?.kind === 'available') {
+    // Adjusting state while rendering, once per resumed intent: the flag is cleared at once.
+    setJoinRequested(false);
+    continueToJoin(preview, previewState.item);
+  }
   useResumeIntent('join-ride', (intent) => openPreview({ kind: 'ride', id: intent.rideId }, true));
   useResumeIntent('join-group', (intent) => openPreview({ kind: 'group', id: intent.groupId }, true));
   /** Departure step done: an anonymous rider signs in first (the sheet closes over sign-in), then reviews. */
@@ -223,20 +269,26 @@ export function MapHomeScreen({
 
   useFocusEffect(useCallback(() => controller.observe(), [controller]));
   useFocusEffect(useCallback(() => analytics.trackOncePerSession('map_opened'), [analytics]));
-  // Android back leaves the picker or the preview before it leaves the screen.
+  // Android back leaves the picker, the join confirmation or the preview before it leaves the screen.
   const inSubMode = picking || preview !== null;
   useFocusEffect(
     useCallback(() => {
       if (!inSubMode) return undefined;
       const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
         setPicking(false);
-        setPreview(null);
+        if (joining) setJoining(false);
+        else setPreview(null);
         return true;
       });
       return () => subscription.remove();
-    }, [inSubMode]),
+    }, [inSubMode, joining]),
   );
-  const header = preview !== null && previewState !== null ? previewTitle(preview, previewState, fixPoint, now) : null;
+  const header =
+    preview !== null && previewState !== null
+      ? joining
+        ? { title: 'Confirm joining', subtitle: null }
+        : previewTitle(preview, previewState, fixPoint, now)
+      : null;
 
   return (
     <>
@@ -297,9 +349,9 @@ export function MapHomeScreen({
             <View style={styles.pickerHeader}>
               <IconButton
                 icon={<Icon name="back" />}
-                accessibilityLabel="Back to map"
+                accessibilityLabel={joining ? 'Back to preview' : 'Back to map'}
                 tone="white"
-                onPress={closePreview}
+                onPress={joining ? () => setJoining(false) : closePreview}
               />
               <View style={styles.title}>
                 <AppText variant="label" accessibilityRole="header">
@@ -369,6 +421,20 @@ export function MapHomeScreen({
               }}
               onChooseNamed={() => setNamedOpen(true)}
             />
+          ) : preview !== null && previewState !== null && joining ? (
+            <JoinPanel
+              target={preview}
+              preview={previewState}
+              ownRequest={ownRequest}
+              now={now}
+              onJoined={closePreview}
+              onBack={() => setJoining(false)}
+              onKeepLooking={closePreview}
+              onRefreshNearby={() => {
+                closePreview();
+                discovery.retry();
+              }}
+            />
           ) : preview !== null && previewState !== null ? (
             <PreviewPanel
               target={preview}
@@ -376,7 +442,8 @@ export function MapHomeScreen({
               fix={fixPoint}
               now={now}
               demo={demo}
-              joinRequested={joinRequested}
+              joinNote={joinNote}
+              requestActive={ownRequest?.status === 'active'}
               match={(previewKey === null ? undefined : emphasis?.get(previewKey)?.level) ?? null}
               onJoin={planToJoin}
               onRetry={previewState.retry}
@@ -465,7 +532,10 @@ export function MapHomeScreen({
         origin={origin}
         onContinue={continueToReview}
         onEdit={() => setCreateStep('departure')}
-        onClose={() => setCreateStep(null)}
+        onClose={() => {
+          setCreateStep(null);
+          setPendingJoin(null);
+        }}
         onChoosePickupOnMap={
           configured
             ? () => {
@@ -476,7 +546,15 @@ export function MapHomeScreen({
             : undefined
         }
         onChoosePickupNamed={() => setCreateStep('pickup')}
-        onPublished={() => setCreateStep(null)}
+        onPublished={() => {
+          setCreateStep(null);
+          // The request a join was waiting for: go on to the confirmation for that target.
+          if (pendingJoin !== null) {
+            openPreview(pendingJoin);
+            setJoining(true);
+          }
+          setPendingJoin(null);
+        }}
       />
       <PickupPlaceSheet open={namedOpen} onClose={() => setNamedOpen(false)} onConfirmed={() => setPicking(false)} />
     </>

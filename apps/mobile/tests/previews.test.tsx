@@ -104,7 +104,7 @@ describe('ride and group previews', () => {
     expect(screen.queryAllByLabelText(/^Bakyt → /)).toHaveLength(0);
   });
 
-  it('a join asks an anonymous rider to sign in, then reopens the preview and reserves nothing', async () => {
+  it('a join asks an anonymous rider to sign in, then drafts the request it needs and reserves nothing', async () => {
     const app = await openScenario();
     await tapMarker(/^Aida → Asia Mall, /);
     await wait(ANSWER_MS);
@@ -118,12 +118,14 @@ describe('ride and group previews', () => {
     // Signed in, the target is read again before anything is offered.
     expect(screen.getByText('Checking it’s still available…')).toBeOnTheScreen();
     await wait(ANSWER_MS);
+    // Joining needs the rider's own request: a draft to the ride's destination opens, unpublished.
+    expect(screen.getByRole('header', { name: 'When are you leaving?' })).toBeOnTheScreen();
+    expect(screen.getAllByText('Asia Mall').length).toBeGreaterThan(0);
+
+    await press('Keep browsing');
     expect(screen.getByRole('header', { name: 'Heading to Asia Mall' })).toBeOnTheScreen();
-    expect(
-      screen.getByText('Joining isn’t available in this demo build yet. Nothing was reserved, and no seat is held.'),
-    ).toBeOnTheScreen();
-    // The target was read again for the signed-in rider, and is still offered.
     expect(screen.getByRole('button', { name: 'Plan to join this rider' })).toBeOnTheScreen();
+    expect(screen.queryByText(/^Searching · /)).not.toBeOnTheScreen();
 
     await pressLast('Back to map');
     expect(screen.queryByRole('header', { name: 'Ride preview' })).not.toBeOnTheScreen();

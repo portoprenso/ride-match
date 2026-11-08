@@ -52,8 +52,10 @@ type PreviewPanelProps = {
   now: number;
   /** Synthetic riders: the rider line says the profile is a demo one. */
   demo: boolean;
-  /** The rider asked to join and is signed in: say what joining needs; nothing was reserved. */
-  joinRequested: boolean;
+  /** Why the rider cannot go on to join from here, such as already being in a group, or `null`. */
+  joinNote: string | null;
+  /** The rider has an active request, so a group's join action needs no new request first. */
+  requestActive: boolean;
   /** The supplied match level for the chosen destination (design 05's badge), if any. */
   match?: MatchLevel | null;
   onJoin: () => void;
@@ -70,8 +72,8 @@ type PreviewPanelProps = {
  * meeting point or an exact location.
  *
  * The join action appears only once the source has just confirmed the target is available, and
- * it reserves nothing: it records the intent (through sign-in when needed). Joining itself, with
- * the rider's own request and a final availability check, belongs to the join confirmation.
+ * it reserves nothing: it leads, through sign-in and a new request when needed, to the join
+ * confirmation (`JoinPanel`, GROUP-002-A), which checks availability again before joining.
  * When the target is gone (screen 55) the stale action disappears, and the rider's own request,
  * if any, is left as it is.
  */
@@ -81,7 +83,8 @@ export function PreviewPanel({
   fix,
   now,
   demo,
-  joinRequested,
+  joinNote,
+  requestActive,
   match = null,
   onJoin,
   onRetry,
@@ -138,10 +141,10 @@ export function PreviewPanel({
         </AppText>
       )}
       {state.kind === 'failed' ? <Button label="Try again" variant="secondary" onPress={onRetry} /> : null}
-      {available && joinRequested ? (
-        <Notice message="Joining isn’t available in this demo build yet. Nothing was reserved, and no seat is held." />
+      {available && joinNote !== null ? <Notice message={joinNote} /> : null}
+      {available && joinNote === null ? (
+        <JoinAction item={state.item} requestActive={requestActive} onJoin={onJoin} />
       ) : null}
-      {available ? <JoinAction item={state.item} onJoin={onJoin} /> : null}
       {back}
     </View>
   );
@@ -204,9 +207,18 @@ function GroupSummary({ item, distance, now }: { item: GroupItem; distance: stri
   );
 }
 
-function JoinAction({ item, onJoin }: { item: NearbyItemDto; onJoin: () => void }) {
+function JoinAction({
+  item,
+  requestActive,
+  onJoin,
+}: {
+  item: NearbyItemDto;
+  requestActive: boolean;
+  onJoin: () => void;
+}) {
   if (item.kind === 'ride') return <Button label="Plan to join this rider" onPress={onJoin} />;
   if (!describeGroupAvailability(item).joinable) return null;
+  if (requestActive) return <Button label="Plan to join this group" onPress={onJoin} />;
   return (
     <>
       <AppText variant="small" color="muted">

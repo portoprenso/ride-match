@@ -61,12 +61,13 @@ function toItem(target: PreviewTarget, data: RideRequestDto | GroupPreviewDto): 
  *
  * @param target The open target, or `null` while no preview is open (nothing is read then).
  * @param seed The map's copy of the target, shown while it is checked.
- * @returns The state, and `retry` for a failed read.
+ * @returns The state, `retry` to read it again (after a failure, or to revalidate before a
+ *   join), and `fetching` while a read is on its way, when an older answer may still show.
  */
 export function useTargetPreview(
   target: PreviewTarget | null,
   seed: NearbyItemDto | null,
-): (PreviewState & { retry: () => void }) | null {
+): (PreviewState & { retry: () => void; fetching: boolean }) | null {
   const dataSource = useDataSource();
   const viewer = useViewer();
   const id = target?.id ?? '';
@@ -75,5 +76,5 @@ export function useTargetPreview(
   if (target === null) return null;
   const query = target.kind === 'ride' ? ride : group;
   const state = describePreview({ target, data: query.data, error: query.error, seed });
-  return { ...state, retry: () => void query.refetch() };
+  return { ...state, retry: () => void query.refetch(), fetching: query.isFetching };
 }

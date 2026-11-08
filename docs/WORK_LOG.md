@@ -2676,3 +2676,26 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** `updateGroupStatus` (order of checks, effects, no taxi transition), the transition table, `closeGroup`, `expireGroup`.
 - **Remaining/next:** GROUP-002-A needs RIDE-001, which is paused for native checks: the native pass, or the user's waiver to start GROUP-002-A first.
 - **Ownership:** Released; no active task.
+
+## 2026-11-08 — GROUP-002-A: Join confirmation and conflict recovery
+
+- **Actor/session:** Claude Code / group-002-a.
+- **Status:** implemented; `Paused` for its native check (next native pass). Parent GROUP-002 `In progress`. Ownership released.
+- **Working copy:** `main` at `1045d9e` (GROUP-001-C); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Начни GROUP-002-A" (start GROUP-002-A): the join confirmation and conflict recovery (designs 12, 29, 30, 55). Prerequisite RIDE-001 is `Paused` for native checks; the user's explicit request to start is taken as the go-ahead, as for earlier cards. Acceptance: revalidate target; no optimistic membership; full/closed/expired/unavailable/unknown outcomes reconcile; own request preserved.
+- **Changes:**
+  - New `src/features/groups/JoinPanel.tsx` and `joinOutcome.ts`.
+  - `src/features/map/MapHomeScreen.tsx`: `joining` step, `pendingJoin` (draft first), the resumed intent, the header and Android back for the confirmation, the grouped note.
+  - `src/features/discovery/PreviewPanel.tsx`: `joinNote`, `requestActive` ("Plan to join this group" with an active request); the old "not available in this build" note removed. `useTargetPreview` returns `fetching`; `useOwnRequest` returns `known`.
+  - Tests: new `tests/joinGroup.test.tsx` (9); `tests/previews.test.tsx` (the signed-in join intent now opens the draft).
+- **Decisions:**
+  - The confirmation is a step of the preview in home's (non-modal) sheet, so no modal is presented while the create sheet dismisses (the iOS hazard noted in MAP-002-C).
+  - Joining without a live request first drafts one to the target's destination (PRODUCT: create first, then confirm joining); a refused join leaves it active.
+  - The resumed join after sign-in waits for both the fresh target read and the own request's first answer, so a rider with a request is not sent to a new draft by mistake. It adjusts state while rendering (the lint forbids setState in effects).
+  - Success writes only the canonical group and grouped request; the rider stays on home with the "In a group" card because the group route is still inert (GROUP-002-B).
+  - The last-seat race test seats another rider through a simulator task due at once, which the source runs just before the rider's join work (deterministic; scenario E itself is not added here).
+- **Checks:** `pnpm typecheck`, `pnpm lint`, `npx jest` in `apps/mobile` (33 suites, 503 tests) passed; Prettier clean on the new and changed files. **Not run:** native builds or device checks (DEVELOPMENT's join check). Screen readers waived.
+- **Docs:** PRODUCT (previews, joining), ARCHITECTURE, DEVELOPMENT (tests, 503; join check), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line, GROUP-002 row), AI_CONTEXT.
+- **JSDoc:** `JoinPanel` (revalidation, no optimistic membership, refusals, unknown outcome, analytics), `describeJoinError`, `describeJoinPlan`, the home screen's join flow, `useTargetPreview`'s `fetching`, `useOwnRequest`'s `known`, `PreviewPanel`'s join props.
+- **Remaining/next:** GROUP-002-B (group route, members, seats, role-aware menu); the native pass.
+- **Ownership:** Released; no active task.

@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-08. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; RIDE-001 is paused with A's mock request operations completed and B's draft and review, C's request card, cancel and expiry, and D's matches and unknown-outcome recovery implemented, their native checks pending; DESTINATION-001 is paused with A's supplied matches completed and B's destination search, selection and map emphasis implemented, its native check pending; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; MAP-002 is paused with A's discovery read and states, B's markers, clusters, list and tile notice, and C's ride and group previews and disappeared target implemented, their native checks pending; GROUP-001 is completed (A's joins, B's leave and coordinator transfer, C's status changes, expiry and terminal access); all other implementation tasks are planned.**
+Last updated: 2026-11-08. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; RIDE-001 is paused with A's mock request operations completed and B's draft and review, C's request card, cancel and expiry, and D's matches and unknown-outcome recovery implemented, their native checks pending; DESTINATION-001 is paused with A's supplied matches completed and B's destination search, selection and map emphasis implemented, its native check pending; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; MAP-002 is paused with A's discovery read and states, B's markers, clusters, list and tile notice, and C's ride and group previews and disappeared target implemented, their native checks pending; GROUP-001 is completed (A's joins, B's leave and coordinator transfer, C's status changes, expiry and terminal access); GROUP-002 is in progress with A's join confirmation and conflict recovery implemented, its native check pending; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,18 @@ Last updated: 2026-11-08. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**GROUP-002-A — Implemented (2026-11-08), native check pending; GROUP-002 `In progress`.** Started at the user's request while RIDE-001's native checks are pending.
+
+- **Done:**
+  - From a ride or group preview, a rider with an active request reaches "Confirm joining" (12) in the same sheet; it reads the plan again before "Join" can be pressed, and nothing changes until the source answers. Success: the card says "In a group".
+  - A rider without a live request gets a draft to the plan's destination; publishing it opens the confirmation. A refused join then leaves that request active. An anonymous rider signs in first and continues by themselves.
+  - Conflicts reconcile with the source: last seat taken or group ready (29, latest occupancy, request still active), plan gone (55), request ended or already grouped, blocked, session ended. A lost answer (30) is checked through the own request, or retried with the same operation ID.
+  - 503 mobile tests (9 new).
+- **Decisions:** the confirmation is a step of the preview, not a modal, so it never opens while the draft sheet closes; joined riders stay on home until the group route exists (GROUP-002-B).
+- **Not covered here:** group screens and live occupancy (GROUP-002-B); `group` subscriptions.
+- **Pending:** the native check (DEVELOPMENT, join check).
+- **Next available:** GROUP-002-B (group route, members and seats), or the native pass.
 
 **GROUP-001-C — Completed (2026-11-08); GROUP-001 `Completed`.**
 
@@ -514,7 +526,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | DESTINATION-001 | Destination selection and compatibility | Paused (A completed; B implemented, native check pending) |
 | RIDE-001 | Creation, matching, expiration | Paused (A completed; B, C and D implemented, native checks pending) |
 | GROUP-001 | Atomic mock group operations | Completed |
-| GROUP-002 | Group product flow | Planned |
+| GROUP-002 | Group product flow | In progress (A implemented, native check pending) |
 | CHAT-001 | Temporary text chat | Planned |
 | MEETING-001 | Meeting point and readiness | Planned |
 | TAXI-001 | Yandex Go handoff | Planned |

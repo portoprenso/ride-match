@@ -13,9 +13,10 @@ const USER_EVENTS = { kind: 'user' } as const;
  * `user` subscription delivers `ride.changed`, which makes the read refresh (SYNC-001), and Query
  * reads it again on foreground return. `request` is `null` when anonymous, before the read
  * answers, or when they never created one; a failed read keeps the last answer. `refresh` reads
- * it again, for a deadline the device saw pass.
+ * it again, for a deadline the device saw pass. `known` is whether the source has answered for
+ * this rider yet, so `null` can be told apart from "not read yet".
  */
-export function useOwnRequest(): { request: OwnRideRequestDto | null; refresh: () => void } {
+export function useOwnRequest(): { request: OwnRideRequestDto | null; known: boolean; refresh: () => void } {
   const dataSource = useDataSource();
   const viewer = useViewer();
   const signedIn = viewer.kind === 'user';
@@ -24,7 +25,11 @@ export function useOwnRequest(): { request: OwnRideRequestDto | null; refresh: (
     enabled: signedIn,
   });
   useEventSubscription(signedIn ? USER_EVENTS : null);
-  return { request: signedIn ? (query.data ?? null) : null, refresh: () => void query.refetch() };
+  return {
+    request: signedIn ? (query.data ?? null) : null,
+    known: signedIn && query.data !== undefined,
+    refresh: () => void query.refetch(),
+  };
 }
 
 /** Whether a request is live (`active` or `grouped`): one at a time per rider. */
