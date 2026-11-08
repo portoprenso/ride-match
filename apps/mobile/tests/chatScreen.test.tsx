@@ -2,7 +2,7 @@ import { screen, userEvent } from '@testing-library/react-native';
 import type { ChatMessageDto, ChatMessagePageDto } from '@ride-match/contracts';
 
 import { CHAT_REPLY_DELAY_MS, SIMULATED_REPLIES, storeMessage } from '../src/data/mock/chat';
-import { updateGroupStatus } from '../src/data/mock/groups';
+import { leaveGroup, updateGroupStatus } from '../src/data/mock/groups';
 import {
   buildTimeline,
   describeSendError,
@@ -10,6 +10,7 @@ import {
   pendingOutgoing,
   toChatText,
 } from '../src/features/chat/chatTimeline';
+import { appendMessages, newestHeldSequence } from '../src/data/chatHistory';
 import { DataError } from '../src/data/errors';
 import type { Simulator } from '../src/data/mock/simulator';
 import type { MockWorld } from '../src/data/mock/world';
@@ -20,9 +21,10 @@ import {
   captureSimulator,
   confirmJoiningAida,
   recordAnalytics,
+  signInWithDemoCode,
   withActiveRequest,
 } from './helpers/groupFlow';
-import { press, wait } from './helpers/locationDevice';
+import { BLOCKED, device, openHome, press, wait } from './helpers/locationDevice';
 import { flushTimersAndRestore } from './helpers/renderApp';
 
 /** The app rider joins Aida's ride, then opens the group chat; returns the simulator and group. */
@@ -120,7 +122,8 @@ describe('the group chat', () => {
     expect(screen.queryByRole('button', { name: 'Load earlier messages' })).not.toBeOnTheScreen();
   });
 
-  it('puts an unconfirmed message back and resends it under the same ID, storing it once', async () => {
+  it('keeps a message that wasn’t sent, never resends it on reconnect, and retries it under the same ID (45)', async () => {
+    const events = recordAnalytics();
     const { simulator, group } = await openChatWithAida();
     simulator.failNext({ kind: 'network' }, 'chat.send');
 
@@ -128,22 +131,38 @@ describe('the group chat', () => {
     await press('Send message');
     await wait(2 * ANSWER_MS);
 
-    const field = screen.getByLabelText('Message');
-    expect(field.props.value).toBe('At the entrance');
-    expect(field.props.accessibilityHint).toBe(
-      'We couldn’t confirm your message. It’s back in the message box: sending it again won’t post it twice.',
-    );
-    expect(screen.queryByText('You · Sending…')).not.toBeOnTheScreen();
+    expect(screen.getByText('You · not sent')).toBeOnTheScreen();
+    expect(screen.getByText('At the entrance')).toBeOnTheScreen();
+    expect(
+      screen.getByText(
+        'Your text is preserved. Retry sends the same message once; reconnecting doesn’t send it automatically.',
+      ),
+    ).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Check latest messages' })).toBeOnTheScreen();
+    expect(screen.getByLabelText('Message').props.value).toBe('');
 
-    await press('Send message');
+    // The connection drops and returns: the chat says so, and nothing is sent by itself.
+    simulator.setConnection('disconnected');
+    await wait();
+    expect(screen.getByText('Connection interrupted')).toBeOnTheScreen();
+    simulator.setConnection('connected');
+    await wait(2 * ANSWER_MS);
+    expect(screen.queryByText('Connection interrupted')).not.toBeOnTheScreen();
+    expect(simulator.state.messages.get(group.id) ?? []).toHaveLength(0);
+    expect(screen.getByText('You · not sent')).toBeOnTheScreen();
+
+    await press('Retry message');
     await wait(2 * ANSWER_MS);
 
-    expect(simulator.state.messages.get(group.id)).toHaveLength(1);
+    const stored = simulator.state.messages.get(group.id)!;
+    expect(stored).toHaveLength(1);
+    expect(screen.queryByText('You · not sent')).not.toBeOnTheScreen();
     expect(screen.getAllByText('At the entrance')).toHaveLength(1);
-    expect(screen.getByLabelText('Message').props.value).toBe('');
+    const sends = events().filter((event) => event.name.startsWith('message_'));
+    expect(sends.map((event) => event.name)).toEqual(['message_send_clicked', 'message_send_clicked', 'message_sent']);
   });
 
-  it('lets an unconfirmed message go once the history shows it was stored after all', async () => {
+  it('shows a message once when its answer was lost but the source stored it', async () => {
     const { simulator, group } = await openChatWithAida();
     simulator.failNext({ kind: 'network', afterCommit: true }, 'chat.send');
 
@@ -151,11 +170,59 @@ describe('the group chat', () => {
     await press('Send message');
     await wait(2 * ANSWER_MS);
 
-    // The source stored it and told the group, so the history shows it and the composer is clear.
+    // The source stored it and told the group, so the history shows it and nothing is left unsent.
     expect(simulator.state.messages.get(group.id)).toHaveLength(1);
     expect(screen.getAllByText('By the doors')).toHaveLength(1);
-    expect(screen.getByLabelText('Message').props.value).toBe('');
-    expect(screen.getByLabelText('Message').props.accessibilityHint).toBeUndefined();
+    expect(screen.queryByText('You · not sent')).not.toBeOnTheScreen();
+  });
+
+  it('catches up every missed message, page by page, in order', async () => {
+    const { simulator, group } = await openChatWithAida();
+    // Seventy messages the screen never heard about (no events), then a send that fails.
+    const aida = group.coordinatorId;
+    simulator.schedule(0, (context) => {
+      for (let n = 1; n <= 70; n += 1) {
+        storeMessage(context.state, context.ids, group.id, {
+          senderId: aida,
+          text: `Missed ${n}`,
+          createdAt: context.now,
+        });
+      }
+    });
+    simulator.failNext({ kind: 'network' }, 'chat.send');
+    await typeMessage('Anyone there?');
+    await press('Send message');
+    await wait(2 * ANSWER_MS);
+    expect(screen.queryByText('Missed 1')).not.toBeOnTheScreen();
+
+    await press('Check latest messages');
+    await wait(4 * ANSWER_MS);
+
+    expect(screen.getByText('70 new messages.')).toBeOnTheScreen();
+    expect(shownTexts(/^Missed \d+$/)).toEqual(Array.from({ length: 70 }, (_, index) => `Missed ${index + 1}`));
+    expect(screen.getByText('You · not sent')).toBeOnTheScreen();
+
+    await press('Check latest messages');
+    await wait(2 * ANSWER_MS);
+    expect(screen.getByText('You’re up to date.')).toBeOnTheScreen();
+  });
+
+  it('clears the typed text and the chat when access ends', async () => {
+    const { simulator, group } = await openChatWithAida();
+    // The rider leaves on another device: their access ends there.
+    const elsewhere = await actAs(simulator, appRider(simulator), '+447700900242');
+    elsewhere.act((context, token) =>
+      leaveGroup(context, token, group.id, { operationId: '00000000-0000-4000-8000-000000000242' }),
+    );
+    for (let step = 0; step < 10; step += 1) await wait(ANSWER_MS / 5);
+
+    await typeMessage('Still here?');
+    await press('Send message');
+    for (let step = 0; step < 10; step += 1) await wait(ANSWER_MS / 5);
+
+    expect(screen.getByText(/^You no longer have access\./)).toBeOnTheScreen();
+    expect(screen.queryByText('Still here?')).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText('Message')).not.toBeOnTheScreen();
   });
 
   it('opens another member’s menu from their message', async () => {
@@ -191,10 +258,53 @@ describe('the group chat', () => {
     // Short steps: the home card's clock unmounts as the request ends (see DEVELOPMENT).
     for (let step = 0; step < 10; step += 1) await wait(ANSWER_MS / 5);
 
-    expect(
-      screen.getByText('This group has closed. Sending is unavailable; the history stays for up to an hour.'),
-    ).toBeOnTheScreen();
+    expect(screen.getByRole('header', { name: 'Group chat · closed' })).toBeOnTheScreen();
+    expect(screen.getByText('Read-only · group closed')).toBeOnTheScreen();
+    expect(screen.getByRole('header', { name: 'This group has closed.' })).toBeOnTheScreen();
+    expect(screen.getByText('The coordinator cancelled it. No one can join or send messages now.')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Sending is unavailable' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Send message' })).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText('Message')).not.toBeOnTheScreen();
+
+    // An hour later the history is no longer kept, and the chat leaves the screen (37).
+    for (let minute = 0; minute < 61; minute += 1) await wait(60 * 1000);
+    expect(screen.getByText(/^You no longer have access\./)).toBeOnTheScreen();
+  });
+
+  it('shows exactly one message in scenario H: a lost answer, a retry, a duplicate event', async () => {
+    const captured = captureSimulator();
+    process.env.EXPO_PUBLIC_MOCK_SCENARIO = 'failed-message';
+    device({ permission: BLOCKED });
+    await openHome();
+    await press('Sign in');
+    await signInWithDemoCode();
+    await wait(ANSWER_MS);
+    await press('Open my group');
+    await wait(ANSWER_MS);
+    await press('Open group chat');
+    await wait(2 * ANSWER_MS);
+    const simulator = captured.simulator!;
+    const groupId = [...simulator.state.groups.keys()][0]!;
+    expect(screen.getByText('Hi! Glad we’re going together.')).toBeOnTheScreen();
+    const chatEvents: string[] = [];
+    simulator.subscribe((event) => {
+      if (event.type === 'chat.message.created') chatEvents.push(event.payload.message.id);
+    });
+
+    await typeMessage('I’m at the entrance now.');
+    await press('Send message');
+    await wait(2 * ANSWER_MS);
+    expect(screen.getByText('You · not sent')).toBeOnTheScreen();
+
+    await press('Retry message');
+    await wait(2 * ANSWER_MS);
+
+    // The retry found the stored message; its event then came twice.
+    expect(chatEvents).toHaveLength(2);
+    expect(new Set(chatEvents).size).toBe(1);
+    expect(simulator.state.messages.get(groupId)).toHaveLength(3);
+    expect(screen.getAllByText('I’m at the entrance now.')).toHaveLength(1);
+    expect(screen.queryByText('You · not sent')).not.toBeOnTheScreen();
   });
 });
 
@@ -220,10 +330,11 @@ describe('chat pieces', () => {
     const older = page([message(1, 'user_aida', id(1)), message(2, 'user_me', id(2))]);
     const outgoing = [
       // Stored and already in a page: shown once, from the page.
-      { clientMessageId: id(4), text: 'Message 4', stored: message(4, 'user_me', id(4)) },
+      { clientMessageId: id(4), text: 'Message 4', stored: message(4, 'user_me', id(4)), failed: null },
       // Stored, not yet in a page.
-      { clientMessageId: id(5), text: 'Message 5', stored: message(5, 'user_me', id(5)) },
-      { clientMessageId: id(6), text: 'Still sending', stored: null },
+      { clientMessageId: id(5), text: 'Message 5', stored: message(5, 'user_me', id(5)), failed: null },
+      { clientMessageId: id(6), text: 'Still sending', stored: null, failed: null },
+      { clientMessageId: id(7), text: 'Not sent', stored: null, failed: 'retry' as const },
     ];
 
     const timeline = buildTimeline([newest, older], outgoing, 'user_me');
@@ -235,12 +346,32 @@ describe('chat pieces', () => {
       4,
       5,
       'Still sending',
+      'Not sent',
     ]);
     expect(timeline.filter((entry) => entry.kind === 'message' && entry.own)).toHaveLength(3);
     expect(pendingOutgoing([newest, older], outgoing, 'user_me').map((sent) => sent.clientMessageId)).toEqual([
       id(5),
       id(6),
+      id(7),
     ]);
+  });
+
+  it('appends only messages that continue the held history, and reports duplicates and gaps', () => {
+    const held = { pages: [page([message(3, 'user_aida', id(3)), message(4, 'user_me', id(4))])], pageParams: [null] };
+
+    expect(appendMessages(held, [message(4, 'user_me', id(4))])).toEqual({ kind: 'duplicate' });
+    expect(appendMessages(held, [message(2, 'user_aida', id(2))])).toEqual({ kind: 'duplicate' });
+    expect(appendMessages(held, [message(6, 'user_aida', id(6))])).toEqual({ kind: 'gap' });
+    const next = appendMessages(held, [
+      message(6, 'user_aida', id(6)),
+      message(5, 'user_aida', id(5)),
+      message(4, 'user_me', id(4)),
+    ]);
+    expect(next.kind).toBe('appended');
+    if (next.kind !== 'appended') return;
+    expect(next.data.pages[0]!.messages.map((entry) => entry.sequence)).toEqual([3, 4, 5, 6]);
+    expect(next.data.pages[0]!.latestSequence).toBe(10);
+    expect(newestHeldSequence(next.data)).toBe(6);
   });
 
   it('cleans typed text as the contract requires, or finds nothing to send', () => {

@@ -11,6 +11,7 @@ import {
 import type { Query, QueryClient, QueryKey } from '@tanstack/react-query';
 
 import type { EventForRequest, EventOperations, EventSubscription } from './AppDataSource';
+import { addToHistory } from './chatHistory';
 import { queryKeys, type SignedInViewer, type Viewer } from './queryKeys';
 
 /**
@@ -39,9 +40,10 @@ export type EventOutcome = 'applied' | 'duplicate' | 'stale' | 'not-for-viewer' 
  * - `nearby.removed` leaves a tombstone, removes the item from snapshots and invalidates its
  *   preview read; no older upsert or snapshot can bring it back.
  * - `ride.changed`, `matches.changed` and `group.changed` invalidate the owner's or member's
- *   reads that hold an older version; `chat.message.created` invalidates the group's chat until
- *   CHAT-001-C merges messages; `access.revoked` removes the group's private data, unless a
- *   newer group version shows the viewer rejoined, and later events of that group are dropped.
+ *   reads that hold an older version; `chat.message.created` joins the held chat history by
+ *   message ID and sequence (`chatHistory.ts`), and a gap rereads it; `access.revoked`
+ *   removes the group's private data, unless a newer group version shows the viewer rejoined,
+ *   and later events of that group are dropped.
  * - Snapshot/event race: whenever a read succeeds, its result is checked against what events
  *   taught. A snapshot item older than a known upsert is replaced by it, one older than a
  *   tombstone is dropped, and a single-resource read older than a known version is read again
@@ -378,9 +380,12 @@ export function createEventSynchronizer(queryClient: QueryClient, options: Event
         invalidateIfOlder(queryKeys.groupPreview(viewer, groupId), version);
         return 'applied';
       }
-      case 'chat.message.created':
-        invalidate(queryKeys.chatHistory(viewer, event.payload.message.groupId));
-        return 'applied';
+      case 'chat.message.created': {
+        // Merged by message ID into the held history (CHAT-001-C): an echo or a repeat is a
+        // duplicate, the next message is appended, and a sequence gap rereads the history.
+        const { message } = event.payload;
+        return addToHistory(queryClient, viewer, message.groupId, [message]) === 'duplicate' ? 'duplicate' : 'applied';
+      }
       case 'access.revoked': {
         const { groupId, version } = event.payload;
         const known = state.resources.get(memberGroupKey(groupId));

@@ -196,7 +196,14 @@ export type MockWorld = {
   ownerMatches: Map<string, { version: number; matches: OwnerMatchRecord[] }>;
   /** Each group's chat, in sequence order (CHAT-001-A); a group without messages has no entry. */
   messages: Map<string, MessageRecord[]>;
-  /** Starts empty in every scenario, so a reset signs everyone out. */
+  /**
+   * Scenario H's scripted chat faults (CHAT-001-C). `lostAnswers` new messages are stored but
+   * their answer and event are lost, as if the connection dropped right after the source
+   * stored them; the retry that finds one gets its event twice (`echoTwice`), as a duplicate
+   * delivery would. Zero and empty in every other scenario.
+   */
+  chatFaults: { lostAnswers: number; echoTwice: Set<string> };
+  /** No sessions in any scenario, so a reset signs everyone out; only scenario H links the demo number to a seeded rider. */
   auth: AuthRecords;
 };
 
@@ -211,6 +218,7 @@ export function createEmptyWorld(now: number): MockWorld {
     matchArrivals: [],
     ownerMatches: new Map(),
     messages: new Map(),
+    chatFaults: { lostAnswers: 0, echoTwice: new Set() },
     auth: {
       accounts: new Map(),
       challenges: new Map(),

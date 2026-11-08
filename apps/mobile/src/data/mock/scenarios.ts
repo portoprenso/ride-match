@@ -7,6 +7,7 @@ import {
   type PublicLocationDto,
 } from '@ride-match/contracts';
 
+import { MOCK_DEMO_SIGN_IN } from './auth';
 import { storeMessage } from './chat';
 import type { IdGenerator } from './ids';
 import { admitRide, scheduleDeadlines, type Schedule } from './lifecycle';
@@ -277,6 +278,41 @@ function createMatchAppears({ now, ids }: SeedContext): MockWorld {
   return world;
 }
 
+/**
+ * Scenario H's group: the demo rider (who signs in with the sign-in screen's demo number) is
+ * already a member of Aida's forming group to Asia Mall, with a short chat. Its meeting point
+ * arrives after activation, as for any seeded group without one.
+ */
+const FAILED_MESSAGE_GROUP: GroupSeed = {
+  status: 'forming',
+  destination: 'place_asia_mall',
+  createdSecondsAgo: 300,
+  coordinator: { rider: 'Aida', area: 'asanbay', offset: [0.0021, -0.0018], createdSecondsAgo: 360, departureOffsetMinutes: 10 },
+  founder: { rider: 'Demo rider 123', area: 'asanbay', offset: [-0.0011, 0.0014], createdSecondsAgo: 320, departureOffsetMinutes: 10 },
+  laterMembers: [],
+  meetingPoint: null,
+  version: 1,
+  chat: [
+    { from: 'Aida', text: 'Hi! Glad we’re going together.', sentSecondsAgo: 280 },
+    { from: 'Demo rider 123', text: 'Me too. I’ll head out in a few minutes.', sentSecondsAgo: 250 },
+  ],
+};
+
+/**
+ * Scenario H: the demo rider is already in a group with a chat. Their first new message is
+ * stored but its answer is lost (a network error); retrying it returns the stored message, and
+ * its event then arrives twice. Exactly one message must show.
+ */
+function createFailedMessage({ now, ids }: SeedContext): MockWorld {
+  const world = createEmptyWorld(now);
+  addGroup(world, ids, FAILED_MESSAGE_GROUP, now);
+  const demo = [...world.users.values()].find((user) => user.displayName === 'Demo rider 123');
+  if (demo === undefined) throw new Error('Scenario H has no demo rider.');
+  world.auth.accounts.set(MOCK_DEMO_SIGN_IN.phoneNumber, demo.id);
+  world.chatFaults.lostAnswers = 1;
+  return world;
+}
+
 /** Invented first names for the busy map; they repeat, as names do. */
 const DENSITY_NAMES = ['Aidai', 'Bolot', 'Chinara', 'Dastan', 'Eldiyar', 'Gulzat', 'Kairat', 'Medina', 'Nurbek', 'Saltanat'];
 const DENSITY_DESTINATIONS = [
@@ -386,9 +422,11 @@ const SCENARIOS = {
   'active-neighborhood': { createWorld: createActiveNeighborhood, scheduleEvents: scheduleActiveNeighborhood },
   // Scenario B: no activity at all, and nothing appears; the curated places still exist.
   'empty-neighborhood': { createWorld: ({ now }) => createEmptyWorld(now) },
-  // Scenario M: a hundred items for clusters, the list and the snapshot limit.
   // Scenario C: unrelated activity, then a supplied match five seconds after the rider's request.
   'match-appears': { createWorld: createMatchAppears },
+  // Scenario H: the demo rider's group chat, with a lost answer and a duplicate event.
+  'failed-message': { createWorld: createFailedMessage },
+  // Scenario M: a hundred items for clusters, the list and the snapshot limit.
   'map-density': { createWorld: createMapDensity },
 } satisfies Record<string, ScenarioDefinition>;
 

@@ -2835,3 +2835,25 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** `ChatScreen` (access, history, sending, closed groups, privacy), `MessageRow`, the timeline helpers and `SendFailure`, `chatHistoryQuery`, `MemberMenu`.
 - **Remaining/next:** CHAT-001-C or TAXI-001-A with the user's go-ahead; the native pass.
 - **Ownership:** Released; no active task.
+
+## 2026-11-08 — CHAT-001-C: Chat retry, catch-up, closure and revocation
+
+- **Actor/session:** Claude Code / chat-001-c.
+- **Status:** implemented; `Paused` for its native check (next native pass). Parent CHAT-001 `Paused`. Ownership released.
+- **Working copy:** `main` at `e750afc` (CHAT-001-B); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start CHAT-001-C": retry, catch-up, closure and revocation (designs 36, 37, 45). Prerequisite CHAT-001-B is paused for its native check; the user's explicit request is taken as the go-ahead. Acceptance: same-ID retry; no automatic send on reconnect; multi-page recovery; leaving clears text and history; retention ends access.
+- **Changes:**
+  - New `src/data/chatHistory.ts`: `appendMessages`, `addToHistory`, `catchUpHistory`, `newestHeldSequence`. `synchronizeEvents.ts` merges `chat.message.created` with it instead of invalidating.
+  - `ChatScreen.tsx`: unsent messages as "You · not sent" with "Retry message" (same client message ID) and the preserved-text note; "Connection interrupted"; "Check latest messages" with its result; the read-only closed view (header, badge, reason, retention note, disabled "Sending is unavailable", "Back to the map"); access ending on a denial, a refused send or catch-up, or `historyExpiresAt` on the device clock, clearing text, unsent messages and the group's reads. Refused text (`VALIDATION_FAILED`) still returns to the composer. Confirmed sends join the history directly.
+  - `chatTimeline.ts`: `OutgoingMessage.failed` and the `failed` timeline entry; new retry wording.
+  - Mock: scenario H `failed-message` (`createFailedMessage`, demo number linked to "Demo rider 123" in Aida's group), `world.chatFaults` used by `sendChatMessage`; scenarios reordered so H comes before M, as documented.
+  - Tests: `tests/chatScreen.test.tsx` (14, failure cases rewritten, 4 new); scenario lists updated in `tests/mockDataSource.test.ts` and `tests/dataSource.test.tsx`.
+- **Decisions:**
+  - Reconnect recovery stays with the sync coordinator's reread of the group's reads (Query refetches the loaded pages from the latest); explicit `afterSequence` catch-up is "Check latest messages", shown while a message is unsent or the connection is down.
+  - Retention end is sticky in the screen, since removing the reads removes the closure time.
+  - A message refused because the group closed stays visible as not sent, without retry.
+- **Checks:** `pnpm typecheck`, `pnpm lint`, `npx jest` in `apps/mobile` (38 suites, 558 tests) passed; Prettier clean on the new and changed files except `scenarios.ts`, `synchronizeEvents.ts`, `tests/mockDataSource.test.ts` and `tests/dataSource.test.tsx`, already unformatted at HEAD and edited without reformatting. **Not run:** native builds or device checks (DEVELOPMENT, chat check with the CHAT-001-C additions). Screen readers waived.
+- **Docs:** PRODUCT, ARCHITECTURE, DEVELOPMENT (tests, 558; chat check), MOCK_SCENARIOS (status, scenario H), api/realtime.md (chat event), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line, CHAT-001 row), AI_CONTEXT.
+- **JSDoc:** `chatHistory.ts` (run invariant, outcomes, catch-up stop rules), `ChatScreen` (access, catch-up, sending, closure), `MessageRow`, `OutgoingMessage`/`TimelineEntry`, `SendFailure`, `MockWorld.chatFaults`, `sendChatMessage`'s scripted faults, `createFailedMessage`.
+- **Remaining/next:** TAXI-001-A, SAFETY-001-A or NOTIFICATION-001-A with the user's go-ahead; the native pass.
+- **Ownership:** Released; no active task.

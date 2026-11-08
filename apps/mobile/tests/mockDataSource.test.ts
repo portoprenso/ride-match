@@ -96,7 +96,7 @@ afterEach(() => {
 
 describe('scenarios', () => {
   it('knows only the implemented scenario keys', () => {
-    expect(MOCK_SCENARIO_KEYS).toEqual(['active-neighborhood', 'empty-neighborhood', 'match-appears', 'map-density']);
+    expect(MOCK_SCENARIO_KEYS).toEqual(['active-neighborhood', 'empty-neighborhood', 'match-appears', 'failed-message', 'map-density']);
     expect(isMockScenarioKey('empty-neighborhood')).toBe(true);
     expect(isMockScenarioKey('group-formation')).toBe(false);
     expect(isMockScenarioKey('toString')).toBe(false);

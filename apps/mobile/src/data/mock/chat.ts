@@ -5,6 +5,7 @@ import {
   type ChatMessagePageDto,
 } from '@ride-match/contracts';
 
+import { DataError } from '../errors';
 import { authenticate } from './auth';
 import type { IdGenerator } from './ids';
 import { isMember } from './groups';
@@ -170,6 +171,10 @@ export function readChatHistory(
  * A new message gets the next sequence, the caller as sender and the current time; its members
  * are told (`chat.message.created`, the sender included), and a demo rider answers it
  * {@link CHAT_REPLY_DELAY_MS} later ({@link scheduleSimulatedReply}). A retry emits nothing.
+ *
+ * Scenario H scripts faults (`world.chatFaults`): a new message may be stored with its answer
+ * lost (a network error, no event, no reply), and the retry that finds it is followed by its
+ * event twice.
  */
 export function sendChatMessage(
   context: Context,
@@ -191,7 +196,13 @@ export function sendChatMessage(
     if (stored.text !== text) {
       throw context.sourceError('IDEMPOTENCY_CONFLICT', 'This message ID was already used for different text.');
     }
-    return toChatMessageDto(state, groupId, stored);
+    const message = toChatMessageDto(state, groupId, stored);
+    // Scenario H: the retry of a send whose answer was lost, followed by a duplicate event.
+    if (state.chatFaults.echoTwice.delete(stored.id)) {
+      context.emit(chatMessageCreated(context.eventEnvelope(), message));
+      context.emit(chatMessageCreated(context.eventEnvelope(), message));
+    }
+    return message;
   }
   if (!isLiveGroup(group)) throw context.sourceError('GROUP_CLOSED', 'This group has closed. Its chat is read-only.');
 
@@ -201,6 +212,12 @@ export function sendChatMessage(
     createdAt: context.now,
     clientMessageId,
   });
+  if (state.chatFaults.lostAnswers > 0) {
+    // Scenario H: stored, but the answer (and the event, which is never published) is lost.
+    state.chatFaults.lostAnswers -= 1;
+    state.chatFaults.echoTwice.add(record.id);
+    throw new DataError('network', 'No answer from the mock source (scripted lost answer).');
+  }
   const message = toChatMessageDto(state, groupId, record);
   context.emit(chatMessageCreated(context.eventEnvelope(), message));
   scheduleSimulatedReply(context, groupId, record);

@@ -3,16 +3,23 @@ import type { ChatMessageDto, ChatMessagePageDto } from '@ride-match/contracts';
 import type { DataError } from '../../data/errors';
 
 /**
- * A message the viewer sent from this screen: its client message ID, its text, and the source's
- * stored message once the source answered (`null` while sending). It exists only in the app;
- * nothing about it is stored as a canonical status.
+ * A message the viewer sent from this screen: its client message ID (kept for every retry), its
+ * text, the source's stored message once the source answered (`null` until then), and whether
+ * the last attempt failed: `retry` when it may be sent again (design 45), `closed` when the group
+ * closed first. It exists only in the app; nothing about it is stored as a canonical status.
  */
-export type OutgoingMessage = { clientMessageId: string; text: string; stored: ChatMessageDto | null };
+export type OutgoingMessage = {
+  clientMessageId: string;
+  text: string;
+  stored: ChatMessageDto | null;
+  failed: 'retry' | 'closed' | null;
+};
 
-/** One row of the chat: a stored message, or the viewer's message still on its way. */
+/** One row of the chat: a stored message, the viewer's message on its way, or one not sent. */
 export type TimelineEntry =
   | { kind: 'message'; key: string; message: ChatMessageDto; own: boolean }
-  | { kind: 'sending'; key: string; text: string };
+  | { kind: 'sending'; key: string; text: string }
+  | { kind: 'failed'; key: string; clientMessageId: string; text: string; retryable: boolean };
 
 /** Whether `message` is the stored form of the viewer's send intent `clientMessageId`. */
 const storesIntent = (message: ChatMessageDto, viewerId: string, clientMessageId: string) =>
@@ -26,7 +33,9 @@ const storesIntent = (message: ChatMessageDto, viewerId: string, clientMessageId
  *   order the pages and answers arrived in.
  * - A sent message the source answered but no page holds yet shows as that stored message;
  *   once a page holds it, the page's copy is the one shown, never both.
- * - Messages still sending follow, in the order they were sent, as the viewer's own.
+ * - Messages still sending, or not sent, follow in the order they were first sent, as the
+ *   viewer's own. A failed message the history shows was stored after all (its answer was
+ *   lost) shows once, as stored.
  */
 export function buildTimeline(
   pages: readonly ChatMessagePageDto[],
@@ -48,7 +57,17 @@ export function buildTimeline(
   for (const sent of outgoing) {
     if (sent.stored !== null || messages.some((message) => storesIntent(message, viewerId, sent.clientMessageId)))
       continue;
-    entries.push({ kind: 'sending', key: `sending:${sent.clientMessageId}`, text: sent.text });
+    entries.push(
+      sent.failed === null
+        ? { kind: 'sending', key: `outgoing:${sent.clientMessageId}`, text: sent.text }
+        : {
+            kind: 'failed',
+            key: `outgoing:${sent.clientMessageId}`,
+            clientMessageId: sent.clientMessageId,
+            text: sent.text,
+            retryable: sent.failed === 'retry',
+          },
+    );
   }
   return entries;
 }
@@ -101,9 +120,10 @@ export function describeSender(message: ChatMessageDto, viewerId: string): strin
  *   screen.
  * - `closed`: the group closed; nothing was sent, and sending is over.
  * - `invalid`: the source refused the text itself.
- * - `retry`: no answer, or the service was busy: the message may have been stored. Its text goes
- *   back in the composer with the same client message ID, so sending it again cannot post it
- *   twice.
+ * - `retry`: no answer, or the service was busy: the message may have been stored. It stays on
+ *   screen as not sent, with its text and client message ID, and only the viewer's "Retry
+ *   message" sends it again, under the same ID, so it cannot post twice. Nothing resends it on
+ *   reconnect.
  * - `sign-in`: the session ended.
  */
 export type SendFailure = { kind: 'revoked' | 'closed' | 'invalid' | 'retry' | 'sign-in'; message: string };
@@ -122,10 +142,6 @@ export function describeSendError(error: DataError): SendFailure {
     case 'SESSION_EXPIRED':
       return { kind: 'sign-in', message: 'Your session ended. Sign in again to keep chatting.' };
     default:
-      return {
-        kind: 'retry',
-        message:
-          'We couldn’t confirm your message. It’s back in the message box: sending it again won’t post it twice.',
-      };
+      return { kind: 'retry', message: 'Your message wasn’t sent.' };
   }
 }

@@ -11,12 +11,15 @@ import {
 } from 'react-native';
 
 import { useAnalytics } from '../../analytics/AnalyticsProvider';
+import { addToHistory, catchUpHistory } from '../../data/chatHistory';
 import { useDataSource } from '../../data/DataSourceProvider';
 import { withDataErrors, type DataError } from '../../data/errors';
 import { createOperationId } from '../../data/operationId';
 import { chatHistoryQuery, groupDetailQuery } from '../../data/queries';
 import { queryKeys } from '../../data/queryKeys';
+import { useConnectionState } from '../../data/useConnectionState';
 import { useEventSubscription } from '../../data/SyncProvider';
+import { ActionFooter } from '../../ui/ActionFooter';
 import { AppText } from '../../ui/AppText';
 import { Badge } from '../../ui/Badge';
 import { Button } from '../../ui/Button';
@@ -30,6 +33,8 @@ import { TextField } from '../../ui/TextField';
 import { UnavailableScreen } from '../../ui/UnavailableScreen';
 import { colors, radii, spacing } from '../../ui/tokens';
 import { useViewer } from '../auth/AuthSessionProvider';
+import { useClock } from '../discovery/useClock';
+import { describeClosure } from '../groups/groupLifecycle';
 import { MeetingPointSheet } from '../groups/MeetingPointSheet';
 import { MemberMenu } from '../groups/MemberMenu';
 import {
@@ -55,25 +60,34 @@ type ChatScreenProps = {
 type ChatSheet = { kind: 'member'; member: GroupMemberDto } | { kind: 'meeting'; openedId: string } | null;
 
 /**
- * The group chat route (design 14): the member-only messages of one group, newest at the
- * bottom, with a composer pinned above the keyboard.
+ * The group chat route (designs 14, 36, 37, 45): the member-only messages of one group, newest at
+ * the bottom, with a composer pinned above the keyboard.
  *
  * - **Access** is the source's decision, as on the group screen: a malformed ID, an anonymous
  *   viewer, a non-member, an unknown group and an expired history all show the same unavailable
- *   state, and a denial while open removes the group's private reads at once.
+ *   state (37). When access ends while the chat is open (the source refuses a read or a send, or
+ *   a closed group's `historyExpiresAt` passes on the device clock), the group's private reads are
+ *   removed and the typed text and unsent messages are dropped at once; nothing later restores
+ *   them.
  * - **History:** the latest page first (`chatHistoryQuery`); "Load earlier messages" reads the
- *   page before it, keeping the reader's place, until the start of the chat. Messages are shown
- *   once each, ordered by sequence, with sender and time; another member's message opens that
- *   member's menu (`MemberMenu`). New messages arrive through the group subscription, which
- *   rereads the history, and scroll into view only while the reader is at the end.
+ *   page before it, keeping the reader's place, until the start of the chat. Messages show once
+ *   each, ordered by sequence, with sender and time; another member's message opens that
+ *   member's menu (`MemberMenu`). Events and confirmed sends join the history by message ID
+ *   (`chatHistory.ts`), so an echo or a duplicate never shows twice, and new messages scroll into
+ *   view only while the reader is at the end.
+ * - **Catching up:** "Check latest messages" reads every message after the newest held, page by
+ *   page (`catchUpHistory`). It is offered while the connection is interrupted (with a badge) or
+ *   a message was not sent. Reconnecting rereads the history (the sync coordinator) but never
+ *   sends anything.
  * - **Sending:** the text is trimmed and its line endings normalized (`toChatText`); it shows at
  *   once as "Sending…", then as the source's stored message. The composer is read-only while a
  *   message is on its way, so messages keep their order. A message the source could not confirm
- *   goes back in the composer with its client message ID, so sending it again cannot post it
- *   twice; if the history then shows it was stored after all, the composer lets it go. A fuller failed-message view is CHAT-001-C's. Analytics record only that a send was
- *   pressed and confirmed, never the text.
- * - **Closed groups:** history stays readable; the composer is replaced by a note that sending is
- *   over (the full read-only view, 36, is CHAT-001-C's).
+ *   stays as "You · not sent" with its text (45); only "Retry message" sends it again, under the
+ *   same client message ID, so it cannot post twice. If the history shows it was stored after
+ *   all, it shows once, as stored. Text the source refused goes back in the composer. Analytics
+ *   record only that a send was pressed and confirmed, never the text.
+ * - **Closed groups** (36): read-only, with the closure's reason and the one-hour retention; no
+ *   composer, and unsent messages can no longer be retried.
  *
  * Message text never reaches a log, analytics or a notification.
  */
@@ -82,6 +96,8 @@ export function ChatScreen({ groupId, onBack, onGoHome }: ChatScreenProps) {
   const queryClient = useQueryClient();
   const analytics = useAnalytics();
   const viewer = useViewer();
+  const connection = useConnectionState();
+  const now = useClock();
   const valid = groupId !== undefined && IdSchema.safeParse(groupId).success;
   const member = viewer.kind === 'user' && valid ? viewer : null;
   const placeholderViewer = member ?? { kind: 'user' as const, userId: '' };
@@ -95,49 +111,68 @@ export function ChatScreen({ groupId, onBack, onGoHome }: ChatScreenProps) {
   });
   useEventSubscription(member !== null && groupId !== undefined ? { kind: 'group', groupId } : null);
 
+  const [draft, setDraft] = useState('');
+  const [outgoing, setOutgoing] = useState<OutgoingMessage[]>([]);
+  const [fieldError, setFieldError] = useState<string | null>(null);
+  const [sheet, setSheet] = useState<ChatSheet>(null);
+
+  // Access ends: the source refused, or a closed group's history ran out on the device clock.
   const denied = (error: DataError | null) =>
     error?.code === 'MEMBERSHIP_REQUIRED' || error?.code === 'HISTORY_EXPIRED';
   const [revoked, setRevoked] = useState(false);
+  const closure = groupQuery.data?.closure ?? null;
+  // Sticky: removing the private reads also removes the closure that told the time.
+  if (!revoked && closure !== null && now >= Date.parse(closure.historyExpiresAt)) setRevoked(true);
   const lostAccess = member !== null && (revoked || denied(groupQuery.error) || denied(history.error));
+  if (lostAccess && (draft !== '' || outgoing.length > 0 || sheet !== null)) {
+    // Private text leaves with access, adjusted during render so it never shows again.
+    setDraft('');
+    setOutgoing([]);
+    setSheet(null);
+  }
   useEffect(() => {
     if (!lostAccess || member === null || groupId === undefined) return;
     void queryClient.cancelQueries({ queryKey: queryKeys.group(member, groupId) });
     queryClient.removeQueries({ queryKey: queryKeys.group(member, groupId) });
   }, [lostAccess, member, groupId, queryClient]);
 
-  const [draft, setDraft] = useState('');
-  const [outgoing, setOutgoing] = useState<OutgoingMessage[]>([]);
-  /** The last unconfirmed message: sending the same text again reuses its client message ID. */
-  const [unconfirmed, setUnconfirmed] = useState<{ clientMessageId: string; text: string } | null>(null);
-  const [failure, setFailure] = useState<string | null>(null);
-  const [sheet, setSheet] = useState<ChatSheet>(null);
+  const markOutgoing = (clientMessageId: string, change: Partial<OutgoingMessage>) =>
+    setOutgoing((current) =>
+      current.map((sent) => (sent.clientMessageId === clientMessageId ? { ...sent, ...change } : sent)),
+    );
 
   const send = useMutation<ChatMessageDto, DataError, { clientMessageId: string; text: string }>({
     mutationFn: (input) => withDataErrors(dataSource.chat.send(groupId ?? '', input)),
     onSuccess: (stored, input) => {
       analytics.track('message_sent');
-      setOutgoing((current) =>
-        current.map((sent) => (sent.clientMessageId === input.clientMessageId ? { ...sent, stored } : sent)),
-      );
-      if (member !== null && groupId !== undefined) {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.chatHistory(member, groupId) });
-      }
+      markOutgoing(input.clientMessageId, { stored, failed: null });
+      if (member !== null && groupId !== undefined) addToHistory(queryClient, member, groupId, [stored]);
     },
     onError: (error, input) => {
-      setOutgoing((current) => current.filter((sent) => sent.clientMessageId !== input.clientMessageId));
       const outcome = describeSendError(error);
       if (outcome.kind === 'revoked') {
         setRevoked(true);
         return;
       }
-      setFailure(outcome.message);
-      if (outcome.kind === 'closed') {
-        void groupQuery.refetch();
+      if (outcome.kind === 'invalid') {
+        // The source refused the text itself: it goes back in the (still empty) composer.
+        setOutgoing((current) => current.filter((sent) => sent.clientMessageId !== input.clientMessageId));
+        setDraft(input.text);
+        setFieldError(outcome.message);
         return;
       }
-      // The composer was read-only while sending, so it is still empty: the text goes back.
-      setDraft(input.text);
-      if (outcome.kind === 'retry') setUnconfirmed(input);
+      markOutgoing(input.clientMessageId, { failed: outcome.kind === 'closed' ? 'closed' : 'retry' });
+      if (outcome.kind === 'closed') void groupQuery.refetch();
+    },
+  });
+
+  const catchUp = useMutation<number, DataError>({
+    mutationFn: () =>
+      member === null || groupId === undefined
+        ? Promise.resolve(0)
+        : catchUpHistory(dataSource, queryClient, member, groupId),
+    onError: (error) => {
+      if (denied(error)) setRevoked(true);
     },
   });
 
@@ -145,21 +180,6 @@ export function ChatScreen({ groupId, onBack, onGoHome }: ChatScreenProps) {
   const pages = history.data?.pages ?? [];
   const stillPending = member === null ? outgoing : pendingOutgoing(pages, outgoing, member.userId);
   if (stillPending.length !== outgoing.length) setOutgoing(stillPending);
-  // An unconfirmed message the source did store (its answer was lost) shows up in the history:
-  // it was sent, so the composer no longer holds it.
-  if (
-    member !== null &&
-    unconfirmed !== null &&
-    pages.some((page) =>
-      page.messages.some(
-        (message) => message.sender.id === member.userId && message.clientMessageId === unconfirmed.clientMessageId,
-      ),
-    )
-  ) {
-    setUnconfirmed(null);
-    setFailure(null);
-    if (toChatText(draft) === unconfirmed.text) setDraft('');
-  }
 
   // Scrolling: follow new messages only while the reader is at the end.
   const scroller = useRef<ScrollView>(null);
@@ -216,23 +236,35 @@ export function ChatScreen({ groupId, onBack, onGoHome }: ChatScreenProps) {
   const timeline = buildTimeline(pages, outgoing, member.userId);
   const text = toChatText(draft);
   const sending = send.isPending;
+  const unsent = timeline.some((entry) => entry.kind === 'failed');
+  const interrupted = connection === 'disconnected';
 
   function submit() {
     if (text === null || sending) return;
-    const clientMessageId = unconfirmed?.text === text ? unconfirmed.clientMessageId : createOperationId();
+    const clientMessageId = createOperationId();
     analytics.track('message_send_clicked');
     atEnd.current = true;
-    setOutgoing((current) => [...current, { clientMessageId, text, stored: null }]);
+    setOutgoing((current) => [...current, { clientMessageId, text, stored: null, failed: null }]);
     setDraft('');
-    setUnconfirmed(null);
-    setFailure(null);
+    setFieldError(null);
     send.mutate({ clientMessageId, text });
+  }
+
+  /** Sends a message that was not sent again, under its original client message ID. */
+  function retry(clientMessageId: string) {
+    const sent = outgoing.find((entry) => entry.clientMessageId === clientMessageId);
+    if (sent === undefined || sending) return;
+    analytics.track('message_send_clicked');
+    markOutgoing(clientMessageId, { failed: null });
+    send.mutate({ clientMessageId, text: sent.text });
   }
 
   const memberOf = (message: ChatMessageDto) =>
     message.sender.id === member.userId
       ? null
       : (group.members.find((entry) => entry.user.id === message.sender.id) ?? null);
+  const people = `${group.members.length} ${group.members.length === 1 ? 'person' : 'people'}`;
+  const closed = live ? null : describeClosure(group);
 
   return (
     <Screen
@@ -246,12 +278,12 @@ export function ChatScreen({ groupId, onBack, onGoHome }: ChatScreenProps) {
                 value={draft}
                 onChangeText={(typed) => {
                   setDraft(typed);
-                  if (failure !== null) setFailure(null);
+                  if (fieldError !== null) setFieldError(null);
                 }}
                 multiline
                 maxLength={CHAT_POLICY.maxTextLength}
                 disabled={sending}
-                error={failure ?? undefined}
+                error={fieldError ?? undefined}
               />
             </View>
             <IconButton
@@ -263,18 +295,26 @@ export function ChatScreen({ groupId, onBack, onGoHome }: ChatScreenProps) {
             />
           </View>
         ) : (
-          <Notice
-            tone="warning"
-            message="This group has closed. Sending is unavailable; the history stays for up to an hour."
-          />
+          <ActionFooter>
+            <Button label="Sending is unavailable" disabled onPress={() => undefined} />
+            <Button label="Back to the map" variant="secondary" onPress={onGoHome} />
+          </ActionFooter>
         )
       }
     >
       <ScreenHeader
-        title={`${group.destination.label} · ${group.members.length} ${group.members.length === 1 ? 'person' : 'people'}`}
+        title={live ? `${group.destination.label} · ${people}` : 'Group chat · closed'}
         onBack={onBack}
         backLabel="Back to group"
       />
+      {interrupted ? (
+        <View style={styles.status} accessibilityLiveRegion="polite">
+          <Badge label="Connection interrupted" tone="warning" />
+          <AppText variant="small" color="muted">
+            Messages may be out of date. Nothing is sent automatically when the connection returns.
+          </AppText>
+        </View>
+      ) : null}
       <ScrollView
         ref={scroller}
         style={styles.list}
@@ -287,19 +327,32 @@ export function ChatScreen({ groupId, onBack, onGoHome }: ChatScreenProps) {
           if (atEnd.current) scroller.current?.scrollToEnd({ animated: false });
         }}
       >
-        <View style={styles.intro}>
-          <Badge label="Temporary group chat" />
-          <AppText variant="small" color="muted">
-            Text only. Chat becomes read-only when the group closes.
-          </AppText>
-          {group.meetingPoint === null ? null : (
-            <Button
-              label="View meeting point"
-              variant="secondary"
-              onPress={() => group.meetingPoint && setSheet({ kind: 'meeting', openedId: group.meetingPoint.id })}
-            />
-          )}
-        </View>
+        {closed === null ? (
+          <View style={styles.intro}>
+            <Badge label="Temporary group chat" />
+            <AppText variant="small" color="muted">
+              Text only. Chat becomes read-only when the group closes.
+            </AppText>
+            {group.meetingPoint === null ? null : (
+              <Button
+                label="View meeting point"
+                variant="secondary"
+                onPress={() => group.meetingPoint && setSheet({ kind: 'meeting', openedId: group.meetingPoint.id })}
+              />
+            )}
+          </View>
+        ) : (
+          <View style={styles.intro}>
+            <Badge label="Read-only · group closed" tone="warning" />
+            <AppText variant="section" accessibilityRole="header" accessibilityLiveRegion="polite">
+              This group has closed.
+            </AppText>
+            <AppText color="muted">
+              {[closed.body, 'No one can join or send messages now.'].filter(Boolean).join(' ')}
+            </AppText>
+            <Notice message="History is available only to authorized members, for up to one hour after closure." />
+          </View>
+        )}
         {history.hasNextPage ? (
           <Button
             label="Load earlier messages"
@@ -316,7 +369,7 @@ export function ChatScreen({ groupId, onBack, onGoHome }: ChatScreenProps) {
           </AppText>
         ) : (
           <AppText color="muted" style={styles.start}>
-            No messages yet. Say hello and agree where to meet.
+            {live ? 'No messages yet. Say hello and agree where to meet.' : 'No messages were sent in this group.'}
           </AppText>
         )}
         {history.isFetchNextPageError ? (
@@ -330,11 +383,38 @@ export function ChatScreen({ groupId, onBack, onGoHome }: ChatScreenProps) {
               key={entry.key}
               entry={entry}
               viewerId={member.userId}
+              live={live}
+              retrying={sending}
+              onRetry={retry}
               onMember={(found) => setSheet({ kind: 'member', member: found })}
               memberOf={memberOf}
             />
           ))}
         </View>
+        {unsent && live ? (
+          <Notice message="Your text is preserved. Retry sends the same message once; reconnecting doesn’t send it automatically." />
+        ) : null}
+        {live && (unsent || interrupted || catchUp.isError) ? (
+          <View style={styles.check}>
+            <Button
+              label="Check latest messages"
+              variant="secondary"
+              busy={catchUp.isPending}
+              onPress={() => catchUp.mutate()}
+            />
+            {catchUp.isError ? (
+              <AppText variant="small" color="danger" accessibilityLiveRegion="polite">
+                The latest messages couldn’t be checked. Try again when you’re connected.
+              </AppText>
+            ) : catchUp.isSuccess ? (
+              <AppText variant="small" color="muted" accessibilityLiveRegion="polite">
+                {catchUp.data === 0
+                  ? 'You’re up to date.'
+                  : `${catchUp.data} new ${catchUp.data === 1 ? 'message' : 'messages'}.`}
+              </AppText>
+            ) : null}
+          </View>
+        ) : null}
       </ScrollView>
       <SheetHost open={sheet !== null} onDismiss={() => setSheet(null)}>
         {sheet?.kind === 'member' ? (
@@ -350,16 +430,23 @@ export function ChatScreen({ groupId, onBack, onGoHome }: ChatScreenProps) {
 /**
  * One chat row. The viewer's messages sit on the right in lime; others' on the left in white,
  * and press to open that member's menu while they are still in the group. A message on its way
- * reads "You · Sending…" until the source stores it.
+ * reads "You · Sending…" until the source stores it; one not sent reads "You · not sent", with
+ * "Retry message" while the group is live (45).
  */
 function MessageRow({
   entry,
   viewerId,
+  live,
+  retrying,
+  onRetry,
   memberOf,
   onMember,
 }: {
   entry: TimelineEntry;
   viewerId: string;
+  live: boolean;
+  retrying: boolean;
+  onRetry: (clientMessageId: string) => void;
   memberOf: (message: ChatMessageDto) => GroupMemberDto | null;
   onMember: (member: GroupMemberDto) => void;
 }) {
@@ -373,6 +460,24 @@ function MessageRow({
       </View>
     );
   }
+  if (entry.kind === 'failed') {
+    return (
+      <View style={[styles.bubble, styles.own, styles.failed]}>
+        <AppText variant="small" color="danger">
+          You · not sent
+        </AppText>
+        <AppText>{entry.text}</AppText>
+        {entry.retryable && live ? (
+          <Button
+            label="Retry message"
+            variant="secondary"
+            disabled={retrying}
+            onPress={() => onRetry(entry.clientMessageId)}
+          />
+        ) : null}
+      </View>
+    );
+  }
   const label = describeSender(entry.message, viewerId);
   const content = (
     <>
@@ -383,7 +488,7 @@ function MessageRow({
     </>
   );
   if (entry.own) return <View style={[styles.bubble, styles.own]}>{content}</View>;
-  const sender = memberOf(entry.message);
+  const sender = live ? memberOf(entry.message) : null;
   if (sender === null) return <View style={[styles.bubble, styles.theirs]}>{content}</View>;
   return (
     <Pressable
@@ -403,6 +508,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     gap: spacing.md,
+  },
+  status: {
+    marginTop: spacing.md,
+    gap: spacing.xs,
+    alignItems: 'flex-start',
   },
   list: {
     flex: 1,
@@ -432,6 +542,9 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
     backgroundColor: colors.lime,
   },
+  failed: {
+    backgroundColor: colors.dangerSoft,
+  },
   theirs: {
     alignSelf: 'flex-start',
     backgroundColor: colors.white,
@@ -440,6 +553,9 @@ const styles = StyleSheet.create({
   },
   pressed: {
     backgroundColor: colors.soft,
+  },
+  check: {
+    gap: spacing.xs,
   },
   composer: {
     flexDirection: 'row',
