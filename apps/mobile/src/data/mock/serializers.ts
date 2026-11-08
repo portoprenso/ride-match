@@ -1,6 +1,8 @@
 import {
   GROUP_POLICY,
+  type AccessRevokedEventDto,
   type AuthSessionDto,
+  type BlockedUserDto,
   type ChatMessageCreatedEventDto,
   type ChatMessageDto,
   type CurrentUserDto,
@@ -36,6 +38,7 @@ import {
   type MockWorld,
   type OtpChallengeRecord,
   type RideRecord,
+  type BlockRecord,
   type SuppliedMatchRecord,
   type UserRecord,
 } from './world';
@@ -329,5 +332,28 @@ export function chatMessageCreated(envelope: EventEnvelope, message: ChatMessage
     type: 'chat.message.created',
     audience: { kind: 'group', groupId: message.groupId },
     payload: { message },
+  };
+}
+
+/** A block as its blocker's list shows it: the blocked rider's public summary and when. */
+export function toBlockedUserDto(world: MockWorld, block: BlockRecord): BlockedUserDto {
+  return {
+    user: toUserDto(requireUser(world, block.blockedId)),
+    blockedAt: new Date(block.blockedAt).toISOString(),
+  };
+}
+
+/** Tells one rider that their access to a group ended, never why beyond `reason` (a block reads as `left`). */
+export function accessRevoked(
+  envelope: EventEnvelope,
+  userId: string,
+  group: GroupRecord,
+  reason: 'left' | 'history_expired',
+): AccessRevokedEventDto {
+  return {
+    ...envelope,
+    type: 'access.revoked',
+    audience: { kind: 'user', userId },
+    payload: { groupId: group.id, version: group.version, reason },
   };
 }

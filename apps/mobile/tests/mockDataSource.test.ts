@@ -96,7 +96,7 @@ afterEach(() => {
 
 describe('scenarios', () => {
   it('knows only the implemented scenario keys', () => {
-    expect(MOCK_SCENARIO_KEYS).toEqual(['active-neighborhood', 'empty-neighborhood', 'match-appears', 'failed-message', 'taxi-unavailable', 'map-density']);
+    expect(MOCK_SCENARIO_KEYS).toEqual(['active-neighborhood', 'empty-neighborhood', 'match-appears', 'failed-message', 'safety', 'taxi-unavailable', 'map-density']);
     expect(isMockScenarioKey('empty-neighborhood')).toBe(true);
     expect(isMockScenarioKey('group-formation')).toBe(false);
     expect(isMockScenarioKey('toString')).toBe(false);
@@ -559,8 +559,8 @@ describe('operations without a mock yet', () => {
   it('reject at once as unavailable, without simulated latency', async () => {
     const { dataSource } = source();
 
-    await expect(dataSource.safety.block('user_1', {} as never)).rejects.toThrow(DataSourceUnavailableError);
-    await expect(dataSource.safety.report({} as never)).rejects.toThrow(
+    await expect(dataSource.devices.register('install_1' as never, {} as never)).rejects.toThrow(DataSourceUnavailableError);
+    await expect(dataSource.devices.remove('install_1' as never)).rejects.toThrow(
       'The mock data source does not support this operation yet.',
     );
   });

@@ -7,8 +7,10 @@ import { logout, readCurrentUser, refreshSession, requestOtp, verifyOtp, viewerO
 import {
   acceptNearbySubscription,
   acceptUserSubscription,
+  isHiddenByBlock,
+  isHiddenFrom,
   isPublicEventInViewport,
-  isViewersOwn,
+  isStillDiscoverable,
   readGroupPreview,
   readNearby,
   readRide,
@@ -17,6 +19,7 @@ import {
 import { readChatHistory, sendChatMessage } from './chat';
 import { acceptGroupSubscription, isMember, joinGroup, leaveGroup, readGroup, updateGroupStatus } from './groups';
 import { cancelRide, createRide, readMatches, readOwnRequest } from './rides';
+import { blockUser, listBlocks, reportUser, unblockUser } from './safety';
 import { scenarioOptions, type MockScenarioKey } from './scenarios';
 import { createSimulator, type LatencyRange, type Simulator } from './simulator';
 import type { MockWorld } from './world';
@@ -48,8 +51,9 @@ export function createMockSimulator(
  *   take an abort signal); the caller's own request: create, read and cancel (RIDE-001-A,
  *   `rides.ts`); joining a ride or group (GROUP-001-A, `groups.ts`), leaving it and the
  *   member-only group read (GROUP-001-B), and the coordinator's status changes (GROUP-001-C);
- *   chat history pages and sending (CHAT-001-A, `chat.ts`); nearby and `user` subscriptions and
- *   the connection state.
+ *   chat history pages and sending (CHAT-001-A, `chat.ts`); reports, blocks, unblocks and the
+ *   block list (SAFETY-001-A, `safety.ts`); nearby and `user` subscriptions and the connection
+ *   state.
  * - Every other operation rejects at once with a `DataSourceUnavailableError` until the card
  *   that implements it lands, never with invented data. `group` subscriptions are
  *   delivered since GROUP-002-B.
@@ -144,6 +148,24 @@ export function createMockDataSource(
         return simulator.run('chat.send', (context) => sendChatMessage(context, token, groupId, input));
       },
     },
+    safety: {
+      report: (input) => {
+        const token = accessToken();
+        return simulator.run('safety.report', (context) => reportUser(context, token, input));
+      },
+      block: (userId, input) => {
+        const token = accessToken();
+        return simulator.run('safety.block', (context) => blockUser(context, token, userId, input));
+      },
+      unblock: (userId) => {
+        const token = accessToken();
+        return simulator.run('safety.unblock', (context) => unblockUser(context, token, userId));
+      },
+      listBlocks: (input, options) => {
+        const token = accessToken();
+        return simulator.run('safety.listBlocks', (context) => listBlocks(context, token, input), options);
+      },
+    },
     events: {
       subscribe: <Request extends SubscriptionRequest>(
         request: Request,
@@ -166,7 +188,12 @@ export function createMockDataSource(
  * on `unsubscribe`, on disconnection, and on reset or disposal.
  *
  * A signed-in subscriber (as the token said when subscribing; the app subscribes again for each
- * viewer) is not sent upserts of their own request or group, as discovery leaves them out.
+ * viewer) is not sent upserts of what discovery hides from them: their own request or group, and
+ * anything of a rider in a block with them (SAFETY-001-A).
+ *
+ * A removal of an item that is still discoverable comes only from a block: it goes only to the
+ * subscribers the item is now hidden from (the two riders of the block), never to anyone else, so
+ * nobody else learns of the block.
  */
 async function subscribeNearby(
   simulator: Simulator<MockWorld>,
@@ -186,7 +213,13 @@ async function subscribeNearby(
     if (!isPublicEventInViewport(simulator.state, event, viewport)) return;
     if (event.type === 'nearby.upserted' && viewerId !== null) {
       const { item } = event.payload;
-      if (isViewersOwn(simulator.state, item.kind, item.id, viewerId)) return;
+      if (isHiddenFrom(simulator.state, item.kind, item.id, viewerId)) return;
+    }
+    if (event.type === 'nearby.removed') {
+      const { target } = event.payload;
+      const fromBlock = isStillDiscoverable(simulator.state, target.kind, target.id);
+      if (fromBlock && (viewerId === null || !isHiddenByBlock(simulator.state, target.kind, target.id, viewerId)))
+        return;
     }
     onEvent(event);
   });

@@ -1,6 +1,6 @@
 # Future API: groups, meeting points, chat, and safety
 
-Status: planned; the group, membership, join, leave and status contracts (CONTRACT-003-A), the chat contracts (CONTRACT-003-B) and the block and report contracts (CONTRACT-003-C) exist in `packages/contracts`. The mock source implements joining (GROUP-001-A; [mock rules](../MOCK_SCENARIOS.md#joining-group-001-a)), leaving and the member-only group read (GROUP-001-B; [mock rules](../MOCK_SCENARIOS.md#leaving-group-001-b)), the coordinator's status changes with expiry and terminal access (GROUP-001-C; [mock rules](../MOCK_SCENARIOS.md#group-status-group-001-c)), meeting points with per-viewer walking estimates (MEETING-001-A; [mock rules](../MOCK_SCENARIOS.md#meeting-points-meeting-001-a)), and chat history and sending (CHAT-001-A; [mock rules](../MOCK_SCENARIOS.md#chat-chat-001-a)). Last updated: 2026-11-08.
+Status: planned; the group, membership, join, leave and status contracts (CONTRACT-003-A), the chat contracts (CONTRACT-003-B) and the block and report contracts (CONTRACT-003-C) exist in `packages/contracts`. The mock source implements joining (GROUP-001-A; [mock rules](../MOCK_SCENARIOS.md#joining-group-001-a)), leaving and the member-only group read (GROUP-001-B; [mock rules](../MOCK_SCENARIOS.md#leaving-group-001-b)), the coordinator's status changes with expiry and terminal access (GROUP-001-C; [mock rules](../MOCK_SCENARIOS.md#group-status-group-001-c)), meeting points with per-viewer walking estimates (MEETING-001-A; [mock rules](../MOCK_SCENARIOS.md#meeting-points-meeting-001-a)), chat history and sending (CHAT-001-A; [mock rules](../MOCK_SCENARIOS.md#chat-chat-001-a)), and reports, blocks with block-and-leave, unblocks and the block list (SAFETY-001-A; [mock rules](../MOCK_SCENARIOS.md#safety-safety-001-a)). Last updated: 2026-11-08.
 
 Paths use `/v1`. Common envelopes/errors/idempotency are in [overview](overview.md). `Member` requires current membership; `Coordinator` also requires that role. Retained terminal history is accessible to members authorized at closure, not users who previously left.
 
@@ -60,7 +60,7 @@ The caller's own ride as the target fails input validation. A block in either di
 
 The join has no expected group version. It checks the group's current status and seats, so a group that changed in an unrelated way does not fail the join, and two last-seat joins end in one success and one `GROUP_FULL`, not a version conflict.
 
-The mock answers an unknown own request with `FORBIDDEN` too, so a join never reveals whether another rider's request exists. It has no block records yet (SAFETY-001), so its joins never answer `BLOCKED_RELATIONSHIP`.
+The mock answers an unknown own request with `FORBIDDEN` too, so a join never reveals whether another rider's request exists. Since SAFETY-001-A it checks blocks after resolving the target, in the table's order.
 
 If own request creation succeeded before a join failure, that request remains active. The UI explains this partial sequence; it is not one cross-operation transaction.
 

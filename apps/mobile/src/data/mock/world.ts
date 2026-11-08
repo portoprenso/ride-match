@@ -6,6 +6,7 @@ import type {
   LocationSource,
   MatchLevel,
   PublicLocationDto,
+  ReportReason,
   RideRequestStatus,
 } from '@ride-match/contracts';
 
@@ -179,8 +180,29 @@ export type OwnerMatchRecord = {
 };
 
 /**
+ * One rider's block of another (SAFETY-001-A). Only the blocker sees it; it filters each from the
+ * other's discovery, matches and joins in both directions.
+ */
+export type BlockRecord = { blockerId: string; blockedId: string; blockedAt: number };
+
+/**
+ * An accepted report (SAFETY-001-A): who reported whom, why, in which group and about which
+ * message. It exists so tests can see a report was stored once; the mock makes no moderation
+ * decision. The details are private and never leave this record.
+ */
+export type ReportRecord = {
+  id: string;
+  reporterId: string;
+  targetId: string;
+  reason: ReportReason;
+  details: string | null;
+  context: { groupId: string; messageId: string | null } | null;
+  receivedAt: number;
+};
+
+/**
  * The mock source's world. Curated places are not part of it: they are a fixed catalog shared by
- * every scenario (`places.ts`). Later cards add their own records, such as blocks.
+ * every scenario (`places.ts`).
  */
 export type MockWorld = {
   /** Simulated time the scenario was activated; its timed events count from here. */
@@ -203,7 +225,11 @@ export type MockWorld = {
    * delivery would. Zero and empty in every other scenario.
    */
   chatFaults: { lostAnswers: number; echoTwice: Set<string> };
-  /** No sessions in any scenario, so a reset signs everyone out; only scenarios H and L link the demo number to a seeded rider. */
+  /** Every block in force, oldest first; unblocking removes one (SAFETY-001-A). */
+  blocks: BlockRecord[];
+  /** Accepted reports, oldest first (SAFETY-001-A). */
+  reports: ReportRecord[];
+  /** No sessions in any scenario, so a reset signs everyone out; only scenarios H, J and L link the demo number to a seeded rider. */
   auth: AuthRecords;
 };
 
@@ -219,6 +245,8 @@ export function createEmptyWorld(now: number): MockWorld {
     ownerMatches: new Map(),
     messages: new Map(),
     chatFaults: { lostAnswers: 0, echoTwice: new Set() },
+    blocks: [],
+    reports: [],
     auth: {
       accounts: new Map(),
       challenges: new Map(),
@@ -241,4 +269,14 @@ export function isLiveGroup(group: GroupRecord): boolean {
  */
 export function isDiscoverableRide(ride: RideRecord): boolean {
   return ride.status === 'active';
+}
+
+/** Whether `blockerId` blocked `blockedId`. */
+export function hasBlocked(world: MockWorld, blockerId: string, blockedId: string): boolean {
+  return world.blocks.some((block) => block.blockerId === blockerId && block.blockedId === blockedId);
+}
+
+/** Whether either rider blocked the other: then they never see or pair with each other. */
+export function isBlockedPair(world: MockWorld, one: string, other: string): boolean {
+  return hasBlocked(world, one, other) || hasBlocked(world, other, one);
 }

@@ -27,13 +27,14 @@ import {
   toRideRequestDto,
 } from './serializers';
 import type { WorkContext } from './simulator';
-import { isDiscoverableRide, isLiveGroup, type MockWorld, type SuppliedMatchRecord } from './world';
+import { isBlockedPair, isDiscoverableRide, isLiveGroup, type MockWorld, type SuppliedMatchRecord } from './world';
 
 /*
  * Public reads: curated place search, nearby discovery, and one ride's or group's public view,
  * as the future source answers them (docs/api/rides.md, docs/api/groups.md). They are open to
  * anonymous callers. Since RIDE-001-A, discovery leaves out a signed-in viewer's own request and
- * any group they belong to, without changing what other items show; SAFETY-001 adds blocks.
+ * any group they belong to, without changing what other items show, and since SAFETY-001-A
+ * anything of a rider they blocked or who blocked them.
  *
  * Each runs as simulator work: the source validates the input itself, because a caller may send
  * anything, and answers with contract errors.
@@ -92,7 +93,8 @@ export function searchPlaces(context: Context, input: unknown): PlaceSearchResul
  * supplied matches for it ({@link matchPreviews}); without one it is empty. The mock never
  * computes compatibility. A destination must name a curated place.
  *
- * A signed-in viewer (`viewerId`) never sees their own request or a group they belong to.
+ * A signed-in viewer (`viewerId`) never sees their own request, a group they belong to, or a
+ * ride or group of a rider in a block with them ({@link isHiddenFrom}).
  *
  * Fails with `VALIDATION_FAILED` for an invalid input or an unknown destination, and
  * `UNSUPPORTED_AREA` for a viewport entirely outside the covered city.
@@ -108,7 +110,7 @@ export function readNearby(context: Context, input: unknown, viewerId: string | 
   const center = centerOf(bounds);
   const found = discoveryRecords(context.state)
     .filter((item) => contains(bounds, item.record.publicOrigin.center))
-    .filter((item) => viewerId === null || !isViewersOwn(context.state, item.kind, item.record.id, viewerId))
+    .filter((item) => viewerId === null || !isHiddenFrom(context.state, item.kind, item.record.id, viewerId))
     .map((item) => ({ item, distance: distanceMeters(center, item.record.publicOrigin.center) }))
     .sort((first, second) => first.distance - second.distance);
 
@@ -180,6 +182,34 @@ export function acceptNearbySubscription(context: Context, request: unknown): Su
   if (!parsed.success || parsed.data.kind !== 'nearby') throw invalidInput(context);
   if (!boundsIntersect(viewportBounds(parsed.data.viewport), COVERAGE)) throw outsideCoverage(context);
   return { subscriptionId: context.ids.next('sub'), subscription: parsed.data };
+}
+
+/**
+ * Whether a discovery item is hidden from a signed-in viewer: their own request or group
+ * ({@link isViewersOwn}), or a ride or group of a rider who is in a block with them, in either
+ * direction. Anonymous viewers are never filtered.
+ */
+export function isHiddenFrom(world: MockWorld, kind: 'ride' | 'group', id: string, viewerId: string): boolean {
+  return isViewersOwn(world, kind, id, viewerId) || isHiddenByBlock(world, kind, id, viewerId);
+}
+
+/** Whether a discovery item holds a rider who is in a block with the viewer, in either direction. */
+export function isHiddenByBlock(world: MockWorld, kind: 'ride' | 'group', id: string, viewerId: string): boolean {
+  const riders =
+    kind === 'ride'
+      ? [world.rides.get(id)?.userId]
+      : (world.groups.get(id)?.members.map((member) => member.userId) ?? []);
+  return riders.some((rider) => rider !== undefined && isBlockedPair(world, rider, viewerId));
+}
+
+/** Whether a discovery item is still shown to viewers it isn't hidden from: an active ride or a live group. */
+export function isStillDiscoverable(world: MockWorld, kind: 'ride' | 'group', id: string): boolean {
+  if (kind === 'ride') {
+    const ride = world.rides.get(id);
+    return ride !== undefined && isDiscoverableRide(ride);
+  }
+  const group = world.groups.get(id);
+  return group !== undefined && isLiveGroup(group);
 }
 
 /** Whether a discovery item is the viewer's own request, or a group the viewer belongs to. */

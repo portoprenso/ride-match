@@ -2896,3 +2896,28 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** `TaxiReviewSheet` (states and what it leaves to the screen), `describeTripForSharing` (privacy), `GroupSheet`, `GroupScreen`'s taxi rules, `createTaxiUnavailable`/`TAXI_GROUP`.
 - **Remaining/next:** SAFETY-001-A or NOTIFICATION-001-A with the user's go-ahead; the native pass (now fifteen cards).
 - **Ownership:** Released; no active task.
+
+## 2026-11-08 — SAFETY-001-A: Mock blocks, unblocks, block list and reports
+
+- **Actor/session:** Claude Code / safety-001-a.
+- **Status:** `Completed`. Parent SAFETY-001 `In progress`. Ownership released.
+- **Working copy:** `main` at `68673fe` (TAXI-001-B); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start SAFETY-001-A": mock block/unblock/list/report. Prerequisites GROUP-002 and CHAT-001 are paused for native checks; the user's explicit request is taken as the go-ahead. Acceptance: atomic block-and-leave; pairing filtered; no self-block; authorized report context; receipt/retry/failure tests.
+- **Changes:**
+  - New `src/data/mock/safety.ts`: `blockUser`, `unblockUser`, `listBlocks` (cursor `blocks.N`), `reportUser`, in the contract's check orders.
+  - `world.ts`: `BlockRecord`, `ReportRecord`, `world.blocks`, `world.reports`, `hasBlocked`, `isBlockedPair`.
+  - `groups.ts`: `leaveLiveGroup` extracted from `leaveGroup` and shared with block-and-leave; join checks blocks (`TARGET_UNAVAILABLE` when blocked by a participant, then `BLOCKED_RELATIONSHIP`).
+  - `discovery.ts`: `isHiddenFrom` (own or block), `isHiddenByBlock`, `isStillDiscoverable`; `readNearby` filters blocks. `rides.ts`: matches filter blocks. `createMockDataSource.ts`: `safety.*` operations; nearby upserts filtered by blocks, and removals of still-discoverable items (only blocks emit them) delivered only to subscribers hidden from them by a block.
+  - `serializers.ts`: `toBlockedUserDto`, `accessRevoked`.
+  - Scenario J `safety` (`createSafety`, `SAFETY_GROUP`, `SAFETY_SOLO_RIDE`), between H and L.
+  - Tests: new `tests/mockSafety.test.ts` (14); scenario lists and "unavailable operation" examples (now `devices.register`/`devices.remove`) in `tests/mockDataSource.test.ts` and `tests/dataSource.test.tsx`.
+- **Decisions:**
+  - Block-and-leave emits the ordinary leave events plus `access.revoked` (`left`) for the blocker; a plain leave still emits none (unchanged GROUP-001-B behaviour).
+  - Unblock emits nothing; discovery is reread by the app.
+  - Blocks hide no chat messages: the blocker leaves the shared live group, and a closed group both can read is unaffected (contract).
+  - Public reads (`rides.getRide`, `groups.getPreview`) take no token and stay unfiltered; signed-in discovery, matches and joins carry the filtering.
+- **Checks:** `pnpm typecheck`, `pnpm lint`, `npx jest` in `apps/mobile` (41 suites, 588 tests) passed; Prettier clean on the new and changed files except `scenarios.ts`, `discovery.ts`, `tests/mockDataSource.test.ts` and `tests/dataSource.test.tsx` (unformatted at HEAD, edited without reformatting). No native check needed for a mock card. Screen readers waived.
+- **Docs:** MOCK_SCENARIOS (module table, joining, chat, new Safety section with scenario J), api/groups.md (status, join note), api/realtime.md (mock removal delivery), DEVELOPMENT (tests, 588), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line, SAFETY-001 row), AI_CONTEXT.
+- **JSDoc:** `safety.ts` (module rules, each operation's check order and effects), `leaveLiveGroup`, `isHiddenFrom`/`isHiddenByBlock`/`isStillDiscoverable`, `subscribeNearby` delivery rule, `BlockRecord`/`ReportRecord`, `createSafety`, `readMatches`, `joinGroup`.
+- **Remaining/next:** SAFETY-001-B or NOTIFICATION-001-A with the user's go-ahead; the native pass.
+- **Ownership:** Released; no active task.

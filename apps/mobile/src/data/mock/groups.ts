@@ -24,7 +24,7 @@ import {
   toRideGroupDto,
 } from './serializers';
 import type { WorkContext } from './simulator';
-import type { GroupRecord, MockWorld, RideRecord } from './world';
+import { hasBlocked, type GroupRecord, type MockWorld, type RideRecord } from './world';
 
 /*
  * Joining a ride or a group (docs/api/groups.md, "Atomic joining"), leaving one, the
@@ -83,12 +83,11 @@ function groupRide(ride: RideRecord, groupId: string): void {
  * - `FORBIDDEN` when the request is not the caller's (an unknown request too, so the answer
  *   never reveals whether someone else's request exists);
  * - `ALREADY_IN_GROUP`, `RIDE_EXPIRED`, then `INVALID_TRANSITION` for the caller's request;
- * - `TARGET_UNAVAILABLE` for a target that is unknown or ended;
+ * - `TARGET_UNAVAILABLE` for a target that is unknown or ended, or whose participant (the solo
+ *   rider, or any group member) blocked the caller, so the blocked rider learns nothing more;
+ * - `BLOCKED_RELATIONSHIP` when the caller blocked a participant (SAFETY-001-A);
  * - `GROUP_CLOSED` when the group (or the group the target ride joined) is `ready`;
  * - `GROUP_FULL` when it has `GROUP_POLICY.capacity` members.
- *
- * Blocks are not checked yet: the world has no block records until the safety cards add them,
- * so `BLOCKED_RELATIONSHIP` and the blocked user's `TARGET_UNAVAILABLE` never occur here.
  *
  * A failed join changes nothing, so the caller's request stays active. On success:
  *
@@ -133,6 +132,16 @@ export function joinGroup(context: Context, accessToken: string | null, input: u
       }
       const destination = resolveTarget(state, request.target);
       if (destination === null) throw context.sourceError('TARGET_UNAVAILABLE', 'This plan is no longer available.');
+      const participants =
+        destination.kind === 'solo'
+          ? [destination.ride.userId]
+          : destination.group.members.map((member) => member.userId);
+      if (participants.some((participant) => hasBlocked(state, participant, user.id))) {
+        throw context.sourceError('TARGET_UNAVAILABLE', 'This plan is no longer available.');
+      }
+      if (participants.some((participant) => hasBlocked(state, user.id, participant))) {
+        throw context.sourceError('BLOCKED_RELATIONSHIP', 'You blocked someone in this plan.');
+      }
       if (destination.kind === 'group' && destination.group.status === 'ready') {
         throw context.sourceError('GROUP_CLOSED', 'This group is no longer taking riders.');
       }
@@ -269,39 +278,47 @@ export function leaveGroup(
         throw context.sourceError('GROUP_CLOSED', 'This group has already closed.');
       }
 
-      const leaving = group.members.find((member) => member.userId === user.id);
-      const own = cancelGrouped(state.rides.get(leaving?.rideRequestId ?? ''));
-      if (own === null) throw new Error(`The leaver of group ${group.id} had no grouped request.`);
-      group.members = group.members.filter((member) => member.userId !== user.id);
-      const [earliest] = group.members;
-      if (earliest === undefined) throw new Error(`Group ${group.id} had fewer than two members.`);
-      if (group.coordinatorId === user.id) group.coordinatorId = earliest.userId;
-      group.version += 1;
-      const ended = [own];
-
-      if (group.members.length >= GROUP_POLICY.minMembers) {
-        if (group.status === 'ready') group.status = 'forming';
-        context.emit(nearbyUpserted(context.eventEnvelope(), toNearbyItemDto(state, { kind: 'group', record: group })));
-        context.emit(groupChanged(context.eventEnvelope(), group, 'member_left'));
-      } else {
-        group.status = 'cancelled';
-        group.closure = {
-          reason: 'members_left',
-          closedAt: context.now,
-          historyExpiresAt: context.now + GROUP_POLICY.historyRetentionSeconds * SECOND,
-        };
-        const remaining = cancelGrouped(state.rides.get(earliest.rideRequestId));
-        if (remaining !== null) ended.push(remaining);
-        context.emit(
-          nearbyRemoved(context.eventEnvelope(), { kind: 'group', id: group.id }, group.version, 'unavailable'),
-        );
-        context.emit(groupChanged(context.eventEnvelope(), group, 'cancelled'));
-      }
-
-      for (const ride of ended) context.emit(rideChanged(context.eventEnvelope(), ride));
-      return { groupId: group.id, rideRequest: toOwnRideRequestDto(state, own) };
+      return leaveLiveGroup(context, group, user.id);
     },
   );
+}
+
+/**
+ * Removes `userId` from a live group they belong to, under the leave rules above, and returns
+ * their leave. Shared by leaving and by blocking a rider in the same group (SAFETY-001-A), so the
+ * members who remain see an ordinary leave.
+ */
+export function leaveLiveGroup(context: Context, group: GroupRecord, userId: string): LeaveGroupResultDto {
+  const { state } = context;
+  const leaving = group.members.find((member) => member.userId === userId);
+  const own = cancelGrouped(state.rides.get(leaving?.rideRequestId ?? ''));
+  if (own === null) throw new Error(`The leaver of group ${group.id} had no grouped request.`);
+  group.members = group.members.filter((member) => member.userId !== userId);
+  const [earliest] = group.members;
+  if (earliest === undefined) throw new Error(`Group ${group.id} had fewer than two members.`);
+  if (group.coordinatorId === userId) group.coordinatorId = earliest.userId;
+  group.version += 1;
+  const ended = [own];
+
+  if (group.members.length >= GROUP_POLICY.minMembers) {
+    if (group.status === 'ready') group.status = 'forming';
+    context.emit(nearbyUpserted(context.eventEnvelope(), toNearbyItemDto(state, { kind: 'group', record: group })));
+    context.emit(groupChanged(context.eventEnvelope(), group, 'member_left'));
+  } else {
+    group.status = 'cancelled';
+    group.closure = {
+      reason: 'members_left',
+      closedAt: context.now,
+      historyExpiresAt: context.now + GROUP_POLICY.historyRetentionSeconds * SECOND,
+    };
+    const remaining = cancelGrouped(state.rides.get(earliest.rideRequestId));
+    if (remaining !== null) ended.push(remaining);
+    context.emit(nearbyRemoved(context.eventEnvelope(), { kind: 'group', id: group.id }, group.version, 'unavailable'));
+    context.emit(groupChanged(context.eventEnvelope(), group, 'cancelled'));
+  }
+
+  for (const ride of ended) context.emit(rideChanged(context.eventEnvelope(), ride));
+  return { groupId: group.id, rideRequest: toOwnRideRequestDto(state, own) };
 }
 
 /** The coordinator's allowed transitions from each live status (`docs/api/groups.md`, state machine). */

@@ -314,6 +314,57 @@ function createFailedMessage({ now, ids }: SeedContext): MockWorld {
 }
 
 /**
+ * Scenario J's group: the demo rider is in Aida's forming group of three to Asia Mall with
+ * Bolot, who sent a message the rider may report. Chinara's solo ride nearby is not in the group
+ * and stays visible after a block: only the blocked rider's plans disappear.
+ */
+const SAFETY_GROUP: GroupSeed = {
+  status: 'forming',
+  destination: 'place_asia_mall',
+  createdSecondsAgo: 360,
+  coordinator: { rider: 'Aida', area: 'asanbay', offset: [0.0021, -0.0018], createdSecondsAgo: 420, departureOffsetMinutes: 10 },
+  founder: { rider: 'Demo rider 123', area: 'asanbay', offset: [-0.0011, 0.0014], createdSecondsAgo: 390, departureOffsetMinutes: 10 },
+  laterMembers: [
+    { rider: 'Bolot', area: 'asanbay', offset: [0.0009, 0.0017], createdSecondsAgo: 300, departureOffsetMinutes: 10, joinedSecondsAgo: 240 },
+  ],
+  meetingPoint: null,
+  version: 2,
+  chat: [
+    { from: 'Aida', text: 'Hi both! Let’s agree where to meet.', sentSecondsAgo: 200 },
+    { from: 'Bolot', text: 'Send me your number and I’ll pick you up myself.', sentSecondsAgo: 150 },
+  ],
+};
+
+/** Scenario J's other rider, not in the group: still shown after the block. */
+const SAFETY_SOLO_RIDE: RideSeed = {
+  rider: 'Chinara',
+  area: 'asanbay',
+  offset: [-0.0019, -0.0012],
+  destination: 'place_vefa_center',
+  createdSecondsAgo: 180,
+  departureOffsetMinutes: 5,
+};
+
+/**
+ * Scenario J: the demo rider shares a group with Bolot, whom they may report (the group, or his
+ * message) and block. Blocking him leaves the group in the same step; the group carries on with
+ * Aida and Bolot. Chinara's solo ride shows the filtering is per rider.
+ */
+function createSafety({ now, ids }: SeedContext): MockWorld {
+  const world = createEmptyWorld(now);
+  addGroup(world, ids, SAFETY_GROUP, now);
+  const solo = buildRide(world, ids, SAFETY_SOLO_RIDE, now - SAFETY_SOLO_RIDE.createdSecondsAgo * SECOND, {
+    status: 'active',
+    groupId: null,
+  });
+  world.rides.set(solo.id, solo);
+  const demo = [...world.users.values()].find((user) => user.displayName === 'Demo rider 123');
+  if (demo === undefined) throw new Error('Scenario J has no demo rider.');
+  world.auth.accounts.set(MOCK_DEMO_SIGN_IN.phoneNumber, demo.id);
+  return world;
+}
+
+/**
  * Scenario L's group: the demo rider coordinates a ready group with Aida to Asia Mall, with an
  * agreed meeting point in Asanbay, a few kilometres from the destination.
  */
@@ -456,6 +507,8 @@ const SCENARIOS = {
   'match-appears': { createWorld: createMatchAppears },
   // Scenario H: the demo rider's group chat, with a lost answer and a duplicate event.
   'failed-message': { createWorld: createFailedMessage },
+  // Scenario J: the demo rider's group with a rider to report and block.
+  safety: { createWorld: createSafety },
   // Scenario L: the demo rider's ready group, for the taxi review and handoff.
   'taxi-unavailable': { createWorld: createTaxiUnavailable },
   // Scenario M: a hundred items for clusters, the list and the snapshot limit.

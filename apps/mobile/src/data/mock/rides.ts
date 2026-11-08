@@ -11,6 +11,7 @@ import {
 } from '@ride-match/contracts';
 
 import { authenticate } from './auth';
+import { isHiddenFrom } from './discovery';
 import { contains } from './geometry';
 import { expireRide } from './lifecycle';
 import { COVERAGE, findPlace } from './places';
@@ -243,7 +244,8 @@ const LEVEL_RANK: Record<MatchLevel, number> = { excellent: 0, good: 1, possible
  * `GET /rides/{rideId}/matches`: the owner's current matches, best first. `NOT_FOUND` for an
  * unknown request, `FORBIDDEN` for another rider's. Only an active request has matches: for any
  * other status the set is empty. A match whose time is up or whose target left discovery is
- * never returned, even before its removal is announced.
+ * never returned, even before its removal is announced, and neither is one of a rider in a
+ * block with the owner (SAFETY-001-A).
  */
 export function readMatches(context: Context, accessToken: string | null, rideId: string): RideMatchSetDto {
   const user = authenticate(context, accessToken);
@@ -255,6 +257,8 @@ export function readMatches(context: Context, accessToken: string | null, rideId
   const { rides, groups } = context.state;
   const live = set.matches.filter((match) => {
     if (match.expiresAt <= context.now) return false;
+    // A rider in a block with the owner is never offered (SAFETY-001-A).
+    if (isHiddenFrom(context.state, match.target.kind, match.target.id, user.id)) return false;
     if (match.target.kind === 'ride') {
       const target = rides.get(match.target.id);
       return target !== undefined && isDiscoverableRide(target);
