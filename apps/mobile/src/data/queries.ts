@@ -1,5 +1,5 @@
 import type { Id, NearbyQueryInput, SearchPlacesInput } from '@ride-match/contracts';
-import { queryOptions } from '@tanstack/react-query';
+import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 
 import type { AppDataSource } from './AppDataSource';
 import { withDataErrors, type DataError } from './errors';
@@ -75,5 +75,33 @@ export function groupDetailQuery(dataSource: AppDataSource, viewer: SignedInView
   return queryOptions({
     queryKey: queryKeys.groupDetail(viewer, groupId),
     queryFn: ({ signal }) => withDataErrors(dataSource.groups.getGroup(groupId, { signal })),
+  });
+}
+
+/** How many messages each chat history page asks for: enough to fill a screen and a little more. */
+export const CHAT_PAGE_SIZE = 30;
+
+/**
+ * A group's chat history as Query pages (`GET /groups/{groupId}/messages`): the first page is the
+ * latest messages, and each next page the older ones before it, read with the previous page's
+ * `olderCursor` until the source says nothing is older. Pages hold the source's messages as
+ * they came; the screen merges them by message ID and orders them by sequence.
+ *
+ * A `chat.message.created` event invalidates the key, which reads the latest page again and
+ * the older pages from the fresh cursors (catch-up after a gap arrives with CHAT-001-C).
+ */
+export function chatHistoryQuery(dataSource: AppDataSource, viewer: SignedInViewer, groupId: Id) {
+  return infiniteQueryOptions({
+    queryKey: queryKeys.chatHistory(viewer, groupId),
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam, signal }) =>
+      withDataErrors(
+        dataSource.chat.getHistory(
+          groupId,
+          pageParam === null ? { limit: CHAT_PAGE_SIZE } : { beforeCursor: pageParam, limit: CHAT_PAGE_SIZE },
+          { signal },
+        ),
+      ),
+    getNextPageParam: (page) => page.olderCursor ?? undefined,
   });
 }

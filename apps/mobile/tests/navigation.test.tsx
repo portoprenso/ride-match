@@ -29,8 +29,9 @@ describe('inert and denied routes', () => {
     ['/groups/abc-123', 'You don’t have access to this group. Only its current members can open it.'],
     ['/groups/not%20a%20uuid', 'You don’t have access to this group. Only its current members can open it.'],
     ['/groups/%E0%A4%A', 'You don’t have access to this group. Only its current members can open it.'],
-    ['/groups/abc-123/chat', 'Group chat is not available yet.'],
-    ['/groups/%E0%A4%A/chat', 'Group chat is not available yet.'],
+    // So is a chat link (CHAT-001-B).
+    ['/groups/abc-123/chat', 'You don’t have access to this chat. Only the group’s current members can open it.'],
+    ['/groups/%E0%A4%A/chat', 'You don’t have access to this chat. Only the group’s current members can open it.'],
   ])('%s shows only an unavailable state and a way to the map', async (url, message) => {
     const app = await renderApp(url);
 

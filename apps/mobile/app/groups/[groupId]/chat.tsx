@@ -1,14 +1,21 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
-import { UnavailableScreen } from '../../../src/ui/UnavailableScreen';
+import { ChatScreen } from '../../../src/features/chat/ChatScreen';
 
-// Inert until CHAT-001. Like the group route, it never reads the group ID.
+// Like the group route, the ID is only sent to the source, which decides whether the viewer may
+// read the chat; it is never shown.
 export default function GroupChatRoute() {
   const router = useRouter();
+  const { groupId } = useLocalSearchParams<{ groupId?: string }>();
+  const id = typeof groupId === 'string' ? groupId : undefined;
   return (
-    <UnavailableScreen
-      title="Group chat"
-      message="Group chat is not available yet."
+    <ChatScreen
+      groupId={id}
+      onBack={() => {
+        if (router.canGoBack()) router.back();
+        else if (id !== undefined) router.replace({ pathname: '/groups/[groupId]', params: { groupId: id } });
+        else router.dismissTo('/');
+      }}
       onGoHome={() => router.dismissTo('/')}
     />
   );

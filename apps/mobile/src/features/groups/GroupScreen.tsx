@@ -26,7 +26,7 @@ import { IconButton } from '../../ui/IconButton';
 import { Notice } from '../../ui/Notice';
 import { Screen } from '../../ui/Screen';
 import { ScreenHeader } from '../../ui/ScreenHeader';
-import { SheetContent, SheetHost } from '../../ui/SheetHost';
+import { SheetHost } from '../../ui/SheetHost';
 import { UnavailableScreen } from '../../ui/UnavailableScreen';
 import { colors, radii, spacing } from '../../ui/tokens';
 import { ActionFooter } from '../../ui/ActionFooter';
@@ -40,6 +40,7 @@ import {
   type StatusChange,
 } from './groupLifecycle';
 import { describeWalk, MeetingPointSheet } from './MeetingPointSheet';
+import { MemberMenu } from './MemberMenu';
 
 const SEATS_IN_WORDS = ['No', 'One', 'Two', 'Three'] as const;
 
@@ -594,29 +595,6 @@ function MemberRow({
  * Reporting and blocking arrive with SAFETY-001; until then they are shown, disabled, with a note,
  * and nothing is sent.
  */
-function MemberMenu({ member, onClose }: { member: GroupMemberDto; onClose: () => void }) {
-  const name = member.user.displayName;
-  return (
-    <SheetContent
-      footer={
-        <ActionFooter>
-          <Button label="Close" variant="ghost" onPress={onClose} />
-        </ActionFooter>
-      }
-    >
-      <View style={styles.heading}>
-        <AppText variant="section" accessibilityRole="header">
-          {name}
-        </AppText>
-        <AppText color="muted">Actions for this member only.</AppText>
-      </View>
-      <Button label={`Report ${name}`} variant="secondary" disabled onPress={() => undefined} />
-      <Button label={`Block ${name}`} variant="secondary" disabled onPress={() => undefined} />
-      <Notice message="Reporting and blocking aren’t available in this demo build yet. Nothing was sent." />
-    </SheetContent>
-  );
-}
-
 const styles = StyleSheet.create({
   centre: {
     flex: 1,

@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-08. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; RIDE-001 is paused with A's mock request operations completed and B's draft and review, C's request card, cancel and expiry, and D's matches and unknown-outcome recovery implemented, their native checks pending; DESTINATION-001 is paused with A's supplied matches completed and B's destination search, selection and map emphasis implemented, its native check pending; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; MAP-002 is paused with A's discovery read and states, B's markers, clusters, list and tile notice, and C's ride and group previews and disappeared target implemented, their native checks pending; GROUP-001 is completed (A's joins, B's leave and coordinator transfer, C's status changes, expiry and terminal access); GROUP-002 is paused with A's join confirmation and conflict recovery, B's group screen and C's lifecycle controls and closed and revoked states implemented, their native checks pending; MEETING-001 is paused with A's mock meeting points completed and B's meeting point sheet and readiness integration implemented, its native check pending; CHAT-001 is in progress with A's mock history and sending completed; all other implementation tasks are planned.**
+Last updated: 2026-11-08. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; RIDE-001 is paused with A's mock request operations completed and B's draft and review, C's request card, cancel and expiry, and D's matches and unknown-outcome recovery implemented, their native checks pending; DESTINATION-001 is paused with A's supplied matches completed and B's destination search, selection and map emphasis implemented, its native check pending; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; MAP-002 is paused with A's discovery read and states, B's markers, clusters, list and tile notice, and C's ride and group previews and disappeared target implemented, their native checks pending; GROUP-001 is completed (A's joins, B's leave and coordinator transfer, C's status changes, expiry and terminal access); GROUP-002 is paused with A's join confirmation and conflict recovery, B's group screen and C's lifecycle controls and closed and revoked states implemented, their native checks pending; MEETING-001 is paused with A's mock meeting points completed and B's meeting point sheet and readiness integration implemented, its native check pending; CHAT-001 is paused with A's mock history and sending completed and B's chat screen implemented, its native keyboard check pending; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,18 @@ Last updated: 2026-11-08. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**CHAT-001-B — Implemented (2026-11-08), native check pending; CHAT-001 `Paused`.**
+
+- **Done:**
+  - The chat route (14) opens on the latest messages with sender and time, loads earlier ones back to the start in a stable order, and follows new messages while the reader is at the end.
+  - The composer stays above the keyboard; a message shows "Sending…" at once, then as stored. Demo riders' answers arrive through the group subscription.
+  - A message the source couldn't confirm goes back in the composer with its client message ID, so resending cannot post it twice; if the history shows it was stored after all, the composer lets it go.
+  - Another member's message opens their menu; a closed group keeps its history without a composer; denied links get the group route's unavailable state.
+  - Analytics record only the send intent and its confirmation, never text. 554 mobile tests (10 new).
+- **Not covered here:** the failed-message bubble, catch-up and merging events by message ID, the full closed (36) and revoked (37) chat views, scenario H (CHAT-001-C); restoring a draft across sign-in.
+- **Pending:** the native keyboard check (DEVELOPMENT, chat check) on both platforms.
+- **Next available:** CHAT-001-C (needs CHAT-001-B, paused for its native check, and SYNC-001), TAXI-001-A (needs MEETING-001), or the native pass, which would now cover thirteen cards.
 
 **CHAT-001-A — Completed (2026-11-08); CHAT-001 `In progress`.** Started at the user's request while GROUP-002's native checks are pending.
 
@@ -586,7 +598,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | RIDE-001 | Creation, matching, expiration | Paused (A completed; B, C and D implemented, native checks pending) |
 | GROUP-001 | Atomic mock group operations | Completed |
 | GROUP-002 | Group product flow | Paused (A, B and C implemented, native checks pending) |
-| CHAT-001 | Temporary text chat | In progress (A completed) |
+| CHAT-001 | Temporary text chat | Paused (A completed; B implemented, native check pending) |
 | MEETING-001 | Meeting point and readiness | Paused (A completed; B implemented, native check pending) |
 | TAXI-001 | Yandex Go handoff | Planned |
 | SAFETY-001 | Block and report | Planned |

@@ -26,6 +26,8 @@ const ICONS = {
       <Path d="M12 1v5m0 12v5M1 12h5m12 0h5" />
     </>
   ),
+  /** Send a chat message. */
+  send: <Path d="m3 3 19 9-19 9 4-9Zm4 9h15" />,
   /** Settings and demo scenarios. */
   sliders: <Path d="M5 3v4m0 4v10M12 3v10m0 4v4M19 3v4m0 4v10M2 7h6m1 10h6m1-10h6" />,
 };

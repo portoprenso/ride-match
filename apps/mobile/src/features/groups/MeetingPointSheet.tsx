@@ -27,7 +27,8 @@ type MeetingPointSheetProps = {
   point: MeetingPointDto | null;
   /** The point the sheet opened on; a different current ID means the source replaced it meanwhile. */
   openedId: string;
-  onOpenChat: () => void;
+  /** Opens the group chat; left out where the sheet opens from the chat itself. */
+  onOpenChat?: () => void;
   onReturn: () => void;
 };
 
@@ -52,7 +53,7 @@ export function MeetingPointSheet({ point, openedId, onOpenChat, onReturn }: Mee
 
   const footer = (
     <ActionFooter>
-      <Button label="Open group chat" variant="secondary" onPress={onOpenChat} />
+      {onOpenChat === undefined ? null : <Button label="Open group chat" variant="secondary" onPress={onOpenChat} />}
       <Button label="Return to group" variant="ghost" onPress={onReturn} />
     </ActionFooter>
   );

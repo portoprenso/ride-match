@@ -2811,3 +2811,27 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** the chat module's rules, `readChatHistory` and `sendChatMessage` with their check orders, `storeMessage`, the reply rule, `MessageRecord`, the serializers.
 - **Remaining/next:** CHAT-001-B (chat route and composer) or TAXI-001-A with the user's go-ahead; the native pass.
 - **Ownership:** Released; no active task.
+
+## 2026-11-08 — CHAT-001-B: Chat route, message list and composer
+
+- **Actor/session:** Claude Code / chat-001-b.
+- **Status:** implemented; `Paused` for its native keyboard check (next native pass). Parent CHAT-001 `Paused`. Ownership released.
+- **Working copy:** `main` at `6370d7e` (CHAT-001-A); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start CHAT-001-B": the existing chat route with the chat list, composer and older history (design 14). Acceptance: stable order; keyboard-safe composer; pending presentation; no sensitive logs or analytics; both-platform keyboard checks.
+- **Changes:**
+  - `app/groups/[groupId]/chat.tsx` renders the new `src/features/chat/ChatScreen.tsx`; `src/features/chat/chatTimeline.ts` holds the pure pieces (`buildTimeline`, `pendingOutgoing`, `toChatText`, `formatMessageTime`, `describeSender`, `describeSendError`).
+  - `src/data/queries.ts`: `chatHistoryQuery` (infinite, 30 per page) and `CHAT_PAGE_SIZE`. `src/ui/Icon.tsx`: the design's `send` icon.
+  - `src/features/groups/MemberMenu.tsx` (moved out of `GroupScreen.tsx`, shared with the chat); `MeetingPointSheet`'s `onOpenChat` is optional, so the chat opens it without a chat button.
+  - Tests: new `tests/chatScreen.test.tsx` (10); `tests/navigation.test.tsx` expects the chat's denial for anonymous links.
+- **Decisions:**
+  - Outgoing messages live in screen state ("Sending…", or stored but not yet in a page); the Query cache holds only the source's pages, invalidated by a confirmed send or a `chat.message.created` event.
+  - The composer is read-only while a message is on its way (under a second in the mock), so messages keep their order and a failure can return its text to an empty box.
+  - A failed send puts the text back with its client message ID; sending the same text again reuses it. If the history then shows the message was stored, the composer clears. The failed bubble of design 45 stays with CHAT-001-C.
+  - New messages scroll into view only while the reader is within 80 points of the end; loading earlier messages keeps the place (`maintainVisibleContentPosition`).
+  - A closed group keeps its history with a note instead of the composer; the full design 36 is CHAT-001-C's.
+  - Restoring an unsent draft across sign-in is not done: only members reach the chat, and session renewal already wraps chat calls.
+- **Checks:** `pnpm typecheck`, `pnpm lint`, `npx jest` in `apps/mobile` (38 suites, 554 tests) passed; Prettier clean on the new and changed files. **Not run:** native builds or device checks (DEVELOPMENT, chat check: keyboard and scrolling on both platforms). Screen readers waived.
+- **Docs:** PRODUCT (group chat), ARCHITECTURE, DEVELOPMENT (tests, 554; chat check), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line, CHAT-001 row), AI_CONTEXT.
+- **JSDoc:** `ChatScreen` (access, history, sending, closed groups, privacy), `MessageRow`, the timeline helpers and `SendFailure`, `chatHistoryQuery`, `MemberMenu`.
+- **Remaining/next:** CHAT-001-C or TAXI-001-A with the user's go-ahead; the native pass.
+- **Ownership:** Released; no active task.
