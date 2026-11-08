@@ -8,7 +8,7 @@ import {
 } from '@ride-match/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Share, StyleSheet, View } from 'react-native';
 
 import { useAnalytics } from '../../analytics/AnalyticsProvider';
 import { useDataSource } from '../../data/DataSourceProvider';
@@ -31,6 +31,7 @@ import { UnavailableScreen } from '../../ui/UnavailableScreen';
 import { colors, radii, spacing } from '../../ui/tokens';
 import { ActionFooter } from '../../ui/ActionFooter';
 import { useViewer } from '../auth/AuthSessionProvider';
+import { openTaxi, openTaxiWebsite } from '../../platform/taxi/openTaxi';
 import { useClock } from '../discovery/useClock';
 import {
   CHANGE_LABELS,
@@ -41,6 +42,8 @@ import {
 } from './groupLifecycle';
 import { describeWalk, MeetingPointSheet } from './MeetingPointSheet';
 import { MemberMenu } from './MemberMenu';
+import { describeTaxiProblem, describeTripForSharing, TaxiReviewSheet } from './TaxiReviewSheet';
+import { isReviewCurrent, reviewTaxiTrip, type TaxiReview } from './taxiReview';
 
 const SEATS_IN_WORDS = ['No', 'One', 'Two', 'Three'] as const;
 
@@ -119,9 +122,13 @@ type GroupScreenProps = {
   onOpenChat: (groupId: string) => void;
 };
 
-/** The one sheet the group screen opens: a member's menu, the meeting point, or a leave or cancel confirmation. */
+/**
+ * The one sheet the group screen opens: a member's menu, the meeting point, a leave or cancel
+ * confirmation, or the taxi review with whether its last opening failed.
+ */
 type GroupSheet =
   | { kind: 'member'; member: GroupMemberDto }
+  | { kind: 'taxi'; review: TaxiReview; failed: boolean }
   | { kind: 'leave' }
   | { kind: 'cancel' }
   | { kind: 'meeting'; openedId: string }
@@ -155,8 +162,14 @@ type GroupSheet =
  *   that one is coming, with "Refresh group". A suggested, replaced or withdrawn point is
  *   announced; a replaced point never keeps an earlier readiness (the source reopens the group).
  *
- * The taxi review is TAXI-001's; it must review the point it shows and start over when the
- * point's ID changes.
+ * - **Taxi** (16, 17, 38, 49): in a ready group, every member may review the trip. The group is
+ *   read again first, and the review (`reviewTaxiTrip`) is made from that answer: the meeting point
+ *   to the destination. "Open Yandex Go" opens only while the review still matches the group as
+ *   read (`isReviewCurrent`); otherwise the sheet asks for a new review. It records
+ *   `taxi_open_clicked` per attempt and `taxi_opened` when the OS accepts the link; a refusal
+ *   shows the failure (38) with a retry, the website link and the trip details to copy or share.
+ *   Opening a link never changes the group: returning to the app reads it again (the sync
+ *   coordinator refetches the screen's reads on foreground), and only the coordinator completes it.
  */
 export function GroupScreen({ groupId, onBack, onGoHome, onOpenChat }: GroupScreenProps) {
   const dataSource = useDataSource();
@@ -296,6 +309,57 @@ export function GroupScreen({ groupId, onBack, onGoHome, onOpenChat }: GroupScre
     leave.mutate(id);
   };
 
+  // Taxi: review from a fresh read, open only a current review, report what the OS said.
+  const [taxiChecking, setTaxiChecking] = useState(false);
+  const [taxiOpening, setTaxiOpening] = useState(false);
+  const [shareMessage, setShareMessage] = useState<string | null>(null);
+  const reviewTaxi = async () => {
+    if (taxiChecking) return;
+    setTaxiChecking(true);
+    setNotice(null);
+    const fresh = await query.refetch();
+    setTaxiChecking(false);
+    if (fresh.isError || fresh.data === undefined) {
+      // A lost access shows its own screen; anything else can be tried again.
+      if (!(fresh.error?.code === 'MEMBERSHIP_REQUIRED' || fresh.error?.code === 'HISTORY_EXPIRED')) {
+        setNotice('The trip details couldn’t be checked. Try again.');
+      }
+      return;
+    }
+    const result = reviewTaxiTrip(fresh.data);
+    if (!result.ok) {
+      setNotice(describeTaxiProblem(result.problem));
+      return;
+    }
+    setShareMessage(null);
+    setSheet({ kind: 'taxi', review: result.review, failed: false });
+  };
+  const openYandexGo = async (review: TaxiReview, via: 'app' | 'website') => {
+    if (taxiOpening || group === undefined || !isReviewCurrent(review, group)) return;
+    analytics.track('taxi_open_clicked');
+    setTaxiOpening(true);
+    setShareMessage(null);
+    const outcome = await (via === 'app' ? openTaxi : openTaxiWebsite)(review.trip);
+    setTaxiOpening(false);
+    if (outcome.kind === 'handed-off') {
+      analytics.track('taxi_opened');
+      setSheet(null);
+      setNotice(
+        'Yandex Go was asked to open your trip. Your group is still ready; booking and payment happen in Yandex Go.',
+      );
+      return;
+    }
+    setSheet({ kind: 'taxi', review, failed: true });
+  };
+  const shareTrip = async (review: TaxiReview) => {
+    setShareMessage(null);
+    try {
+      await Share.share({ message: describeTripForSharing(review) });
+    } catch {
+      setShareMessage('The trip details couldn’t be shared. Try again.');
+    }
+  };
+
   if (member === null || (lostAccess && !shown) || query.error?.code === 'UNAUTHENTICATED') {
     return (
       <UnavailableScreen
@@ -351,6 +415,19 @@ export function GroupScreen({ groupId, onBack, onGoHome, onOpenChat }: GroupScre
         }}
         onReturn={() => setSheet(null)}
       />
+    ) : sheet?.kind === 'taxi' ? (
+      <TaxiReviewSheet
+        review={sheet.review}
+        current={reviewTaxiTrip(group)}
+        failed={sheet.failed}
+        opening={taxiOpening}
+        shareMessage={shareMessage}
+        onOpen={() => void openYandexGo(sheet.review, 'app')}
+        onOpenWebsite={() => void openYandexGo(sheet.review, 'website')}
+        onShare={() => void shareTrip(sheet.review)}
+        onReviewAgain={(review) => setSheet({ kind: 'taxi', review, failed: false })}
+        onBack={() => setSheet(null)}
+      />
     ) : sheet?.kind === 'leave' ? (
       <ConfirmAction
         title="Leave this group?"
@@ -384,7 +461,7 @@ export function GroupScreen({ groupId, onBack, onGoHome, onOpenChat }: GroupScre
     <SheetHost
       open={sheet !== null}
       onDismiss={() => setSheet(null)}
-      dismissible={!leave.isPending && !change.isPending}
+      dismissible={!leave.isPending && !change.isPending && !taxiOpening}
     >
       {sheetContent}
     </SheetHost>
@@ -510,6 +587,13 @@ export function GroupScreen({ groupId, onBack, onGoHome, onOpenChat }: GroupScre
         </AppText>
       )}
       <View style={styles.actions}>
+        {group.status === 'ready' ? (
+          <Button
+            label={summary.viewerIsCoordinator ? 'Review Yandex Go handoff' : 'Review taxi details'}
+            busy={taxiChecking}
+            onPress={() => void reviewTaxi()}
+          />
+        ) : null}
         {controls.changes.includes('ready') || controls.needsPoint ? (
           <Button
             label={CHANGE_LABELS.ready}

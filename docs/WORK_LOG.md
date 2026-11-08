@@ -2875,3 +2875,24 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** link format and privacy (`yandexGo.ts`), `TaxiOpenOutcome`, `openTaxi`, `openTaxiWebsite`, `TaxiReview`, `TaxiReviewProblem`, `reviewTaxiTrip`, `isReviewCurrent`.
 - **Remaining/next:** TAXI-001-B, SAFETY-001-A or NOTIFICATION-001-A with the user's go-ahead; the native pass.
 - **Ownership:** Released; no active task.
+
+## 2026-11-08 — TAXI-001-B: Taxi review, failure and scenario L
+
+- **Actor/session:** Claude Code / taxi-001-b.
+- **Status:** implemented; `Paused` for its native check (next native pass). Parent TAXI-001 `Paused` (A completed). Ownership released.
+- **Working copy:** `main` at `ecb79cf` (TAXI-001-A); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start TAXI-001-B": the taxi review and fallback UI (designs 17, 38). Acceptance: fresh reviewed coordinates; installed/absent/failure; explicit copy; group refresh on return; both-platform native checks.
+- **Changes:**
+  - New `src/features/groups/TaxiReviewSheet.tsx`: the review (17), the failure (38), the changed-details state; `describeTaxiProblem`, `describeTripForSharing`.
+  - `GroupScreen.tsx`: in a ready group, "Review taxi details" (member) or "Review Yandex Go handoff" (coordinator); `query.refetch()` before `reviewTaxiTrip`; problems shown as a notice; "Open Yandex Go" only while `isReviewCurrent`; `taxi_open_clicked` per attempt, `taxi_opened` on `handed-off`; refusal → 38 with "Try opening again", "Use browser fallback" (`openTaxiWebsite`) and "Copy or share trip details" (`Share.share`); handoff notice; sheet not dismissible while opening.
+  - Mock: scenario L `taxi-unavailable` (`createTaxiUnavailable`, `TAXI_GROUP`: demo rider coordinates a ready group with Aida to Asia Mall, meeting point "Asanbay, bus stop by the park"), placed between H and M.
+  - Tests: new `tests/taxiHandoff.test.tsx` (4); scenario lists in `tests/mockDataSource.test.ts` and `tests/dataSource.test.tsx`.
+- **Decisions:**
+  - Copy goes through the system share sheet (it offers Copy on both platforms) rather than adding `expo-clipboard`, a native module that would need a new development build.
+  - Refresh on return uses the sync coordinator's focus refetch (default stale reads); the test proves it with a change made without an event while in the background.
+  - Scenario L scripts no taxi outcome: Yandex Go absent, installed or refused is the device's result; Jest covers refusal with a rejecting `Linking.openURL`.
+- **Checks:** `pnpm typecheck`, `pnpm lint`, `npx jest` in `apps/mobile` (40 suites, 574 tests) passed; Prettier clean on new and changed files except `tests/mockDataSource.test.ts` and `tests/dataSource.test.tsx` (unformatted at HEAD, edited without reformatting). Console warnings come from existing suites (`authSession`, `chatScreen`). **Not run:** native checks on both platforms (DEVELOPMENT, taxi check). Screen readers waived.
+- **Docs:** PRODUCT, ARCHITECTURE, DEVELOPMENT (tests, 574; taxi check), MOCK_SCENARIOS (scenario L), MOBILE_IMPLEMENTATION_PLAN (row, open question), ROADMAP (entry, status line, TAXI-001 row), AI_CONTEXT.
+- **JSDoc:** `TaxiReviewSheet` (states and what it leaves to the screen), `describeTripForSharing` (privacy), `GroupSheet`, `GroupScreen`'s taxi rules, `createTaxiUnavailable`/`TAXI_GROUP`.
+- **Remaining/next:** SAFETY-001-A or NOTIFICATION-001-A with the user's go-ahead; the native pass (now fifteen cards).
+- **Ownership:** Released; no active task.

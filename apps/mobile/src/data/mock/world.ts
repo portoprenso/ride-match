@@ -203,7 +203,7 @@ export type MockWorld = {
    * delivery would. Zero and empty in every other scenario.
    */
   chatFaults: { lostAnswers: number; echoTwice: Set<string> };
-  /** No sessions in any scenario, so a reset signs everyone out; only scenario H links the demo number to a seeded rider. */
+  /** No sessions in any scenario, so a reset signs everyone out; only scenarios H and L link the demo number to a seeded rider. */
   auth: AuthRecords;
 };
 

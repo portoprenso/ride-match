@@ -313,6 +313,36 @@ function createFailedMessage({ now, ids }: SeedContext): MockWorld {
   return world;
 }
 
+/**
+ * Scenario L's group: the demo rider coordinates a ready group with Aida to Asia Mall, with an
+ * agreed meeting point in Asanbay, a few kilometres from the destination.
+ */
+const TAXI_GROUP: GroupSeed = {
+  status: 'ready',
+  destination: 'place_asia_mall',
+  createdSecondsAgo: 400,
+  coordinator: { rider: 'Demo rider 123', area: 'asanbay', offset: [-0.0011, 0.0014], createdSecondsAgo: 460, departureOffsetMinutes: 10 },
+  founder: { rider: 'Aida', area: 'asanbay', offset: [0.0021, -0.0018], createdSecondsAgo: 430, departureOffsetMinutes: 10 },
+  laterMembers: [],
+  meetingPoint: { label: 'Asanbay, bus stop by the park', coordinates: { latitude: 42.8158, longitude: 74.6268 } },
+  version: 3,
+  chat: [{ from: 'Aida', text: 'See you at the bus stop.', sentSecondsAgo: 120 }],
+};
+
+/**
+ * Scenario L: the demo rider's group is ready, so the taxi review and Yandex Go handoff can be
+ * tried at once. The source scripts no taxi outcome (it has no taxi operation): whether Yandex Go
+ * opens, the link falls back to the store page or website, or the OS refuses it is the device's.
+ */
+function createTaxiUnavailable({ now, ids }: SeedContext): MockWorld {
+  const world = createEmptyWorld(now);
+  addGroup(world, ids, TAXI_GROUP, now);
+  const demo = [...world.users.values()].find((user) => user.displayName === 'Demo rider 123');
+  if (demo === undefined) throw new Error('Scenario L has no demo rider.');
+  world.auth.accounts.set(MOCK_DEMO_SIGN_IN.phoneNumber, demo.id);
+  return world;
+}
+
 /** Invented first names for the busy map; they repeat, as names do. */
 const DENSITY_NAMES = ['Aidai', 'Bolot', 'Chinara', 'Dastan', 'Eldiyar', 'Gulzat', 'Kairat', 'Medina', 'Nurbek', 'Saltanat'];
 const DENSITY_DESTINATIONS = [
@@ -426,6 +456,8 @@ const SCENARIOS = {
   'match-appears': { createWorld: createMatchAppears },
   // Scenario H: the demo rider's group chat, with a lost answer and a duplicate event.
   'failed-message': { createWorld: createFailedMessage },
+  // Scenario L: the demo rider's ready group, for the taxi review and handoff.
+  'taxi-unavailable': { createWorld: createTaxiUnavailable },
   // Scenario M: a hundred items for clusters, the list and the snapshot limit.
   'map-density': { createWorld: createMapDensity },
 } satisfies Record<string, ScenarioDefinition>;

@@ -167,7 +167,7 @@ describe('composeAppDataSource', () => {
 
     expect(composition.status === 'failed' && composition.error).toBeInstanceOf(AppConfigError);
     expect(composition.status === 'failed' && composition.error instanceof AppConfigError && composition.error.problems).toEqual([
-      'EXPO_PUBLIC_MOCK_SCENARIO is "group-formation"; use one of active-neighborhood, empty-neighborhood, match-appears, failed-message, map-density.',
+      'EXPO_PUBLIC_MOCK_SCENARIO is "group-formation"; use one of active-neighborhood, empty-neighborhood, match-appears, failed-message, taxi-unavailable, map-density.',
     ]);
   });
 
@@ -246,7 +246,7 @@ describe('root layout', () => {
 
     expect(screen.getByRole('header', { name: 'This build can’t start' })).toBeOnTheScreen();
     expect(
-      screen.getByText('EXPO_PUBLIC_MOCK_SCENARIO is "group-formation"; use one of active-neighborhood, empty-neighborhood, match-appears, failed-message, map-density.'),
+      screen.getByText('EXPO_PUBLIC_MOCK_SCENARIO is "group-formation"; use one of active-neighborhood, empty-neighborhood, match-appears, failed-message, taxi-unavailable, map-density.'),
     ).toBeOnTheScreen();
   });
 
