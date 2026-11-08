@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { useDemoSignIn } from '../../data/DemoSignInProvider';
 import type { LocationState } from '../../platform/location/createLocationController';
@@ -39,6 +39,8 @@ type SettingsScreenProps = {
   onBack: () => void;
   /** Opens sign-in; offered while nobody is signed in. */
   onSignIn: () => void;
+  /** Opens the blocked-riders panel (44); offered while signed in. */
+  onOpenBlockedRiders: () => void;
   /**
    * Called once a sign-out has finished. The route resets the navigation stack, so no private
    * screen stays beneath, and shows the outcome here.
@@ -60,10 +62,19 @@ type SettingsScreenProps = {
  * - Signed out: anonymous browsing, "Sign in", and the outcome of a sign-out that just finished.
  * - Restoring or a failed restore: what is happening, and "Try again" after a failure.
  *
- * Notification permission (NOTIFICATION-001-B) and blocked riders (SAFETY-001-C) join this screen
- * with their cards; nothing here suggests they work yet.
+ * - Signed in, also "Blocked riders", opening the blocked-riders panel (44). The row reads
+ *   nothing itself, so opening settings never sends a request of its own.
+ *
+ * Notification permission (NOTIFICATION-001-B) joins this screen with its card; nothing here
+ * suggests it works yet.
  */
-export function SettingsScreen({ onBack, onSignIn, onSignedOut, signOutOutcome }: SettingsScreenProps) {
+export function SettingsScreen({
+  onBack,
+  onSignIn,
+  onOpenBlockedRiders,
+  onSignedOut,
+  signOutOutcome,
+}: SettingsScreenProps) {
   const session = useSessionController();
   const state = useSessionState();
   const location = useLocationState();
@@ -130,6 +141,19 @@ export function SettingsScreen({ onBack, onSignIn, onSignedOut, signOutOutcome }
           <AppText color="muted">{describeLocationSetting(location)}</AppText>
         </View>
 
+        {state.status === 'signed-in' && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Blocked riders"
+            accessibilityHint="Shows the riders you’ve blocked, to unblock them."
+            onPress={onOpenBlockedRiders}
+            style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+          >
+            <AppText variant="label">Blocked riders</AppText>
+            <AppText color="muted">See and unblock riders you’ve blocked</AppText>
+          </Pressable>
+        )}
+
         {demo && (
           <Notice message="Along is a placeholder name. This build uses synthetic riders and simulated sign-in." />
         )}
@@ -153,6 +177,9 @@ export function SettingsScreen({ onBack, onSignIn, onSignedOut, signOutOutcome }
 }
 
 const styles = StyleSheet.create({
+  pressed: {
+    opacity: 0.8,
+  },
   content: {
     gap: spacing.lg,
   },

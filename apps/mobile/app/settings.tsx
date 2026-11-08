@@ -13,6 +13,7 @@ export default function SettingsRoute() {
     <SettingsScreen
       onBack={() => (router.canGoBack() ? router.back() : router.dismissTo('/'))}
       onSignIn={() => router.push('/auth/phone')}
+      onOpenBlockedRiders={() => router.push('/blocked-riders')}
       onSignedOut={(outcome) =>
         // Rebuilds the root stack as the map with settings on top, so no screen that showed the
         // rider's private data stays beneath.

@@ -2944,3 +2944,28 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** `ReportSheet` (states, retry identity, privacy), `ReportFailure`/`describeReportError`, `toReportDetails`, `sameReport`, `MemberMenu`, `GroupScreen` members note.
 - **Remaining/next:** SAFETY-001-C or NOTIFICATION-001-A with the user's go-ahead; the native pass (sixteen cards).
 - **Ownership:** Released; no active task.
+
+## 2026-11-08 — SAFETY-001-C: Block confirmation and blocked riders
+
+- **Actor/session:** Claude Code / safety-001-c.
+- **Status:** implemented; `Paused` for its native check (next native pass). Parent SAFETY-001 `Paused` (A completed; B and C native checks pending). Ownership released.
+- **Working copy:** `main` at `b62f96e` (SAFETY-001-B); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start SAFETY-001-C (blocking UI)": enable "Block …" in `MemberMenu`, add "Block this rider too" to the report receipt (42), build the blocked-riders list with unblock (designs 43, 44, 40). The user authorized starting it while SAFETY-001-B's native check is pending. Acceptance: correct two-person/surviving copy; clear access; paged/empty/error list; unblock never restores history.
+- **Changes:**
+  - New `src/features/safety/BlockSheet.tsx` (43 as `ConfirmAction` content; operation ID fixed at the first confirmation; `user_blocked`), `blockFlow.ts` (`describeBlockConsequences`, `describeBlockError`), `blockCache.ts` (`applyBlockLeave`, `refreshAfterBlockChange`), `BlockedRidersScreen.tsx` (44).
+  - New route `app/blocked-riders.tsx`; `app/settings.tsx` and `SettingsScreen.tsx`: a signed-in "Blocked riders" row.
+  - `src/data/queries.ts`: `BLOCK_PAGE_SIZE` (20), `blockListQuery` (infinite, `nextCursor`).
+  - `MemberMenu.tsx`: "Block …" enabled through `onBlock`; the "not available" note removed. `ReportSheet.tsx`: optional `onBlock` shows "Block this rider too" on the receipt.
+  - `GroupScreen.tsx`, `ChatScreen.tsx`: `block` sheet (with whether it came from a report, which hides "Report this rider"); after a leave the screen returns to the map, otherwise "You blocked …"; `reporting` renamed `sheetPending` for both sheets.
+  - Tests: new `tests/blockFlow.test.tsx` (11); `tests/groupScreen.test.tsx` expects an enabled "Block Aida".
+- **Decisions:**
+  - The settings row shows no count. A count needs a block-list read whenever settings opens; it consumed the demo controls' queued failure meant for sign-out (`tests/settings.test.tsx`), and design 40's count is not essential.
+  - Unblock has no confirmation (idempotent; blocking again undoes it). A failed unblock stays on its row.
+  - A block whose answer is lost after it landed: the source's `access.revoked` ends access (37) and the list shows the block; an unknown outcome while the sheet stays keeps the operation ID.
+  - From the receipt the confirmation omits "Report this rider".
+  - The `+4477009004nn` test numbers were not needed: no test signs in another rider.
+- **Checks:** with Node 24.17.0, `pnpm typecheck` and `pnpm lint` passed; `npx jest` in `apps/mobile` (43 suites, 605 tests) passed. Prettier (`--single-quote --print-width=120`) clean on new and changed files. **Not run:** native checks on both platforms (DEVELOPMENT, block check) — pending, not passed. Screen readers waived.
+- **Docs:** PRODUCT (block flow, route), ARCHITECTURE, DEVELOPMENT (tests, 605; block check; group check's menu), api/authentication.md (settings variants), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line, SAFETY-001 row), AI_CONTEXT.
+- **JSDoc:** `BlockSheet` (states, retry identity, privacy), `describeBlockConsequences`, `BlockFailure`/`describeBlockError`, `applyBlockLeave`, `refreshAfterBlockChange`, `blockListQuery`, `BlockedRidersScreen`, `MemberMenu`, `ReportSheet.onBlock`, `GroupScreen`/`ChatScreen` notes, `SettingsScreen`.
+- **Remaining/next:** NOTIFICATION-001-A with the user's go-ahead, or the native pass (seventeen cards), which would complete SAFETY-001.
+- **Ownership:** Released; no active task.

@@ -105,3 +105,26 @@ export function chatHistoryQuery(dataSource: AppDataSource, viewer: SignedInView
     getNextPageParam: (page) => page.olderCursor ?? undefined,
   });
 }
+
+/** How many blocked riders each block-list page asks for (at most `SAFETY_POLICY.maxBlockListPageSize`). */
+export const BLOCK_PAGE_SIZE = 20;
+
+/**
+ * The viewer's block list as Query pages (`GET /me/blocks`), newest block first, each next page
+ * read with the previous page's `nextCursor`. A block or unblock shifts later pages, so both
+ * invalidate the key, which reads the pages again from the first.
+ */
+export function blockListQuery(dataSource: AppDataSource, viewer: SignedInViewer) {
+  return infiniteQueryOptions({
+    queryKey: queryKeys.blockList(viewer),
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam, signal }) =>
+      withDataErrors(
+        dataSource.safety.listBlocks(
+          pageParam === null ? { limit: BLOCK_PAGE_SIZE } : { cursor: pageParam, limit: BLOCK_PAGE_SIZE },
+          { signal },
+        ),
+      ),
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
+  });
+}

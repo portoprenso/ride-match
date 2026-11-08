@@ -37,6 +37,7 @@ import { useClock } from '../discovery/useClock';
 import { describeClosure } from '../groups/groupLifecycle';
 import { MeetingPointSheet } from '../groups/MeetingPointSheet';
 import { MemberMenu } from '../groups/MemberMenu';
+import { BlockSheet } from '../safety/BlockSheet';
 import { ReportSheet } from '../safety/ReportSheet';
 import {
   buildTimeline,
@@ -61,6 +62,7 @@ type ChatScreenProps = {
 type ChatSheet =
   | { kind: 'member'; member: GroupMemberDto; messageId: string }
   | { kind: 'report'; member: GroupMemberDto; messageId: string }
+  | { kind: 'block'; member: GroupMemberDto; messageId: string; reported: boolean }
   | { kind: 'meeting'; openedId: string }
   | null;
 
@@ -93,6 +95,9 @@ type ChatSheet =
  *   record only that a send was pressed and confirmed, never the text.
  * - **Closed groups** (36): read-only, with the closure's reason and the one-hour retention; no
  *   composer, and unsent messages can no longer be retried.
+ * - **Report and block** from a member's menu (`ReportSheet` with the message as context,
+ *   `BlockSheet`). Blocking a member of the live group leaves it in the same operation and
+ *   returns to the map; in a closed chat the block changes nothing there and the screen says so.
  *
  * Message text never reaches a log, analytics or a notification.
  */
@@ -120,10 +125,13 @@ export function ChatScreen({ groupId, onBack, onGoHome }: ChatScreenProps) {
   const [outgoing, setOutgoing] = useState<OutgoingMessage[]>([]);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [sheet, setSheet] = useState<ChatSheet>(null);
-  const [reporting, setReporting] = useState(false);
+  // A report or block on its way: the sheet stays until the source answers.
+  const [sheetPending, setSheetPending] = useState(false);
+  // Said after a block that left no group (a closed chat): the history stays as it was.
+  const [blockedNotice, setBlockedNotice] = useState<string | null>(null);
   const closeSheet = useCallback(() => {
     setSheet(null);
-    setReporting(false);
+    setSheetPending(false);
   }, []);
 
   // Access ends: the source refused, or a closed group's history ran out on the device clock.
@@ -325,6 +333,11 @@ export function ChatScreen({ groupId, onBack, onGoHome }: ChatScreenProps) {
           </AppText>
         </View>
       ) : null}
+      {blockedNotice === null ? null : (
+        <View accessibilityLiveRegion="polite">
+          <Notice message={blockedNotice} />
+        </View>
+      )}
       <ScrollView
         ref={scroller}
         style={styles.list}
@@ -428,18 +441,34 @@ export function ChatScreen({ groupId, onBack, onGoHome }: ChatScreenProps) {
           </View>
         ) : null}
       </ScrollView>
-      <SheetHost open={sheet !== null} onDismiss={closeSheet} dismissible={!reporting}>
+      <SheetHost open={sheet !== null} onDismiss={closeSheet} dismissible={!sheetPending}>
         {sheet?.kind === 'member' ? (
           <MemberMenu
             member={sheet.member}
             onReport={() => setSheet({ ...sheet, kind: 'report' })}
+            onBlock={() => setSheet({ ...sheet, kind: 'block', reported: false })}
             onClose={() => setSheet(null)}
           />
         ) : sheet?.kind === 'report' ? (
           <ReportSheet
             target={sheet.member.user}
             context={{ groupId: group.id, messageId: sheet.messageId }}
-            onPendingChange={setReporting}
+            onPendingChange={setSheetPending}
+            onClose={closeSheet}
+            onBlock={() => setSheet({ ...sheet, kind: 'block', reported: true })}
+          />
+        ) : sheet?.kind === 'block' && member !== null ? (
+          <BlockSheet
+            viewer={member}
+            target={sheet.member.user}
+            group={group}
+            onPendingChange={setSheetPending}
+            onReport={sheet.reported ? undefined : () => setSheet({ ...sheet, kind: 'report' })}
+            onBlocked={(result) => {
+              closeSheet();
+              if (result.leftGroup !== null) onGoHome();
+              else setBlockedNotice(`You blocked ${sheet.member.user.displayName}.`);
+            }}
             onClose={closeSheet}
           />
         ) : sheet?.kind === 'meeting' ? (

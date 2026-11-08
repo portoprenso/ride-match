@@ -28,6 +28,7 @@ One account occupies one seat. Multi-seat bookings are outside the MVP. Bishkek-
 | `/groups/[groupId]` | Member-only group detail |
 | `/groups/[groupId]/chat` | Member-only full-screen chat |
 | `/settings` | Minimal session, permission, and blocked-user controls |
+| `/blocked-riders` | The signed-in rider's blocked riders, with unblock (SAFETY-001-C) |
 | `/dev/scenarios` | Development/preview mock builds only |
 
 Current shell (MOBILE-001-D/E): home has a temporary, always-visible “Sign in” button that opens inert `/auth/phone` and `/auth/otp` placeholders in a modal. They collect nothing and never sign anyone in. AUTH-001 replaces that entry with protected-action gating. The group route is real since GROUP-002-B and the group chat route since CHAT-001-B; for anyone who is not a member, either shows only an unavailable message and a “Go to map” action. `/dev/scenarios` holds the demo controls in development and preview builds on the mock data source, reached from home's Demo badge, and an unavailable state in production builds, without redirecting (MOCK-001-C; see [MOCK_SCENARIOS](MOCK_SCENARIOS.md#scenario-controls)). Since AUTH-001-D `/settings` is real, opened from home's Settings button: the session (sign in, or sign out after a confirmation that names what it does not do), the location permission summary and the demo label; see [authentication](api/authentication.md#implemented-settings-and-sign-out-auth-001-d).
@@ -164,7 +165,7 @@ Published request origins do not automatically move with the device. Exact input
 | Taxi | Review pickup/destination -> Open Yandex Go -> external app or fallback |
 | Leave | Confirm -> membership removed -> private cache cleared -> map/search-again |
 | Report | Reason and optional bounded details -> submit -> receipt (SAFETY-001-B: from a member's menu in the group or chat; an unknown outcome keeps the draft and retries the same report) |
-| Block | Explain effect -> block and leave shared group -> filter future pairing |
+| Block | Explain effect -> block and leave shared group -> filter future pairing (SAFETY-001-C: from a member's menu in the group or chat, or a report receipt; blocked riders listed and unblocked from settings, without restoring membership or chat) |
 
 Authentication must not block browsing. Gate creation, joining, and sending, and also authenticate other private mutations such as reporting. Dismissing authentication returns to browsing. Preserve the intended draft/target, revalidate it after sign-in, and require the final create/join confirmation. Restore unsent chat text without sending it automatically.
 

@@ -33,6 +33,7 @@ import { ActionFooter } from '../../ui/ActionFooter';
 import { useViewer } from '../auth/AuthSessionProvider';
 import { openTaxi, openTaxiWebsite } from '../../platform/taxi/openTaxi';
 import { useClock } from '../discovery/useClock';
+import { BlockSheet } from '../safety/BlockSheet';
 import { ReportSheet } from '../safety/ReportSheet';
 import {
   CHANGE_LABELS,
@@ -124,13 +125,14 @@ type GroupScreenProps = {
 };
 
 /**
- * The one sheet the group screen opens: a member's menu, the meeting point, a leave or cancel
- * confirmation, or the taxi review with whether its last opening failed.
+ * The one sheet the group screen opens: a member's menu, a report or block of that member, the
+ * meeting point, a leave or cancel confirmation, or the taxi review with whether its last opening failed.
  */
 type GroupSheet =
   | { kind: 'member'; member: GroupMemberDto }
   | { kind: 'taxi'; review: TaxiReview; failed: boolean }
   | { kind: 'report'; member: GroupMemberDto }
+  | { kind: 'block'; member: GroupMemberDto; reported: boolean }
   | { kind: 'leave' }
   | { kind: 'cancel' }
   | { kind: 'meeting'; openedId: string }
@@ -147,8 +149,10 @@ type GroupSheet =
  *   elsewhere, or the history expired), the group's private reads are removed and the screen says
  *   so (37): a late or denied answer never shows an older copy.
  * - **Members:** in join order with their role; the viewer is "You". Each other member has a menu
- *   that names that member, so a report (`ReportSheet`, with this group as context) or a later
- *   block can never fall on the wrong person. When
+ *   that names that member, so a report (`ReportSheet`, with this group as context) or a block
+ *   (`BlockSheet`) can never fall on the wrong person. Blocking a member of this live group also
+ *   leaves it, in the same operation: the group's private reads go at once and the screen returns
+ *   to the map, as for a leave. The receipt of a report offers the block too (42). When
  *   the viewer becomes coordinator because someone left, the screen says so (35).
  * - **Controls by role and status** (`groupControls`): the coordinator marks the group ready (only
  *   with a meeting point), reopens, completes or cancels (51, confirmed first); everyone may leave
@@ -190,10 +194,11 @@ export function GroupScreen({ groupId, onBack, onGoHome, onOpenChat }: GroupScre
   const demo = useDemoSignIn() !== null;
   const [sheet, setSheet] = useState<GroupSheet>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [reporting, setReporting] = useState(false);
+  // A report or block on its way: the sheet stays until the source answers.
+  const [sheetPending, setSheetPending] = useState(false);
   const closeSheet = useCallback(() => {
     setSheet(null);
-    setReporting(false);
+    setSheetPending(false);
   }, []);
 
   // Access ends: drop the group's private data, so nothing older can show again.
@@ -414,13 +419,29 @@ export function GroupScreen({ groupId, onBack, onGoHome, onOpenChat }: GroupScre
       <MemberMenu
         member={sheet.member}
         onReport={() => setSheet({ kind: 'report', member: sheet.member })}
+        onBlock={() => setSheet({ kind: 'block', member: sheet.member, reported: false })}
         onClose={() => setSheet(null)}
       />
     ) : sheet?.kind === 'report' ? (
       <ReportSheet
         target={sheet.member.user}
         context={{ groupId: group.id, messageId: null }}
-        onPendingChange={setReporting}
+        onPendingChange={setSheetPending}
+        onClose={closeSheet}
+        onBlock={() => setSheet({ kind: 'block', member: sheet.member, reported: true })}
+      />
+    ) : sheet?.kind === 'block' ? (
+      <BlockSheet
+        viewer={member}
+        target={sheet.member.user}
+        group={group}
+        onPendingChange={setSheetPending}
+        onReport={sheet.reported ? undefined : () => setSheet({ kind: 'report', member: sheet.member })}
+        onBlocked={(result) => {
+          closeSheet();
+          if (result.leftGroup !== null) onGoHome();
+          else setNotice(`You blocked ${sheet.member.user.displayName}.`);
+        }}
         onClose={closeSheet}
       />
     ) : sheet?.kind === 'meeting' ? (
@@ -480,7 +501,7 @@ export function GroupScreen({ groupId, onBack, onGoHome, onOpenChat }: GroupScre
     <SheetHost
       open={sheet !== null}
       onDismiss={closeSheet}
-      dismissible={!leave.isPending && !change.isPending && !taxiOpening && !reporting}
+      dismissible={!leave.isPending && !change.isPending && !taxiOpening && !sheetPending}
     >
       {sheetContent}
     </SheetHost>

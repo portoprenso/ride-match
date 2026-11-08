@@ -32,6 +32,8 @@ type ReportSheetProps = {
   onPendingChange: (pending: boolean) => void;
   /** Closes the sheet: after the receipt, or when the reporter cancels. */
   onClose: () => void;
+  /** Offers "Block this rider too" on the receipt (42), opening the block confirmation. */
+  onBlock?: () => void;
 };
 
 /**
@@ -49,9 +51,9 @@ type ReportSheetProps = {
  *   content is a new report with a new ID.
  * - **Refused:** the source rejected it, so no report exists; the form says why and keeps the draft.
  *
- * Reporting does not block anyone.
+ * Reporting does not block anyone; the receipt only offers to, through `onBlock`.
  */
-export function ReportSheet({ target, context, onPendingChange, onClose }: ReportSheetProps) {
+export function ReportSheet({ target, context, onPendingChange, onClose, onBlock }: ReportSheetProps) {
   const dataSource = useDataSource();
   const analytics = useAnalytics();
   const [reason, setReason] = useState<ReportReason | null>(null);
@@ -121,6 +123,7 @@ export function ReportSheet({ target, context, onPendingChange, onClose }: Repor
           <AppText color="muted">Demo receipt: {submit.data.id}</AppText>
         </View>
         <Notice message="This confirms mock acceptance only. It does not mean a moderation decision was made." />
+        {onBlock === undefined ? null : <Button label="Block this rider too" variant="secondary" onPress={onBlock} />}
       </SheetContent>
     );
   }

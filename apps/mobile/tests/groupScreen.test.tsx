@@ -62,7 +62,7 @@ describe('the group screen', () => {
 
     expect(screen.getByRole('header', { name: 'Aida' })).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Report Aida' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Block Aida' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Block Aida' })).toBeEnabled();
     await press('Close');
     expect(screen.queryByRole('button', { name: 'Report Aida' })).not.toBeOnTheScreen();
   });
