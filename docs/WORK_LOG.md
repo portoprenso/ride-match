@@ -2769,3 +2769,23 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** the module's update policy, each supply/replace/withdraw function, `walkingMinutes`, `toRideGroupDto`'s viewer, `scenarioOptions`.
 - **Remaining/next:** MEETING-001-B (sheet and map landmark), CHAT-001-A, or the native pass.
 - **Ownership:** Released; no active task.
+
+## 2026-11-08 — MEETING-001-B: Meeting point sheet and readiness integration
+
+- **Actor/session:** Claude Code / meeting-001-b.
+- **Status:** implemented; `Paused` for its native check (next native pass). Parent MEETING-001 `Paused`. Ownership released.
+- **Working copy:** `main` at `190db69` (MEETING-001-A); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start MEETING-001-B": the members-only meeting sheet on a native map and readiness integration (designs 15, 33; details in 16/49). Prerequisite MAP-001 is paused for its native check; the user's explicit request is taken as the go-ahead. Acceptance: correct landmark/estimate; return never mutates status; point change invalidates taxi review; native sheet/map check.
+- **Changes:**
+  - New `src/features/groups/MeetingPointSheet.tsx` (`MeetingPointSheet`, `describeWalk`).
+  - `GroupScreen.tsx`: point row with estimate and "View meeting point"; 33's waiting state with "Refresh group"; readiness reason text; the sheet as a fourth kind in the one host; notices for a suggested, replaced or withdrawn point (the seen state now also tracks point ID and status).
+  - Tests: new `tests/meetingPoint.test.tsx` (5); `appRider` and `coordinatedGroup` moved into `tests/helpers/groupFlow.ts`; `tests/groupLifecycle.test.tsx` updated for the wording.
+- **Decisions:**
+  - The map is a plain `MapView` inside the sheet, keyed by the point's ID, flat and without the Android toolbar; without a map provider the sheet shows the text only.
+  - "Point change invalidates taxi review": there is no taxi review yet; the rule (review by point ID, start over on change) is recorded in ARCHITECTURE and the plan for TAXI-001. The source already returns a ready group to forming on a change, and the screen says so.
+  - The estimate is shown as the source supplied it, labelled "Approximate demo estimate"; a value of 0 reads "About 1 min".
+- **Checks:** `pnpm typecheck`, `pnpm lint`, `npx jest` in `apps/mobile` (36 suites, 529 tests) passed; Prettier clean on the new and changed files. **Not run:** native builds or device checks (DEVELOPMENT's meeting point check: the map inside the modal sheet on both platforms is the main risk). Screen readers waived.
+- **Docs:** PRODUCT (meeting point view), ARCHITECTURE, DEVELOPMENT (tests, 529; meeting point check), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line, MEETING-001 row), AI_CONTEXT.
+- **JSDoc:** `MeetingPointSheet` (no route, return changes nothing, replaced and withdrawn states), `describeWalk`, `GroupScreen`'s meeting point section and taxi rule.
+- **Remaining/next:** CHAT-001-A or TAXI-001-A with the user's go-ahead; the native pass.
+- **Ownership:** Released; no active task.

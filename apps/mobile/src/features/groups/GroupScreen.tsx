@@ -39,6 +39,7 @@ import {
   groupControls,
   type StatusChange,
 } from './groupLifecycle';
+import { describeWalk, MeetingPointSheet } from './MeetingPointSheet';
 
 const SEATS_IN_WORDS = ['No', 'One', 'Two', 'Three'] as const;
 
@@ -117,8 +118,13 @@ type GroupScreenProps = {
   onOpenChat: (groupId: string) => void;
 };
 
-/** The one sheet the group screen opens: a member's menu, or a leave or cancel confirmation. */
-type GroupSheet = { kind: 'member'; member: GroupMemberDto } | { kind: 'leave' } | { kind: 'cancel' } | null;
+/** The one sheet the group screen opens: a member's menu, the meeting point, or a leave or cancel confirmation. */
+type GroupSheet =
+  | { kind: 'member'; member: GroupMemberDto }
+  | { kind: 'leave' }
+  | { kind: 'cancel' }
+  | { kind: 'meeting'; openedId: string }
+  | null;
 
 /**
  * The group route (designs 13, 16, 18, 32, 34, 35, 37, 49, 51): the member-only group, read from
@@ -143,7 +149,13 @@ type GroupSheet = { kind: 'member'; member: GroupMemberDto } | { kind: 'leave' }
  * - **Closed** (18): the reason, when it closed, and that history stays read-only for an hour; no
  *   action but going back.
  *
- * The meeting point's sheet is MEETING-001-B's; the taxi review TAXI-001's.
+ * - **Meeting point** (15, 33): its place and the viewer's supplied walking estimate, "View
+ *   meeting point" for the member-only map sheet (`MeetingPointSheet`), or, while there is none,
+ *   that one is coming, with "Refresh group". A suggested, replaced or withdrawn point is
+ *   announced; a replaced point never keeps an earlier readiness (the source reopens the group).
+ *
+ * The taxi review is TAXI-001's; it must review the point it shows and start over when the
+ * point's ID changes.
  */
 export function GroupScreen({ groupId, onBack, onGoHome, onOpenChat }: GroupScreenProps) {
   const dataSource = useDataSource();
@@ -173,13 +185,39 @@ export function GroupScreen({ groupId, onBack, onGoHome, onOpenChat }: GroupScre
     queryClient.removeQueries({ queryKey: queryKeys.group(member, groupId) });
   }, [lostAccess, member, groupId, queryClient]);
 
-  // The viewer became coordinator, or a member left, while watching (35).
+  // While watching: a member left, the viewer became coordinator (35), or the source suggested,
+  // replaced or withdrew the meeting point (which also returns a ready group to forming).
   const group = lostAccess ? undefined : query.data;
-  const [seen, setSeen] = useState<{ coordinatorId: string; members: number } | null>(null);
+  const [seen, setSeen] = useState<{
+    coordinatorId: string;
+    members: number;
+    pointId: string | null;
+    status: string;
+  } | null>(null);
   if (group !== undefined && member !== null) {
-    const current = { coordinatorId: group.coordinatorId, members: group.members.length };
-    if (seen === null || seen.coordinatorId !== current.coordinatorId || seen.members !== current.members) {
-      if (seen !== null && current.members < seen.members) {
+    const current = {
+      coordinatorId: group.coordinatorId,
+      members: group.members.length,
+      pointId: group.meetingPoint?.id ?? null,
+      status: group.status,
+    };
+    if (
+      seen === null ||
+      seen.coordinatorId !== current.coordinatorId ||
+      seen.members !== current.members ||
+      seen.pointId !== current.pointId ||
+      seen.status !== current.status
+    ) {
+      if (seen !== null && current.pointId !== seen.pointId) {
+        const again = seen.status === 'ready' && current.status === 'forming' ? ' The group is forming again.' : '';
+        setNotice(
+          current.pointId === null
+            ? `The meeting point was withdrawn.${again}`
+            : seen.pointId === null
+              ? 'A meeting point was suggested.'
+              : `The meeting point changed. Check it before the group is marked ready.${again}`,
+        );
+      } else if (seen !== null && current.members < seen.members) {
         const role =
           current.coordinatorId === member.userId && seen.coordinatorId !== member.userId
             ? ' You’re now the coordinator.'
@@ -301,6 +339,17 @@ export function GroupScreen({ groupId, onBack, onGoHome, onOpenChat }: GroupScre
   const sheetContent =
     sheet?.kind === 'member' ? (
       <MemberMenu member={sheet.member} onClose={() => setSheet(null)} />
+    ) : sheet?.kind === 'meeting' ? (
+      <MeetingPointSheet
+        point={group.meetingPoint}
+        openedId={sheet.openedId}
+        onOpenChat={() => {
+          // The sheet closes before another route opens over it (SheetHost).
+          setSheet(null);
+          onOpenChat(group.id);
+        }}
+        onReturn={() => setSheet(null)}
+      />
     ) : sheet?.kind === 'leave' ? (
       <ConfirmAction
         title="Leave this group?"
@@ -423,13 +472,34 @@ export function GroupScreen({ groupId, onBack, onGoHome, onOpenChat }: GroupScre
         )}
       </View>
       {group.meetingPoint === null ? (
-        <Notice message="No meeting point yet. A suggested point appears here when it’s ready." />
+        <View style={styles.row}>
+          <AppText variant="label">A meeting point is coming.</AppText>
+          <AppText variant="small" color="muted">
+            We haven’t received a suggested shared place yet.
+          </AppText>
+          <Button
+            label="Refresh group"
+            variant="secondary"
+            busy={query.isFetching}
+            onPress={() => void query.refetch()}
+          />
+        </View>
       ) : (
         <View style={styles.row}>
           <AppText variant="label">{group.meetingPoint.label}</AppText>
           <AppText variant="small" color="muted">
-            {group.status === 'ready' ? 'Agreed shared pickup' : 'Suggested meeting point'}
+            {[
+              group.status === 'ready' ? 'Agreed shared pickup' : 'Suggested meeting point',
+              describeWalk(group.meetingPoint),
+            ]
+              .filter(Boolean)
+              .join(' · ')}
           </AppText>
+          <Button
+            label="View meeting point"
+            variant="secondary"
+            onPress={() => group.meetingPoint && setSheet({ kind: 'meeting', openedId: group.meetingPoint.id })}
+          />
         </View>
       )}
       <AppText color="muted">{summary.nextStep}</AppText>
@@ -449,7 +519,7 @@ export function GroupScreen({ groupId, onBack, onGoHome, onOpenChat }: GroupScre
         ) : null}
         {controls.needsPoint ? (
           <AppText variant="small" color="muted">
-            A meeting point is needed before the group can be ready.
+            Readiness needs at least two people and a shared meeting point. A full group alone is not enough.
           </AppText>
         ) : null}
         {controls.changes.includes('forming') ? (

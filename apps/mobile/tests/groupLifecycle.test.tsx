@@ -3,16 +3,16 @@ import { router } from 'expo-router';
 import type { RideGroupDto } from '@ride-match/contracts';
 
 import { leaveGroup } from '../src/data/mock/groups';
-import type { Simulator } from '../src/data/mock/simulator';
-import type { MockWorld } from '../src/data/mock/world';
 import { DataError } from '../src/data/errors';
 import { describeActionError, describeClosure, groupControls } from '../src/features/groups/groupLifecycle';
 import {
   ANSWER_MS,
   actAs,
   anotherRider,
+  appRider,
   captureSimulator,
   confirmJoiningAida,
+  coordinatedGroup,
   recordAnalytics,
   withActiveRequest,
 } from './helpers/groupFlow';
@@ -20,39 +20,6 @@ import { press, pressLast, wait } from './helpers/locationDevice';
 import { flushTimersAndRestore } from './helpers/renderApp';
 
 const LEAVE_ID = '00000000-0000-4000-8000-000000000700';
-
-/** The app rider's user ID: the only demo account with a live request when it is called. */
-function appRider(simulator: Simulator<MockWorld>) {
-  const demo = [...simulator.state.users.values()].filter((user) => user.displayName === 'Demo rider 123');
-  return demo[0]!.id;
-}
-
-/** The app rider coordinates: another rider joins their ride, then they open the group. */
-async function coordinatedGroup(options: { meetingPoint: boolean }) {
-  const captured = captureSimulator();
-  await withActiveRequest();
-  const simulator = captured.simulator!;
-  const mine = [...simulator.state.rides.values()].find(
-    (ride) => ride.status === 'active' && ride.userId === appRider(simulator),
-  )!;
-  const joiner = await anotherRider(simulator, 31);
-  joiner.takeSeat({ kind: 'ride', id: mine.id });
-  await wait(2 * ANSWER_MS);
-  const group = simulator.state.groups.get(simulator.state.rides.get(mine.id)!.groupId!)!;
-  if (options.meetingPoint) {
-    // The source supplies a point (MEETING-001-A); the test sets the state it would reach.
-    group.meetingPoint = {
-      id: 'meeting_test',
-      label: 'Synthetic corner',
-      coordinates: { latitude: 42.87, longitude: 74.6 },
-    };
-    group.version += 1;
-  }
-  await press('Open my group');
-  await wait(ANSWER_MS);
-  expect(screen.getByRole('header', { name: 'Your group · coordinator' })).toBeOnTheScreen();
-  return { simulator, group, joiner };
-}
 
 describe('the coordinator’s controls', () => {
   afterEach(async () => {
@@ -65,7 +32,11 @@ describe('the coordinator’s controls', () => {
     await coordinatedGroup({ meetingPoint: false });
 
     expect(screen.getByRole('button', { name: 'Mark group ready' })).toBeDisabled();
-    expect(screen.getByText('A meeting point is needed before the group can be ready.')).toBeOnTheScreen();
+    expect(
+      screen.getByText(
+        'Readiness needs at least two people and a shared meeting point. A full group alone is not enough.',
+      ),
+    ).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Cancel group' })).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Leave group' })).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'Mark group complete' })).not.toBeOnTheScreen();
@@ -79,7 +50,7 @@ describe('the coordinator’s controls', () => {
     await wait(ANSWER_MS);
     expect(screen.getByText('Ready · 2/4 people')).toBeOnTheScreen();
     expect(screen.getByRole('header', { name: 'Ready to head out.' })).toBeOnTheScreen();
-    expect(screen.getByText('Agreed shared pickup')).toBeOnTheScreen();
+    expect(screen.getByText(/^Agreed shared pickup/)).toBeOnTheScreen();
     expect(group.status).toBe('ready');
 
     await press('Reopen group for joining');

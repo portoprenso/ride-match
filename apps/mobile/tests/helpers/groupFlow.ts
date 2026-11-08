@@ -163,3 +163,36 @@ export async function actAs(simulator: Simulator<MockWorld>, userId: string, pho
       }),
   };
 }
+
+/** The app rider's user ID: the only demo account with a live request when it is called. */
+export function appRider(simulator: Simulator<MockWorld>) {
+  const demo = [...simulator.state.users.values()].filter((user) => user.displayName === 'Demo rider 123');
+  return demo[0]!.id;
+}
+
+/** The app rider coordinates: another rider joins their ride, then they open the group. */
+export async function coordinatedGroup(options: { meetingPoint: boolean }) {
+  const captured = captureSimulator();
+  await withActiveRequest();
+  const simulator = captured.simulator!;
+  const mine = [...simulator.state.rides.values()].find(
+    (ride) => ride.status === 'active' && ride.userId === appRider(simulator),
+  )!;
+  const joiner = await anotherRider(simulator, 31);
+  joiner.takeSeat({ kind: 'ride', id: mine.id });
+  await wait(2 * ANSWER_MS);
+  const group = simulator.state.groups.get(simulator.state.rides.get(mine.id)!.groupId!)!;
+  if (options.meetingPoint) {
+    // The source supplies a point (MEETING-001-A); the test sets the state it would reach.
+    group.meetingPoint = {
+      id: 'meeting_test',
+      label: 'Synthetic corner',
+      coordinates: { latitude: 42.87, longitude: 74.6 },
+    };
+    group.version += 1;
+  }
+  await press('Open my group');
+  await wait(ANSWER_MS);
+  expect(screen.getByRole('header', { name: 'Your group · coordinator' })).toBeOnTheScreen();
+  return { simulator, group, joiner };
+}
