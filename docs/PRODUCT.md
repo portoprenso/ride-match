@@ -182,7 +182,7 @@ Use one small `openTaxi(...)` boundary, initially with only Yandex Go. Prefer th
 
 Handle URL opening failure and app-absent behavior. Provide supported browser/store fallback, retry, or copyable trip information. Do not log the generated link or coordinates. A successful OS handoff does not prove native app opening, booking, payment, departure, or completion.
 
-Yandex documents route parameters and redirect behavior in its [deep-link documentation](https://yandex.ru/support/taxi-distr/en/api/deeplinks). Verify on both platforms during TAXI-001. No taxi API integration or booking telemetry is included.
+Yandex documents route parameters and redirect behavior in its [deep-link documentation](https://yandex.ru/support/taxi-distr/en/api/deeplinks). TAXI-001-A follows it (checked 2026-11-08): the `3.redirect.appmetrica.yandex.com/route` link opens Yandex Go when installed and otherwise leads to its store page, or to its website for the fallback. Verify on both platforms during TAXI-001-B. No taxi API integration or booking telemetry is included.
 
 ## Error and edge behavior
 

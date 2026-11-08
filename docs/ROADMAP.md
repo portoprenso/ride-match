@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-08. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; RIDE-001 is paused with A's mock request operations completed and B's draft and review, C's request card, cancel and expiry, and D's matches and unknown-outcome recovery implemented, their native checks pending; DESTINATION-001 is paused with A's supplied matches completed and B's destination search, selection and map emphasis implemented, its native check pending; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; MAP-002 is paused with A's discovery read and states, B's markers, clusters, list and tile notice, and C's ride and group previews and disappeared target implemented, their native checks pending; GROUP-001 is completed (A's joins, B's leave and coordinator transfer, C's status changes, expiry and terminal access); GROUP-002 is paused with A's join confirmation and conflict recovery, B's group screen and C's lifecycle controls and closed and revoked states implemented, their native checks pending; MEETING-001 is paused with A's mock meeting points completed and B's meeting point sheet and readiness integration implemented, its native check pending; CHAT-001 is paused with A's mock history and sending completed and B's chat screen and C's retry, catch-up, closure and revocation implemented, their native checks pending; all other implementation tasks are planned.**
+Last updated: 2026-11-08. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; RIDE-001 is paused with A's mock request operations completed and B's draft and review, C's request card, cancel and expiry, and D's matches and unknown-outcome recovery implemented, their native checks pending; DESTINATION-001 is paused with A's supplied matches completed and B's destination search, selection and map emphasis implemented, its native check pending; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; MAP-002 is paused with A's discovery read and states, B's markers, clusters, list and tile notice, and C's ride and group previews and disappeared target implemented, their native checks pending; GROUP-001 is completed (A's joins, B's leave and coordinator transfer, C's status changes, expiry and terminal access); GROUP-002 is paused with A's join confirmation and conflict recovery, B's group screen and C's lifecycle controls and closed and revoked states implemented, their native checks pending; MEETING-001 is paused with A's mock meeting points completed and B's meeting point sheet and readiness integration implemented, its native check pending; CHAT-001 is paused with A's mock history and sending completed and B's chat screen and C's retry, catch-up, closure and revocation implemented, their native checks pending; TAXI-001 is in progress with A's Yandex Go link, taxi boundary and review completed; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,17 @@ Last updated: 2026-11-08. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**TAXI-001-A — Completed (2026-11-08); TAXI-001 `In progress`.** Started at the user's request while MEETING-001-B's native check is pending.
+
+- **Done:**
+  - The Yandex Go link in the documented format (`3.redirect.appmetrica.yandex.com/route`, pickup and destination, store or website fallback), checked against Yandex's deep-link page.
+  - One taxi boundary, `openTaxi`/`openTaxiWebsite`: asks the OS once and reports `handed-off`, `failed` or `invalid`; never logs the link or places and touches no group.
+  - The taxi review: only a ready group, its meeting point to its destination, refused for invalid or same places; it stops being current when the point (by ID or place), destination or status changes.
+  - 570 mobile tests (12 new in `tests/taxi.test.ts`).
+- **Decisions:** no fare (`tariffClass`) or partner ID (`ref`); `lang=en`. The review lives in `features/groups`, the link and opening in `platform/taxi`. Analytics, scenario L and copyable trip details are TAXI-001-B's.
+- **Pending:** nothing for A. TAXI-001-B (sheet, fallback, refresh on return, both-platform installed/absent checks).
+- **Next available:** TAXI-001-B (needs TAXI-001-A), SAFETY-001-A, NOTIFICATION-001-A — behind paused native checks — or the native pass, which covers fourteen cards.
 
 **CHAT-001-C — Implemented (2026-11-08), native check pending; CHAT-001 `Paused` (A completed; B and C implemented).** Started at the user's request while CHAT-001-B's native check is pending.
 
@@ -612,7 +623,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | GROUP-002 | Group product flow | Paused (A, B and C implemented, native checks pending) |
 | CHAT-001 | Temporary text chat | Paused (A completed; B and C implemented, native checks pending) |
 | MEETING-001 | Meeting point and readiness | Paused (A completed; B implemented, native check pending) |
-| TAXI-001 | Yandex Go handoff | Planned |
+| TAXI-001 | Yandex Go handoff | In progress (A completed) |
 | SAFETY-001 | Block and report | Planned |
 | NOTIFICATION-001 | Local notification-driven flows | Planned |
 | QA-001 | Integrated MVP verification | Planned |

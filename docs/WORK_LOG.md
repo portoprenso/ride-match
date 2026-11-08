@@ -2857,3 +2857,21 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** `chatHistory.ts` (run invariant, outcomes, catch-up stop rules), `ChatScreen` (access, catch-up, sending, closure), `MessageRow`, `OutgoingMessage`/`TimelineEntry`, `SendFailure`, `MockWorld.chatFaults`, `sendChatMessage`'s scripted faults, `createFailedMessage`.
 - **Remaining/next:** TAXI-001-A, SAFETY-001-A or NOTIFICATION-001-A with the user's go-ahead; the native pass.
 - **Ownership:** Released; no active task.
+
+## 2026-11-08 — TAXI-001-A: Yandex Go link, taxi boundary and review
+
+- **Actor/session:** Claude Code / taxi-001-a.
+- **Status:** `Completed`. Parent TAXI-001 `In progress`. Ownership released.
+- **Working copy:** `main` at `5df706b` (CHAT-001-C); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start TAXI-001-A": the platform taxi/Yandex adapter and reviewed-parameter validation. Prerequisite MEETING-001 is paused for MEETING-001-B's native check; the user's explicit request is taken as the go-ahead. Acceptance: official link/fallback formats verified; no coordinate/URL logging or group mutation; opening/failure adapter tests.
+- **Changes:**
+  - New `src/platform/taxi/yandexGo.ts`: `buildYandexGoLink(trip, 'store' | 'website')`, `isValidTaxiTrip`, `TaxiTrip`. Format from https://yandex.ru/support/taxi-distr/en/api/deeplinks (checked 2026-11-08): `https://3.redirect.appmetrica.yandex.com/route?start-lat&start-lon&end-lat&end-lon&appmetrica_tracking_id&lang`; tracking ID `1178268795219780156` leads to the store, `25395763362139037` to the website where the app is missing. The query is built by hand, not with React Native's `URLSearchParams`.
+  - New `src/platform/taxi/openTaxi.ts`: `openTaxi` and `openTaxiWebsite` (injectable `TaxiLinking`, default `Linking`), outcomes `handed-off`, `failed`, `invalid`. The OS error (which repeats the URL) is dropped; nothing is logged.
+  - New `src/features/groups/taxiReview.ts`: `reviewTaxiTrip` (ready groups only; meeting point → destination; problems `not-ready`, `no-meeting-point`, `invalid-places`, `same-place` under `MIN_TRIP_METERS` 100), `isReviewCurrent` (same group, ready, same point ID and places, same destination place), `metersBetween`.
+  - Tests: `tests/taxi.test.ts` (12).
+- **Decisions:** no `tariffClass` or `ref`; `lang=en`. A failed open never retries itself. Analytics (`taxi_open_clicked`, `taxi_opened`), copyable trip details, scenario L and the refresh on return belong to TAXI-001-B's screen.
+- **Checks:** `pnpm typecheck`, `pnpm lint`, `npx jest` in `apps/mobile` (39 suites, 570 tests) passed; Prettier clean on the new files. **Not run:** native checks; the real installed/absent redirect behaviour on both platforms is TAXI-001-B's acceptance. Screen readers waived.
+- **Docs:** PRODUCT (Yandex boundary), ARCHITECTURE (taxi boundary), DEVELOPMENT (tests, 570), MOBILE_IMPLEMENTATION_PLAN (row, open question), ROADMAP (entry, status line, TAXI-001 row), AI_CONTEXT.
+- **JSDoc:** link format and privacy (`yandexGo.ts`), `TaxiOpenOutcome`, `openTaxi`, `openTaxiWebsite`, `TaxiReview`, `TaxiReviewProblem`, `reviewTaxiTrip`, `isReviewCurrent`.
+- **Remaining/next:** TAXI-001-B, SAFETY-001-A or NOTIFICATION-001-A with the user's go-ahead; the native pass.
+- **Ownership:** Released; no active task.
