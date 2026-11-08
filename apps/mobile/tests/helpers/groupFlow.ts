@@ -137,3 +137,29 @@ export async function anotherRider(simulator: Simulator<MockWorld>, n: number) {
     });
   }
 }
+
+/**
+ * Signs in on the same source as an existing rider (a seeded one, or the app's own demo account),
+ * so a test can act as them: `act` runs simulator work as that rider, as a task due at once.
+ * Seeded riders have no phone number, so one from Ofcom's range for fiction is linked to them.
+ */
+export async function actAs(simulator: Simulator<MockWorld>, userId: string, phoneNumber: string) {
+  simulator.state.auth.accounts.set(phoneNumber, userId);
+  const session = { accessToken: null as string | null };
+  const other = mockSource.createMockDataSource(simulator, { accessToken: () => session.accessToken });
+  const challenge = other.auth.requestOtp({ phoneNumber });
+  await wait(ANSWER_MS);
+  const verified = other.auth.verifyOtp({ challengeId: (await challenge).id, code: DEMO_OTP_CODE });
+  await wait(ANSWER_MS);
+  const token = (await verified).accessToken;
+  return {
+    act: (work: (context: Parameters<Parameters<Simulator<MockWorld>['schedule']>[1]>[0], token: string) => void) =>
+      simulator.schedule(0, (context) => {
+        try {
+          work(context, token);
+        } catch {
+          // A refusal is the rider's; the test checks the world instead.
+        }
+      }),
+  };
+}

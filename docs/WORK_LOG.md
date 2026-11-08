@@ -2724,3 +2724,26 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** `GroupScreen` (authorization by the source, live updates), `describeGroup`, `describeGroupTimes`, `MemberMenu`, `acceptGroupSubscription`, `subscribeGroup`, `readAgainCovered`, the key comment in the synchronizer, `RequestCard`'s and `MapHomeScreen`'s new props.
 - **Remaining/next:** GROUP-002-C (ready, leave, reopen, complete, cancel, revoked); the native pass.
 - **Ownership:** Released; no active task.
+
+## 2026-11-08 — GROUP-002-C: Group lifecycle, closed and revoked states
+
+- **Actor/session:** Claude Code / group-002-c.
+- **Status:** implemented; `Paused` for its native check (next native pass). Parent GROUP-002 `Paused` (A, B, C implemented, native checks pending). Ownership released.
+- **Working copy:** `main` at `623bf52` (GROUP-002-B); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "GROUP-002-C.": ready, leave, reopen, complete, cancel and revoked states (designs 16, 18, 34, 35, 37, 49, 51). Acceptance: correct role/status controls and consequences; canonical transitions; late/denied responses reveal no private content.
+- **Changes:**
+  - New `src/features/groups/groupLifecycle.ts`.
+  - `src/features/groups/GroupScreen.tsx`: status-change and leave mutations, one sheet host (member menu, leave and cancel confirmations), notices for a member leaving and a role change, ready wording, closed view, revoked view with removal of the group's private reads.
+  - Tests: new `tests/groupLifecycle.test.tsx` (9); `actAs` in `tests/helpers/groupFlow.ts`.
+- **Decisions:**
+  - "Mark group ready" is shown disabled with its reason when there is no point (screen 33's full treatment stays with MEETING-001-B).
+  - Complete has no extra confirmation (design 49 shows it as a direct action); cancel and leave do (51, 34).
+  - After leaving, the app returns to the map rather than showing 37, which is for access lost while looking (the rider chose to leave).
+  - The direct-entry denial keeps GROUP-002-B's wording; 37's wording appears only after the screen had shown the group.
+  - Taxi review and the read-only chat link are left out until TAXI-001 and CHAT-001.
+- **Test notes:** the coordinator's controls need another rider to join the app rider's ride, done through the shared simulator; Aida's leave uses `actAs`, which links a synthetic number to her account. Completing or leaving passes the answer's time in short steps to avoid the fake-timer `callAt` crash when the home card's clock unmounts (RIDE-001-C's note).
+- **Checks:** `pnpm typecheck`, `pnpm lint`, `npx jest` in `apps/mobile` (35 suites, 518 tests) passed; Prettier clean on the new and changed files. **Not run:** native builds or device checks (DEVELOPMENT's group lifecycle check). Screen readers waived.
+- **Docs:** PRODUCT (group lifecycle), ARCHITECTURE, DEVELOPMENT (tests, 518; group lifecycle check), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line, GROUP-002 row), AI_CONTEXT.
+- **JSDoc:** `GroupScreen` (access, controls, leaving, closed, revoked), `groupControls`, `describeActionError`, `describeClosure`, `MemberMenu`, `actAs`.
+- **Remaining/next:** CHAT-001-A or MEETING-001-A with the user's go-ahead; the native pass, which would complete MAP-001, MAP-002, DESTINATION-001, RIDE-001 and GROUP-002.
+- **Ownership:** Released; no active task.
