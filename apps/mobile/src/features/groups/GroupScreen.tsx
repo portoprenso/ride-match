@@ -7,7 +7,7 @@ import {
   type UpdateGroupStatusInput,
 } from '@ride-match/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Share, StyleSheet, View } from 'react-native';
 
 import { useAnalytics } from '../../analytics/AnalyticsProvider';
@@ -33,6 +33,7 @@ import { ActionFooter } from '../../ui/ActionFooter';
 import { useViewer } from '../auth/AuthSessionProvider';
 import { openTaxi, openTaxiWebsite } from '../../platform/taxi/openTaxi';
 import { useClock } from '../discovery/useClock';
+import { ReportSheet } from '../safety/ReportSheet';
 import {
   CHANGE_LABELS,
   describeActionError,
@@ -129,6 +130,7 @@ type GroupScreenProps = {
 type GroupSheet =
   | { kind: 'member'; member: GroupMemberDto }
   | { kind: 'taxi'; review: TaxiReview; failed: boolean }
+  | { kind: 'report'; member: GroupMemberDto }
   | { kind: 'leave' }
   | { kind: 'cancel' }
   | { kind: 'meeting'; openedId: string }
@@ -145,7 +147,8 @@ type GroupSheet =
  *   elsewhere, or the history expired), the group's private reads are removed and the screen says
  *   so (37): a late or denied answer never shows an older copy.
  * - **Members:** in join order with their role; the viewer is "You". Each other member has a menu
- *   that names that member, so a later report or block can never fall on the wrong person. When
+ *   that names that member, so a report (`ReportSheet`, with this group as context) or a later
+ *   block can never fall on the wrong person. When
  *   the viewer becomes coordinator because someone left, the screen says so (35).
  * - **Controls by role and status** (`groupControls`): the coordinator marks the group ready (only
  *   with a meeting point), reopens, completes or cancels (51, confirmed first); everyone may leave
@@ -187,6 +190,11 @@ export function GroupScreen({ groupId, onBack, onGoHome, onOpenChat }: GroupScre
   const demo = useDemoSignIn() !== null;
   const [sheet, setSheet] = useState<GroupSheet>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [reporting, setReporting] = useState(false);
+  const closeSheet = useCallback(() => {
+    setSheet(null);
+    setReporting(false);
+  }, []);
 
   // Access ends: drop the group's private data, so nothing older can show again.
   const lostAccess =
@@ -403,7 +411,18 @@ export function GroupScreen({ groupId, onBack, onGoHome, onOpenChat }: GroupScre
   const live = group.status === 'forming' || group.status === 'ready';
   const sheetContent =
     sheet?.kind === 'member' ? (
-      <MemberMenu member={sheet.member} onClose={() => setSheet(null)} />
+      <MemberMenu
+        member={sheet.member}
+        onReport={() => setSheet({ kind: 'report', member: sheet.member })}
+        onClose={() => setSheet(null)}
+      />
+    ) : sheet?.kind === 'report' ? (
+      <ReportSheet
+        target={sheet.member.user}
+        context={{ groupId: group.id, messageId: null }}
+        onPendingChange={setReporting}
+        onClose={closeSheet}
+      />
     ) : sheet?.kind === 'meeting' ? (
       <MeetingPointSheet
         point={group.meetingPoint}
@@ -460,8 +479,8 @@ export function GroupScreen({ groupId, onBack, onGoHome, onOpenChat }: GroupScre
   const sheetHost = (
     <SheetHost
       open={sheet !== null}
-      onDismiss={() => setSheet(null)}
-      dismissible={!leave.isPending && !change.isPending && !taxiOpening}
+      onDismiss={closeSheet}
+      dismissible={!leave.isPending && !change.isPending && !taxiOpening && !reporting}
     >
       {sheetContent}
     </SheetHost>

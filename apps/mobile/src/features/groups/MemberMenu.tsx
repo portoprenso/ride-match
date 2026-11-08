@@ -10,10 +10,19 @@ import { spacing } from '../../ui/tokens';
 
 /**
  * Another member's actions, as the content of a sheet, from the group screen's member list and
- * the chat's messages. Titled with that member, so a later report or block (SAFETY-001) can
- * never fall on the wrong person; both are disabled until then and nothing is sent.
+ * the chat's messages. Titled with that member, so a report or block can never fall on the wrong
+ * person. "Report" opens the report form for them (SAFETY-001-B); blocking arrives with
+ * SAFETY-001-C and is disabled until then, so nothing is sent.
  */
-export function MemberMenu({ member, onClose }: { member: GroupMemberDto; onClose: () => void }) {
+export function MemberMenu({
+  member,
+  onReport,
+  onClose,
+}: {
+  member: GroupMemberDto;
+  onReport: () => void;
+  onClose: () => void;
+}) {
   const name = member.user.displayName;
   return (
     <SheetContent
@@ -29,9 +38,9 @@ export function MemberMenu({ member, onClose }: { member: GroupMemberDto; onClos
         </AppText>
         <AppText color="muted">Actions for this member only.</AppText>
       </View>
-      <Button label={`Report ${name}`} variant="secondary" disabled onPress={() => undefined} />
+      <Button label={`Report ${name}`} variant="secondary" onPress={onReport} />
       <Button label={`Block ${name}`} variant="secondary" disabled onPress={() => undefined} />
-      <Notice message="Reporting and blocking aren’t available in this demo build yet. Nothing was sent." />
+      <Notice message="Blocking isn’t available in this demo build yet." />
     </SheetContent>
   );
 }

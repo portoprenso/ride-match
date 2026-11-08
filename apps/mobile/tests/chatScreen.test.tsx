@@ -240,7 +240,7 @@ describe('the group chat', () => {
     await press(/^Aida · .*Meet by the main entrance\?$/);
 
     expect(screen.getByRole('header', { name: 'Aida' })).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: 'Report Aida' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Report Aida' })).toBeEnabled();
     await press('Close');
     expect(screen.queryByRole('header', { name: 'Aida' })).not.toBeOnTheScreen();
   });

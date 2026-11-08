@@ -2921,3 +2921,26 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** `safety.ts` (module rules, each operation's check order and effects), `leaveLiveGroup`, `isHiddenFrom`/`isHiddenByBlock`/`isStillDiscoverable`, `subscribeNearby` delivery rule, `BlockRecord`/`ReportRecord`, `createSafety`, `readMatches`, `joinGroup`.
 - **Remaining/next:** SAFETY-001-B or NOTIFICATION-001-A with the user's go-ahead; the native pass.
 - **Ownership:** Released; no active task.
+
+## 2026-11-08 — SAFETY-001-B: Report form, receipt and failure recovery
+
+- **Actor/session:** Claude Code / safety-001-b.
+- **Status:** implemented; `Paused` for its native check (next native pass). Parent SAFETY-001 `Paused` (A completed). Ownership released.
+- **Working copy:** `main` at `34675b7` (SAFETY-001-A); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start SAFETY-001-B": the report form and accepted/rejected/unknown outcomes (designs 41, 42, 52). Acceptance: draft retained; receipt only after acceptance; stable retry identity; no moderation claims.
+- **Changes:**
+  - New `src/features/safety/ReportSheet.tsx` (form, receipt, not-submitted state; refusal on the form; reports pending state to the host) and `src/features/safety/reportFlow.ts` (`REPORT_REASONS`, `reasonLabel`, `toReportDetails`, `sameReport`, `describeReportError`).
+  - `MemberMenu.tsx`: "Report …" enabled through `onReport`; block still disabled, note updated.
+  - `GroupScreen.tsx`: `report` sheet with the group as context; sheet not dismissible while reporting.
+  - `ChatScreen.tsx`: the member sheet keeps the pressed message's ID; `report` sheet with the message as context.
+  - Tests: new `tests/reportFlow.test.tsx` (6); `tests/groupScreen.test.tsx` and `tests/chatScreen.test.tsx` expect an enabled "Report Aida".
+- **Decisions:**
+  - Unknown outcomes (no answer, `SERVICE_UNAVAILABLE`, anything not a known refusal) show 52 and keep the operation ID for unchanged content; edited content gets a new ID, since it is a different report.
+  - Known refusals (`VALIDATION_FAILED`, `IDEMPOTENCY_CONFLICT`, `NOT_FOUND`, `MEMBERSHIP_REQUIRED`, `HISTORY_EXPIRED`, session errors) stay on the form; no report exists.
+  - Copy says "demo report" and "mock acceptance only", as the designs do; no moderation claim.
+  - 42's "Block this rider too" and the menu's block are SAFETY-001-C's.
+- **Checks:** `pnpm typecheck`, `pnpm lint`, `npx jest` in `apps/mobile` (42 suites, 594 tests) passed; Prettier clean on the new and changed files. **Not run:** native checks (DEVELOPMENT, report check). Screen readers waived.
+- **Docs:** PRODUCT, ARCHITECTURE, DEVELOPMENT (tests, 594; report check), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line, SAFETY-001 row), AI_CONTEXT.
+- **JSDoc:** `ReportSheet` (states, retry identity, privacy), `ReportFailure`/`describeReportError`, `toReportDetails`, `sameReport`, `MemberMenu`, `GroupScreen` members note.
+- **Remaining/next:** SAFETY-001-C or NOTIFICATION-001-A with the user's go-ahead; the native pass (sixteen cards).
+- **Ownership:** Released; no active task.

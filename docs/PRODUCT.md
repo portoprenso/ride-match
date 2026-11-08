@@ -163,7 +163,7 @@ Published request origins do not automatically move with the device. Exact input
 | Meeting point | Inspect suggested shared point -> discuss in chat -> coordinator marks ready |
 | Taxi | Review pickup/destination -> Open Yandex Go -> external app or fallback |
 | Leave | Confirm -> membership removed -> private cache cleared -> map/search-again |
-| Report | Reason and optional bounded details -> submit -> receipt |
+| Report | Reason and optional bounded details -> submit -> receipt (SAFETY-001-B: from a member's menu in the group or chat; an unknown outcome keeps the draft and retries the same report) |
 | Block | Explain effect -> block and leave shared group -> filter future pairing |
 
 Authentication must not block browsing. Gate creation, joining, and sending, and also authenticate other private mutations such as reporting. Dismissing authentication returns to browsing. Preserve the intended draft/target, revalidate it after sign-in, and require the final create/join confirmation. Restore unsent chat text without sending it automatically.

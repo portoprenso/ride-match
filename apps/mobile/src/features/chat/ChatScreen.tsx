@@ -1,6 +1,6 @@
 import { CHAT_POLICY, IdSchema, type ChatMessageDto, type GroupMemberDto } from '@ride-match/contracts';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -37,6 +37,7 @@ import { useClock } from '../discovery/useClock';
 import { describeClosure } from '../groups/groupLifecycle';
 import { MeetingPointSheet } from '../groups/MeetingPointSheet';
 import { MemberMenu } from '../groups/MemberMenu';
+import { ReportSheet } from '../safety/ReportSheet';
 import {
   buildTimeline,
   describeSendError,
@@ -57,7 +58,11 @@ type ChatScreenProps = {
   onGoHome: () => void;
 };
 
-type ChatSheet = { kind: 'member'; member: GroupMemberDto } | { kind: 'meeting'; openedId: string } | null;
+type ChatSheet =
+  | { kind: 'member'; member: GroupMemberDto; messageId: string }
+  | { kind: 'report'; member: GroupMemberDto; messageId: string }
+  | { kind: 'meeting'; openedId: string }
+  | null;
 
 /**
  * The group chat route (designs 14, 36, 37, 45): the member-only messages of one group, newest at
@@ -115,6 +120,11 @@ export function ChatScreen({ groupId, onBack, onGoHome }: ChatScreenProps) {
   const [outgoing, setOutgoing] = useState<OutgoingMessage[]>([]);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [sheet, setSheet] = useState<ChatSheet>(null);
+  const [reporting, setReporting] = useState(false);
+  const closeSheet = useCallback(() => {
+    setSheet(null);
+    setReporting(false);
+  }, []);
 
   // Access ends: the source refused, or a closed group's history ran out on the device clock.
   const denied = (error: DataError | null) =>
@@ -386,7 +396,9 @@ export function ChatScreen({ groupId, onBack, onGoHome }: ChatScreenProps) {
               live={live}
               retrying={sending}
               onRetry={retry}
-              onMember={(found) => setSheet({ kind: 'member', member: found })}
+              onMember={(found) =>
+                entry.kind === 'message' && setSheet({ kind: 'member', member: found, messageId: entry.message.id })
+              }
               memberOf={memberOf}
             />
           ))}
@@ -416,9 +428,20 @@ export function ChatScreen({ groupId, onBack, onGoHome }: ChatScreenProps) {
           </View>
         ) : null}
       </ScrollView>
-      <SheetHost open={sheet !== null} onDismiss={() => setSheet(null)}>
+      <SheetHost open={sheet !== null} onDismiss={closeSheet} dismissible={!reporting}>
         {sheet?.kind === 'member' ? (
-          <MemberMenu member={sheet.member} onClose={() => setSheet(null)} />
+          <MemberMenu
+            member={sheet.member}
+            onReport={() => setSheet({ ...sheet, kind: 'report' })}
+            onClose={() => setSheet(null)}
+          />
+        ) : sheet?.kind === 'report' ? (
+          <ReportSheet
+            target={sheet.member.user}
+            context={{ groupId: group.id, messageId: sheet.messageId }}
+            onPendingChange={setReporting}
+            onClose={closeSheet}
+          />
         ) : sheet?.kind === 'meeting' ? (
           <MeetingPointSheet point={group.meetingPoint} openedId={sheet.openedId} onReturn={() => setSheet(null)} />
         ) : null}
