@@ -38,7 +38,11 @@ export function PickupPlaceSheet({ open, onClose, onConfirmed, returnFocusRef }:
   );
 }
 
-function PickupPlaceFlow({ onClose, onConfirmed }: { onClose: () => void; onConfirmed?: () => void }) {
+/**
+ * The pickup search and confirmation without its own sheet, for a flow that already has one
+ * (the request draft, RIDE-001-B), so one modal never has to open as another closes.
+ */
+export function PickupPlaceFlow({ onClose, onConfirmed }: { onClose: () => void; onConfirmed?: () => void }) {
   const { confirmPickup } = useLocationChoices();
   const [text, setText] = useState('');
   const [chosen, setChosen] = useState<PlaceDto | null>(null);

@@ -30,6 +30,8 @@ type DestinationPanelProps = {
   onClear: () => void;
   /** Opens the best match's preview and shows it on the map. */
   onInspect: (item: NearbyItemDto) => void;
+  /** Starts creating a request to this destination (RIDE-001-B); absent while one is live. */
+  onCreate?: () => void;
 };
 
 /**
@@ -37,7 +39,14 @@ type DestinationPanelProps = {
  * one, its name, a way to change or clear it, and what the source supplied for it (design 04).
  * Matches are advisory: they say nothing is reserved and that other plans stay on the map.
  */
-export function DestinationPanel({ destination, summary, onChoose, onClear, onInspect }: DestinationPanelProps) {
+export function DestinationPanel({
+  destination,
+  summary,
+  onChoose,
+  onClear,
+  onInspect,
+  onCreate,
+}: DestinationPanelProps) {
   if (destination === null) {
     return (
       <View style={styles.panel}>
@@ -60,6 +69,7 @@ export function DestinationPanel({ destination, summary, onChoose, onClear, onIn
       </AppText>
       <SummaryView summary={summary} onInspect={onInspect} />
       <View style={styles.actions}>
+        {onCreate ? <Button label="Create my ride request" onPress={onCreate} /> : null}
         <Button label="Change destination" variant="secondary" onPress={onChoose} />
         <Button label="Clear destination" variant="ghost" onPress={onClear} />
       </View>

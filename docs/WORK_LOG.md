@@ -2538,3 +2538,29 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** each operation with its error order and effects, `publicAreaFor`, `authenticate`, `viewerOf`, `toOwnRideRequestDto`, `isViewersOwn`, `acceptUserSubscription`, the adapter's subscriptions.
 - **Remaining/next:** RIDE-001-B (draft, departure, confirmation screens); GROUP-001-A is also unblocked; the native pass.
 - **Ownership:** Released; no active task.
+
+## 2026-11-07 — RIDE-001-B: Request draft, departure and review
+
+- **Actor/session:** Claude Code / ride-001-b.
+- **Status:** implemented; `Paused` for its native check (next native pass). Parent RIDE-001 `In progress`. Ownership released.
+- **Working copy:** `main` at `929f617` (RIDE-001-A); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start RIDE-001-B": the draft, departure and final confirmation (designs 06, 09) with the existing auth gate. Acceptance: Now/+5/+10; valid origin; preserved draft; repeated presses create once; useful existing-request continuation.
+- **Changes:**
+  - New `src/features/rides/`: `CreateRequestSheet.tsx` (`departure`, `pickup`, `review` steps; `ExistingRequest`), `rideDraft.ts`, `useOwnRequest.ts`, `PublishedRequestPanel.tsx`.
+  - New `src/data/operationId.ts`.
+  - `MapHomeScreen.tsx`: draft state (departure, step, map-picker return), `resolveOrigin`, the `create-request` intent and resume, the published panel, the create sheet.
+  - `DestinationPanel.tsx`: optional `onCreate` ("Create my ride request").
+  - `PickupPlaceSheet.tsx`: `PickupPlaceFlow` exported for use inside another sheet.
+  - Tests: new `tests/createRequest.test.tsx` (6).
+- **Decisions:**
+  - One sheet with steps, including the named pickup, so no modal is presented while another is dismissed (the iOS hazard noted in MAP-002-C). The sheet closes before sign-in is pushed.
+  - The draft lives in home's state; home stays mounted under the auth routes, so sign-in cannot lose it.
+  - Publish freezes `{ operationId, input }` at the first press; a retry after `network`/`SERVICE_UNAVAILABLE` resends it; an edit or a new review gets a new operation ID.
+  - A live request (read through `GET /me/ride-request`, or the source's `ACTIVE_REQUEST_EXISTS`) replaces the review with "You already have a live request"; the entry is hidden while one is live.
+  - `createOperationId` uses `crypto.randomUUID` when the runtime has it, otherwise a `Math.random` v4 UUID, which suffices for an idempotency key; no dependency added.
+  - Default departure: in 5 minutes, as design 06 shows.
+- **Checks:** `pnpm typecheck`, `pnpm lint`, `npx jest` in `apps/mobile` (29 suites, 450 tests) passed; Prettier clean on the changed files (five untouched files elsewhere in `src/features` were already unformatted and were left alone). **Not run:** native builds or device checks (DEVELOPMENT's request draft check). The unknown-outcome retry is covered by the pure `describeCreateError` test and the mock's receipt tests, not driven through the screen. Screen readers waived.
+- **Docs:** PRODUCT (creating a request), ARCHITECTURE, DEVELOPMENT (tests, 450; request draft check), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line), AI_CONTEXT.
+- **JSDoc:** the create sheet's steps and publish rules, `resolveOrigin`, `describeCreateError`, `describeDeparture`, `useOwnRequest`, `isLive`, `PublishedRequestPanel`, `createOperationId`, `PickupPlaceFlow`, the home screen's draft flow.
+- **Remaining/next:** RIDE-001-C (card, countdown, cancel, expiry, own marker); the native pass.
+- **Ownership:** Released; no active task.

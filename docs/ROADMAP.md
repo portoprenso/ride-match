@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; RIDE-001 is in progress with A's mock request operations completed; DESTINATION-001 is paused with A's supplied matches completed and B's destination search, selection and map emphasis implemented, its native check pending; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; MAP-002 is paused with A's discovery read and states, B's markers, clusters, list and tile notice, and C's ride and group previews and disappeared target implemented, their native checks pending; all other implementation tasks are planned.**
+Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; RIDE-001 is in progress with A's mock request operations completed and B's draft, departure and review implemented, its native check pending; DESTINATION-001 is paused with A's supplied matches completed and B's destination search, selection and map emphasis implemented, its native check pending; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; MAP-002 is paused with A's discovery read and states, B's markers, clusters, list and tile notice, and C's ride and group previews and disappeared target implemented, their native checks pending; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,20 @@ Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**RIDE-001-B — Implemented (2026-11-07), native check pending; RIDE-001 `In progress`.**
+
+- **Done:**
+  - With a destination, "Create my ride request" opens the draft (06): destination, pickup and Now / In 5 min / In 10 min, with the 15-minute window and the fixed-pickup note. The pickup is the one the rider confirmed, otherwise a fresh, accurate device fix; without either the sheet asks for one (on the map, or by name inside the same sheet).
+  - An anonymous rider continues to sign in; the draft stays on home, and after sign-in the review (09) opens with the same plan. Leaving sign-in returns to browsing with the draft intact. Nothing is published by signing in.
+  - "Publish my request" creates it once: the input and operation ID are fixed at the first press, presses while it runs do nothing, and a retry after no answer resends the same ID. Refusals explain what to do (stale location, outside the area, session ended). A rider who already has a live request sees it instead of a second create, and the create entry is hidden while one is live.
+  - After publishing, home says the request is published, where it heads, when it leaves and until when others can find it (minimal; RIDE-001-C adds the card).
+  - Analytics: `ride_request_create_clicked` and `ride_request_created`.
+  - 450 mobile tests (6 new).
+- **Decisions:** one sheet with steps, so no modal opens as another closes; the sheet closes before sign-in opens; operation IDs from `crypto.randomUUID` when present, otherwise a `Math.random` v4 UUID (an idempotency key, not a secret; no new dependency); the device fix's time is sent as taken (clock-offset correction waits for the HTTP adapter).
+- **Not covered here:** the request card, countdown, cancel and expiry (RIDE-001-C); the own marker; matches and unknown-outcome recovery by reading the own request (RIDE-001-D). The unknown-outcome retry is unit-tested, not driven through the app.
+- **Pending:** the native check (DEVELOPMENT, request draft check).
+- **Next available:** RIDE-001-C (active card, countdown, cancel, expiry), or the native pass.
 
 **RIDE-001-A — Completed (2026-11-07); RIDE-001 `In progress`.**
 

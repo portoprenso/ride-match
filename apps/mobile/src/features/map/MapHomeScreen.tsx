@@ -15,7 +15,7 @@ import { IconButton } from '../../ui/IconButton';
 import { MapLayout, type MapCoverage } from '../../ui/MapLayout';
 import { colors, radii, spacing } from '../../ui/tokens';
 import { HomeLocationPanel, useLocationStatus } from '../location/HomeLocation';
-import type { NearbyItemDto, PlaceDto } from '@ride-match/contracts';
+import type { DepartureOffsetMinutes, NearbyItemDto, PlaceDto } from '@ride-match/contracts';
 import { useDemoSignIn } from '../../data/DemoSignInProvider';
 import { useRequireSignIn, useResumeIntent } from '../auth/PendingIntentProvider';
 import { DestinationPanel, summarizeDestination } from '../destinations/DestinationPanel';
@@ -30,6 +30,10 @@ import { useClock } from '../discovery/useClock';
 import { useNearbyDiscovery } from '../discovery/useNearbyDiscovery';
 import { useLocationChoices } from '../location/LocationChoicesProvider';
 import { PickupPlaceSheet } from '../location/PickupPlaceSheet';
+import { CreateRequestSheet, type CreateStep } from '../rides/CreateRequestSheet';
+import { PublishedRequestPanel } from '../rides/PublishedRequestPanel';
+import { resolveOrigin } from '../rides/rideDraft';
+import { isLive, useOwnRequest } from '../rides/useOwnRequest';
 import { HomeMap } from './HomeMap';
 import { CentrePin, MapPointPanel, useMapPointPicker } from './MapPointPicker';
 import { CAMERA_ANIMATION_MS, streetRegion, useHomeCamera } from './mapCamera';
@@ -44,6 +48,10 @@ import { CAMERA_ANIMATION_MS, streetRegion, useHomeCamera } from './mapCamera';
  * a destination, discovery reads its supplied matches: matched markers stand out, the others
  * stay on the map quieter, and the sheet names the best match to inspect (screen 04). Clearing it
  * returns to general browsing; the camera never moves for a destination.
+ *
+ * With a destination, "Create my ride request" opens the request draft (screens 06 and 09,
+ * RIDE-001-B): departure, pickup, sign-in when needed (the draft stays here meanwhile), review and
+ * publish. While the rider has a live request the sheet says so and offers no second create.
  *
  * A marker, or a row of the nearby list, opens that ride or group's public preview in the sheet
  * (screens 05 and 19, MAP-002-C), with its marker highlighted. The preview reads the target again;
@@ -113,6 +121,15 @@ export function MapHomeScreen({
   const seed = snapshot?.items.find((item) => itemKey(item) === previewKey) ?? null;
   const previewState = useTargetPreview(preview, seed);
   const requireSignIn = useRequireSignIn();
+  // The request draft (RIDE-001-B): the destination above, the departure and the pickup. It stays
+  // here while the rider signs in, so nothing chosen is lost.
+  const [createStep, setCreateStep] = useState<CreateStep | null>(null);
+  const [departure, setDeparture] = useState<DepartureOffsetMinutes>(5);
+  // The map picker was opened from the draft, so confirming a point returns to it.
+  const [pickingForDraft, setPickingForDraft] = useState(false);
+  const origin = resolveOrigin(pickup, status);
+  const ownRequest = useOwnRequest();
+  const liveRequest = isLive(ownRequest) ? ownRequest : null;
   const [list, setList] = useState<NearbyListContent | null>(null);
   const now = useClock();
   const fixPoint = fix?.coordinates ?? null;
@@ -163,6 +180,12 @@ export function MapHomeScreen({
   };
   useResumeIntent('join-ride', (intent) => openPreview({ kind: 'ride', id: intent.rideId }, true));
   useResumeIntent('join-group', (intent) => openPreview({ kind: 'group', id: intent.groupId }, true));
+  /** Departure step done: an anonymous rider signs in first (the sheet closes over sign-in), then reviews. */
+  const continueToReview = () => {
+    setCreateStep(null);
+    if (requireSignIn({ kind: 'create-request' })) setCreateStep('review');
+  };
+  useResumeIntent('create-request', () => setCreateStep('review'));
 
   useFocusEffect(useCallback(() => controller.observe(), [controller]));
   useFocusEffect(useCallback(() => analytics.trackOncePerSession('map_opened'), [analytics]));
@@ -223,7 +246,10 @@ export function MapHomeScreen({
                 icon={<Icon name="back" />}
                 accessibilityLabel="Stop choosing on the map"
                 tone="white"
-                onPress={() => setPicking(false)}
+                onPress={() => {
+                  setPicking(false);
+                  setPickingForDraft(false);
+                }}
               />
               <View style={styles.title}>
                 <AppText variant="label" accessibilityRole="header">
@@ -300,7 +326,11 @@ export function MapHomeScreen({
               point={picker.point}
               moving={picker.moving}
               tileStatus={tiles.status}
-              onConfirmed={() => setPicking(false)}
+              onConfirmed={() => {
+                setPicking(false);
+                if (pickingForDraft) setCreateStep('departure');
+                setPickingForDraft(false);
+              }}
               onChooseNamed={() => setNamedOpen(true)}
             />
           ) : preview !== null && previewState !== null ? (
@@ -322,12 +352,14 @@ export function MapHomeScreen({
             />
           ) : (
             <>
+              {liveRequest !== null ? <PublishedRequestPanel request={liveRequest} /> : null}
               <DestinationPanel
                 destination={destination}
                 summary={destination === null ? { kind: 'unknown' } : summarizeDestination(discovery)}
                 onChoose={() => setDestinationOpen(true)}
                 onClear={() => setDestination(null)}
                 onInspect={inspect}
+                onCreate={liveRequest === null ? () => setCreateStep('departure') : undefined}
               />
               <DiscoveryPanel
                 state={discovery}
@@ -335,7 +367,18 @@ export function MapHomeScreen({
                 onOpenList={openList}
                 tileStatus={tiles.status}
               />
-              <HomeLocationPanel status={status} onChooseOnMap={configured ? () => setPicking(true) : undefined} />
+              <HomeLocationPanel
+                status={status}
+                onChooseOnMap={
+                  configured
+                    ? () => {
+                        // Not from the draft: confirming the point stays on home.
+                        setPickingForDraft(false);
+                        setPicking(true);
+                      }
+                    : undefined
+                }
+              />
               {onSignIn && <Button label="Sign in" variant="ghost" onPress={onSignIn} />}
             </>
           )
@@ -351,6 +394,27 @@ export function MapHomeScreen({
         matches={discovery.matches}
       />
       <DestinationSheet open={destinationOpen} onClose={() => setDestinationOpen(false)} onChoose={chooseDestination} />
+      <CreateRequestSheet
+        step={createStep}
+        destination={destination}
+        departure={departure}
+        onChangeDeparture={setDeparture}
+        origin={origin}
+        onContinue={continueToReview}
+        onEdit={() => setCreateStep('departure')}
+        onClose={() => setCreateStep(null)}
+        onChoosePickupOnMap={
+          configured
+            ? () => {
+                setCreateStep(null);
+                setPickingForDraft(true);
+                setPicking(true);
+              }
+            : undefined
+        }
+        onChoosePickupNamed={() => setCreateStep('pickup')}
+        onPublished={() => setCreateStep(null)}
+      />
       <PickupPlaceSheet open={namedOpen} onClose={() => setNamedOpen(false)} onConfirmed={() => setPicking(false)} />
     </>
   );
