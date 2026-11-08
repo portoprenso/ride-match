@@ -5,6 +5,7 @@ import {
   type NotificationPermission,
 } from '@ride-match/contracts';
 import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 
 /*
  * The app's one local-notification boundary (NOTIFICATION-001-A), over Expo Notifications.
@@ -17,6 +18,9 @@ import * as Notifications from 'expo-notifications';
  *   remote push; the mock's device registration stores inert receipts.
  * - It shows no prompt by itself and keeps no state; when to ask, what to schedule and where a
  *   tap leads are the callers' (NOTIFICATION-001-B and C).
+ * - On Android every notification uses one channel, `NOTIFICATION_CHANNEL_ID`, created before
+ *   the permission is requested (Android 13 asks only once a channel exists) and before
+ *   anything is scheduled.
  * - Nothing here logs: payload IDs are private enough to keep out of logs, and OS errors are
  *   reduced to an outcome.
  */
@@ -32,7 +36,12 @@ export type NotificationsModule = Pick<
   | 'addNotificationResponseReceivedListener'
   | 'getLastNotificationResponseAsync'
   | 'clearLastNotificationResponseAsync'
+  | 'setNotificationChannelAsync'
+  | 'setNotificationHandler'
 >;
+
+/** The Android channel every notification uses; its name is what Android's settings show. */
+export const NOTIFICATION_CHANNEL_ID = 'ride-match';
 
 /** The generic words shown for each kind, the same on every device and for every resource. */
 export const NOTIFICATION_COPY: Readonly<Record<NotificationKind, { title: string; body: string }>> = {
@@ -79,6 +88,16 @@ export function toNotificationPermission(status: Notifications.NotificationPermi
 }
 
 /**
+ * The permission and whether the OS would still show its prompt. With `canAskAgain` false a
+ * denied permission can only be changed in the system settings.
+ */
+export type NotificationPermissionState = { permission: NotificationPermission; canAskAgain: boolean };
+
+export function toPermissionState(status: Notifications.NotificationPermissionsStatus): NotificationPermissionState {
+  return { permission: toNotificationPermission(status), canAskAgain: status.canAskAgain };
+}
+
+/**
  * What presenting a notification came to:
  *
  * - `scheduled`: handed to the OS, under the payload's own ID, so presenting the same
@@ -95,10 +114,16 @@ export type PresentOutcome =
 export type NotificationTap = NotificationRead;
 
 export type LocalNotifications = {
+  /**
+   * Shows notifications that arrive while the app is open as a banner and in the list, without
+   * sound or badge (a demo's events happen while the app is in front). Call once at launch; it
+   * asks for nothing.
+   */
+  configurePresentation(): void;
   /** The current permission, without asking. */
-  getPermission(): Promise<NotificationPermission>;
+  getPermission(): Promise<NotificationPermissionState>;
   /** Shows the OS prompt (or answers at once when the OS no longer asks) and returns the outcome. */
-  requestPermission(): Promise<NotificationPermission>;
+  requestPermission(): Promise<NotificationPermissionState>;
   /** Schedules a local notification for `payload`, now or after `delaySeconds`. */
   present(payload: unknown, options?: { delaySeconds?: number }): Promise<PresentOutcome>;
   /**
@@ -123,18 +148,38 @@ export type LocalNotifications = {
 export function createLocalNotifications(
   module: NotificationsModule = Notifications,
   now: () => number = Date.now,
+  os: typeof Platform.OS = Platform.OS,
 ): LocalNotifications {
+  const android = os === 'android';
+  const ensureChannel = async () => {
+    if (!android) return;
+    await module.setNotificationChannelAsync(NOTIFICATION_CHANNEL_ID, {
+      name: 'Ride updates',
+      importance: Notifications.AndroidImportance.DEFAULT,
+    });
+  };
   const readTap = (response: Notifications.NotificationResponse): NotificationTap | null =>
     response.actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER
       ? readNotificationPayload(response.notification.request.content.data, now())
       : null;
 
   return {
+    configurePresentation() {
+      module.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowBanner: true,
+          shouldShowList: true,
+          shouldPlaySound: false,
+          shouldSetBadge: false,
+        }),
+      });
+    },
     async getPermission() {
-      return toNotificationPermission(await module.getPermissionsAsync());
+      return toPermissionState(await module.getPermissionsAsync());
     },
     async requestPermission() {
-      return toNotificationPermission(await module.requestPermissionsAsync());
+      await ensureChannel();
+      return toPermissionState(await module.requestPermissionsAsync());
     },
     async present(payload, options = {}) {
       const read = readNotificationPayload(payload, now());
@@ -144,14 +189,18 @@ export function createLocalNotifications(
       try {
         if (toNotificationPermission(await module.getPermissionsAsync()) !== 'granted')
           return { kind: 'not-permitted' };
+        await ensureChannel();
         const { title, body } = NOTIFICATION_COPY[read.payload.kind];
+        const channel = android ? { channelId: NOTIFICATION_CHANNEL_ID } : {};
         const id = await module.scheduleNotificationAsync({
           identifier: read.payload.id,
           content: { title, body, data: read.payload },
           trigger:
             delaySeconds === 0
-              ? null
-              : { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: delaySeconds },
+              ? android
+                ? { channelId: NOTIFICATION_CHANNEL_ID }
+                : null
+              : { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: delaySeconds, ...channel },
         });
         return { kind: 'scheduled', id };
       } catch {

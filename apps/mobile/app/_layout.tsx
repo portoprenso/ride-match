@@ -15,6 +15,7 @@ import { SessionExpiryRedirect } from '../src/features/auth/SessionExpiryRedirec
 import { LocationChoicesProvider } from '../src/features/location/LocationChoicesProvider';
 import { createLocationController } from '../src/platform/location/createLocationController';
 import { LocationProvider } from '../src/platform/location/LocationProvider';
+import { NotificationPermissionProvider } from '../src/platform/notifications/NotificationPermissionProvider';
 
 // Home is the base screen, so a deep link to any other route still has the map beneath it to
 // return to.
@@ -36,6 +37,9 @@ export default function RootLayout() {
     composition.sync.start();
     // Sessions and their `app_opened` begin here; nothing is sent off the device.
     composition.analytics.start();
+    // Notifications: how they show while the app is open, and the permission read without asking.
+    composition.notifications.configurePresentation();
+    composition.notificationPermission.start();
   }, [composition]);
   // The one location controller. It reads the permission without prompting; only the location
   // introduction or the home card shows the OS prompt.
@@ -58,13 +62,15 @@ export default function RootLayout() {
                 <QueryClientProvider client={composition.queryClient}>
                   <SyncProvider coordinator={composition.sync}>
                     <LocationProvider controller={location}>
-                      <LocationChoicesProvider>
-                        <Stack screenOptions={{ headerShown: false }}>
-                          <Stack.Screen name="index" />
-                          <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
-                        </Stack>
-                        <SessionExpiryRedirect />
-                      </LocationChoicesProvider>
+                      <NotificationPermissionProvider controller={composition.notificationPermission}>
+                        <LocationChoicesProvider>
+                          <Stack screenOptions={{ headerShown: false }}>
+                            <Stack.Screen name="index" />
+                            <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
+                          </Stack>
+                          <SessionExpiryRedirect />
+                        </LocationChoicesProvider>
+                      </NotificationPermissionProvider>
                     </LocationProvider>
                   </SyncProvider>
                 </QueryClientProvider>

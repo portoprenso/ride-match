@@ -27,7 +27,7 @@ One account occupies one seat. Multi-seat bookings are outside the MVP. Bishkek-
 | `/auth/otp` | Modal code verification |
 | `/groups/[groupId]` | Member-only group detail |
 | `/groups/[groupId]/chat` | Member-only full-screen chat |
-| `/settings` | Minimal session, permission, and blocked-user controls |
+| `/settings` | Minimal session, permission (location; notifications for signed-in riders since NOTIFICATION-001-B), and blocked-user controls |
 | `/blocked-riders` | The signed-in rider's blocked riders, with unblock (SAFETY-001-C) |
 | `/dev/scenarios` | Development/preview mock builds only |
 

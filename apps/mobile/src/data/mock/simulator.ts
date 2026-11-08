@@ -120,6 +120,12 @@ export type Simulator<State> = {
   schedule(dueAt: number, work: Work<State, void>): () => void;
   /** Receives every published domain event until the returned function is called. Disconnecting ends every subscription. */
   subscribe(listener: (event: DomainEventDto) => void): () => void;
+  /**
+   * Receives every published domain event, whatever the connection, across resets, until the
+   * returned function is called or the simulator is disposed. For mock services that act on
+   * events outside any realtime subscription, such as the push service (NOTIFICATION-001-B).
+   */
+  observe(listener: (event: DomainEventDto) => void): () => void;
   /** Reports the connection state at once and on every change, until the returned function is called. */
   watchConnection(listener: (state: ConnectionState) => void): () => void;
   /** Simulates losing or regaining the connection. Disconnecting ends every event subscription. */
@@ -160,6 +166,8 @@ export function createSimulator<State>(options: SimulatorOptions<State>): Simula
   let worldRandom = createSeededRandom(`${scenario.seed}:world`);
   const scheduler = createScheduler(clock);
   const events = createEmitter<DomainEventDto>();
+  // Unlike `events`, kept across disconnects and resets: the push service is not a subscription.
+  const observers = createEmitter<DomainEventDto>();
   const watchers = createEmitter<ConnectionState>();
   const pending = new Set<PendingOperation>();
   const failures: { operation?: string; failure: MockFailure }[] = [];
@@ -199,7 +207,10 @@ export function createSimulator<State>(options: SimulatorOptions<State>): Simula
       sourceError,
       schedule,
     });
-    for (const event of queued) events.publish(event);
+    for (const event of queued) {
+      events.publish(event);
+      observers.publish(event);
+    }
     return result;
   }
 
@@ -275,6 +286,7 @@ export function createSimulator<State>(options: SimulatorOptions<State>): Simula
 
     schedule,
     subscribe: (listener) => events.subscribe(listener),
+    observe: (listener) => observers.subscribe(listener),
 
     watchConnection(listener) {
       listener(connection);
@@ -321,6 +333,7 @@ export function createSimulator<State>(options: SimulatorOptions<State>): Simula
       cancelPending(() => new DataSourceUnavailableError('The mock data source was disposed.'));
       scheduler.clear();
       events.clear();
+      observers.clear();
       watchers.clear();
       receipts.clear();
       failures.length = 0;

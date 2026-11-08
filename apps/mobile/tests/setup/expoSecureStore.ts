@@ -8,6 +8,7 @@ jest.mock('expo-secure-store', () => {
   const items = new Map<string, string>();
   return {
     WHEN_UNLOCKED_THIS_DEVICE_ONLY: 5,
+    AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY: 6,
     getItemAsync: jest.fn(async (key: string) => items.get(key) ?? null),
     setItemAsync: jest.fn(async (key: string, value: string) => {
       items.set(key, value);

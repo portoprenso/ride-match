@@ -57,6 +57,8 @@ function fakeModule(allowed: NotificationPermissionsStatus = permission('granted
     clearLastNotificationResponseAsync: jest.fn(async () => {
       last = null;
     }),
+    setNotificationChannelAsync: jest.fn(async () => null),
+    setNotificationHandler: jest.fn(),
   };
   return {
     module: module as unknown as NotificationsModule & typeof module,
@@ -71,7 +73,7 @@ function fakeModule(allowed: NotificationPermissionsStatus = permission('granted
 describe('local notifications', () => {
   it('schedules a valid payload with generic copy, under its own ID', async () => {
     const { module } = fakeModule();
-    const notifications = createLocalNotifications(module, () => NOW);
+    const notifications = createLocalNotifications(module, () => NOW, 'ios');
 
     await expect(notifications.present(payload())).resolves.toEqual({ kind: 'scheduled', id: 'ntf_1' });
     const { messageId: _unused, ...ready } = payload({ kind: 'group.ready', id: 'ntf_2' } as never) as {
@@ -96,7 +98,7 @@ describe('local notifications', () => {
 
   it('schedules nothing invalid, expired, unpermitted, or carrying private fields', async () => {
     const { module } = fakeModule();
-    const notifications = createLocalNotifications(module, () => NOW);
+    const notifications = createLocalNotifications(module, () => NOW, 'ios');
 
     await expect(notifications.present({ ...payload(), text: 'Meet me at my flat' })).resolves.toEqual({
       kind: 'invalid',
@@ -112,22 +114,65 @@ describe('local notifications', () => {
     expect(module.scheduleNotificationAsync).not.toHaveBeenCalled();
 
     const denied = fakeModule(permission('denied'));
-    await expect(createLocalNotifications(denied.module, () => NOW).present(payload())).resolves.toEqual({
+    await expect(createLocalNotifications(denied.module, () => NOW, 'ios').present(payload())).resolves.toEqual({
       kind: 'not-permitted',
     });
     expect(denied.module.requestPermissionsAsync).not.toHaveBeenCalled();
     expect(denied.module.scheduleNotificationAsync).not.toHaveBeenCalled();
   });
 
+  it('uses one Android channel, made before asking and before scheduling', async () => {
+    const { module } = fakeModule(permission('undetermined'));
+    const notifications = createLocalNotifications(module, () => NOW, 'android');
+
+    await expect(notifications.requestPermission()).resolves.toEqual({ permission: 'undetermined', canAskAgain: true });
+    expect(module.setNotificationChannelAsync).toHaveBeenCalledWith(
+      'ride-match',
+      expect.objectContaining({ name: 'Ride updates' }),
+    );
+    expect(module.setNotificationChannelAsync.mock.invocationCallOrder[0]).toBeLessThan(
+      module.requestPermissionsAsync.mock.invocationCallOrder[0]!,
+    );
+
+    const granted = fakeModule();
+    const android = createLocalNotifications(granted.module, () => NOW, 'android');
+    await android.present(payload());
+    await android.present(payload({ id: 'ntf_2' }), { delaySeconds: 5 });
+    const [now, later] = granted.module.scheduleNotificationAsync.mock.calls.map(([request]) => request);
+    expect(now).toMatchObject({ trigger: { channelId: 'ride-match' } });
+    expect(later).toMatchObject({ trigger: { type: 'timeInterval', seconds: 5, channelId: 'ride-match' } });
+
+    // iOS has no channels.
+    const ios = fakeModule();
+    await createLocalNotifications(ios.module, () => NOW, 'ios').requestPermission();
+    expect(ios.module.setNotificationChannelAsync).not.toHaveBeenCalled();
+  });
+
+  it('shows notifications that arrive while the app is open, quietly', async () => {
+    const { module } = fakeModule();
+    createLocalNotifications(module, () => NOW, 'ios').configurePresentation();
+    const [[handler]] = module.setNotificationHandler.mock.calls as unknown as [
+      [{ handleNotification: () => Promise<unknown> }],
+    ];
+    await expect(handler.handleNotification()).resolves.toEqual({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    });
+  });
+
   it('reports an OS refusal as failed', async () => {
     const { module } = fakeModule();
     module.scheduleNotificationAsync.mockRejectedValueOnce(new Error('Refused ntf_1'));
-    await expect(createLocalNotifications(module, () => NOW).present(payload())).resolves.toEqual({ kind: 'failed' });
+    await expect(createLocalNotifications(module, () => NOW, 'ios').present(payload())).resolves.toEqual({
+      kind: 'failed',
+    });
   });
 
   it('reads taps on the body only, validated, and the opening tap once', async () => {
     const fake = fakeModule();
-    const notifications = createLocalNotifications(fake.module, () => NOW);
+    const notifications = createLocalNotifications(fake.module, () => NOW, 'ios');
     const taps: unknown[] = [];
     const stop = notifications.onTap((tap) => taps.push(tap));
 
@@ -150,7 +195,7 @@ describe('local notifications', () => {
 
   it('clears scheduled and shown notifications and the last tap, and says when the OS refused', async () => {
     const { module } = fakeModule();
-    const notifications = createLocalNotifications(module, () => NOW);
+    const notifications = createLocalNotifications(module, () => NOW, 'ios');
     await expect(notifications.clearAll()).resolves.toBe(true);
     expect(module.cancelAllScheduledNotificationsAsync).toHaveBeenCalled();
     expect(module.dismissAllNotificationsAsync).toHaveBeenCalled();

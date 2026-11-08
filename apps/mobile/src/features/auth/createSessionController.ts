@@ -63,6 +63,11 @@ export type SessionControllerOptions = {
    * demo namespace is cleared instead (a cold start resets demo credentials).
    */
   resumeStoredSession: boolean;
+  /**
+   * Runs at the start of a sign-out, while the session still works: the push-device
+   * deregistration (NOTIFICATION-001-B). It must not reject; the sign-out continues either way.
+   */
+  beforeSignOut?: () => Promise<void>;
 };
 
 /**
@@ -117,7 +122,8 @@ export type SessionController = {
    * then clears the credentials from memory and storage. The rider is signed out locally even
    * when revocation or storage cleanup fails (offline, keychain error); the result says which
    * parts were confirmed. Waits for a refresh in flight so the newest token is the one revoked.
-   * Concurrent calls share one attempt. Push-device deregistration is added by NOTIFICATION-001.
+   * Concurrent calls share one attempt. The `beforeSignOut` option (push-device deregistration)
+   * runs first, while the session still works.
    */
   signOut(): Promise<SignOutResult>;
   /**
@@ -133,7 +139,12 @@ export type SessionController = {
  * Builds the session controller. Nothing happens until `restore()` is called, which the root
  * layout does once at launch.
  */
-export function createSessionController({ auth, store, resumeStoredSession }: SessionControllerOptions): SessionController {
+export function createSessionController({
+  auth,
+  store,
+  resumeStoredSession,
+  beforeSignOut,
+}: SessionControllerOptions): SessionController {
   let state: SessionState = Object.freeze({ status: 'restoring' });
   const listeners = new Set<() => void>();
   let accessToken: string | null = null;
@@ -332,6 +343,7 @@ export function createSessionController({ auth, store, resumeStoredSession }: Se
       const attempt = (async (): Promise<SignOutResult> => {
         // Revoke the newest credentials: a refresh in flight may be rotating them.
         await refreshing?.catch(() => undefined);
+        await beforeSignOut?.().catch(() => undefined);
         const token = refreshToken;
         let revoked = false;
         let revokeError: DataError | null = null;

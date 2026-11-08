@@ -2994,3 +2994,29 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** the boundary's module rules, `NotificationRead`, `PresentOutcome`, `LocalNotifications` members, `toNotificationPermission`, `clearNotificationsOnSignOut`, `PushDeviceRecord`, `registerPushDevice`/`removePushDevice`, `authenticateSession`, `logout`, `createMockDataSource`, the Jest stand-in.
 - **Remaining/next:** NOTIFICATION-001-B with the user's go-ahead; the native pass (eighteen cards).
 - **Ownership:** Released; no active task.
+
+## 2026-11-08 — NOTIFICATION-001-B: Permission UI, registration and local delivery
+
+- **Actor/session:** Claude Code / notification-001-b.
+- **Status:** implemented; `Paused` for its native check (next native pass). Parent NOTIFICATION-001 `Paused`. Ownership released.
+- **Working copy:** `main` at `099e95e` (NOTIFICATION-001-A); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "NOTIFICATION-001-B": permission UI and settings, and notification generation (designs 39, 40). Acceptance: allow/deny/later/settings recovery; actual local delivery; no unsolicited startup prompt.
+- **Changes:**
+  - Boundary (`localNotifications.ts`): `getPermission`/`requestPermission` now return `{ permission, canAskAgain }` (`toPermissionState`); Android channel `ride-match` made before asking and scheduling; `configurePresentation` (banner and list, no sound or badge).
+  - New `src/platform/notifications/createNotificationPermissionController.ts`, `NotificationPermissionProvider.tsx`, `installationId.ts` (`createInstallationIdSource`, SecureStore key `ridematch.installationId`).
+  - New `src/bootstrap/syncPushRegistration.ts`; `createSessionController` option `beforeSignOut`; `composeAppDataSource` builds the controller, registration and the push delivery (own installation → `present`), exposes `notifications` and `notificationPermission`; `app/_layout.tsx` configures presentation, starts the controller and provides it.
+  - Mock: new `src/data/mock/push.ts` (`startMockPush`); `Simulator.observe` (events kept across disconnects and resets).
+  - UI: new `src/features/notifications/NotificationPermissionSheet.tsx` (`describeNotificationSetting`, `needsSystemSettings`); `SettingsScreen` "Notifications" row and sheet.
+  - Tests: new `tests/mockPush.test.ts` (6), `tests/pushRegistration.test.ts` (4), `tests/notificationSettings.test.tsx` (4); `tests/localNotifications.test.ts` (+2: channel, presentation; platform passed explicitly); stand-ins gained `AndroidImportance`, `setNotificationChannelAsync`, `setNotificationHandler` and SecureStore's `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`.
+- **Decisions:**
+  - Generation is the source's (as for real push): the mock push service builds payloads and the app only presents those for its installation. The simulator's realtime subscriptions end on disconnect, so the service uses a separate `observe` hook.
+  - Registration starts only once notifications are allowed (avoids a request per sign-in, which also consumed the demo controls' queued failure in `tests/settings.test.tsx`); later permission changes are always sent.
+  - The settings row is the only way to the prompt; a contextual offer after a useful action is left for QA-001 or C, if wanted.
+  - Foreground notifications show as a quiet banner, since mock events happen while the app is open; chat notifications also show while that chat is open.
+  - Installation ID in SecureStore (`AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`); on iOS the keychain can outlive an uninstall, which the upsert tolerates. Push token synthetic (`ExponentPushToken[demo-…]`).
+  - Synthetic phone numbers `+4477009006nn`.
+- **Checks:** with Node 24.17.0, `pnpm typecheck` and `pnpm lint` passed; `npx jest` in `apps/mobile` (48 suites, 633 tests) passed. Prettier clean on new and changed files except `src/data/mock/simulator.ts` and `src/features/auth/createSessionController.ts` (unformatted at HEAD, edited without reformatting). **Not run:** the native check (DEVELOPMENT, notification check) — pending, not passed; the development clients still need the rebuild from A. Screen readers waived.
+- **Docs:** ARCHITECTURE, PRODUCT (settings route), api/realtime.md (mock delivery and registration), api/authentication.md (settings variants), MOCK_SCENARIOS (module table), DEVELOPMENT (tests, 633; notification check), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line, NOTIFICATION-001 row), AI_CONTEXT.
+- **JSDoc:** `startMockPush` and its module rules, `Simulator.observe`, `createNotificationPermissionController` and its members, `NotificationPermissionProvider` hooks, `createInstallationIdSource`, `syncPushRegistration`/`PushRegistration`, `beforeSignOut`, `NotificationPermissionSheet`, `describeNotificationSetting`, `NotificationPermissionState`, `configurePresentation`, `SettingsScreen`.
+- **Remaining/next:** NOTIFICATION-001-C with the user's go-ahead; the native pass (nineteen cards).
+- **Ownership:** Released; no active task.

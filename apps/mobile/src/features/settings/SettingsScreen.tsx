@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { useDemoSignIn } from '../../data/DemoSignInProvider';
 import type { LocationState } from '../../platform/location/createLocationController';
 import { useLocationState } from '../../platform/location/LocationProvider';
+import { useNotificationPermission } from '../../platform/notifications/NotificationPermissionProvider';
 import { AppText } from '../../ui/AppText';
 import { Badge } from '../../ui/Badge';
 import { Button } from '../../ui/Button';
@@ -11,10 +12,12 @@ import { useAnnouncement } from '../../ui/FieldMessage';
 import { Notice } from '../../ui/Notice';
 import { Screen } from '../../ui/Screen';
 import { ScreenHeader } from '../../ui/ScreenHeader';
+import { SheetHost } from '../../ui/SheetHost';
 import { colors, radii, spacing } from '../../ui/tokens';
 import { useSessionController, useSessionState } from '../auth/AuthSessionProvider';
 import { SignOutSheet } from '../auth/SignOutSheet';
 import { describeSignOutOutcome, type SignOutOutcome } from '../auth/signOutOutcome';
+import { describeNotificationSetting, NotificationPermissionSheet } from '../notifications/NotificationPermissionSheet';
 
 /**
  * The location permission in a few words, for the settings row. It reports only what the
@@ -64,9 +67,10 @@ type SettingsScreenProps = {
  *
  * - Signed in, also "Blocked riders", opening the blocked-riders panel (44). The row reads
  *   nothing itself, so opening settings never sends a request of its own.
- *
- * Notification permission (NOTIFICATION-001-B) joins this screen with its card; nothing here
- * suggests it works yet.
+ * - Signed in, also "Notifications" with the permission (`describeNotificationSetting`): while
+ *   off it opens the explanation (39), which asks the OS only when the rider chooses; while on it
+ *   opens the system settings, where they can be turned off. Notifications are for signed-in
+ *   riders only, so anonymous browsing shows no row and is never asked.
  */
 export function SettingsScreen({
   onBack,
@@ -78,6 +82,23 @@ export function SettingsScreen({
   const session = useSessionController();
   const state = useSessionState();
   const location = useLocationState();
+  const notifications = useNotificationPermission();
+  const [notificationSheet, setNotificationSheet] = useState(false);
+  const [askingNotifications, setAskingNotifications] = useState(false);
+  const [notificationNotice, setNotificationNotice] = useState<string | null>(null);
+  const notificationRef = useRef<View>(null);
+  useAnnouncement(notificationNotice ?? undefined);
+  const notificationSummary = describeNotificationSetting(notifications);
+  const openNotifications = () => {
+    setNotificationNotice(null);
+    if (notifications.status === 'known' && notifications.permission === 'granted') {
+      Linking.openSettings().catch(() =>
+        setNotificationNotice('Settings couldn’t be opened. Open them from your phone’s home screen.'),
+      );
+      return;
+    }
+    if (notifications.status === 'known') setNotificationSheet(true);
+  };
   const demo = useDemoSignIn() !== null;
   const [confirming, setConfirming] = useState(false);
   const signOutRef = useRef<View>(null);
@@ -143,6 +164,27 @@ export function SettingsScreen({
 
         {state.status === 'signed-in' && (
           <Pressable
+            ref={notificationRef}
+            accessibilityRole="button"
+            accessibilityLabel={`Notifications: ${notificationSummary}`}
+            accessibilityHint={
+              notifications.status === 'known' && notifications.permission === 'granted'
+                ? 'Opens the system settings, where notifications can be turned off.'
+                : 'Explains notifications before asking to turn them on.'
+            }
+            accessibilityState={{ disabled: notifications.status === 'unknown' }}
+            disabled={notifications.status === 'unknown'}
+            onPress={openNotifications}
+            style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+          >
+            <AppText variant="label">Notifications</AppText>
+            <AppText color="muted">{notificationSummary}</AppText>
+          </Pressable>
+        )}
+        {notificationNotice === null ? null : <Notice message={notificationNotice} />}
+
+        {state.status === 'signed-in' && (
+          <Pressable
             accessibilityRole="button"
             accessibilityLabel="Blocked riders"
             accessibilityHint="Shows the riders you’ve blocked, to unblock them."
@@ -161,6 +203,24 @@ export function SettingsScreen({
           {'Exact pickup points are private.\nNo background location tracking.'}
         </AppText>
       </View>
+
+      <SheetHost
+        open={notificationSheet}
+        onDismiss={() => setNotificationSheet(false)}
+        dismissible={!askingNotifications}
+        returnFocusRef={notificationRef}
+      >
+        {notificationSheet ? (
+          <NotificationPermissionSheet
+            demo={demo}
+            onPendingChange={setAskingNotifications}
+            onClose={(enabled) => {
+              setNotificationSheet(false);
+              if (enabled) setNotificationNotice('Notifications are on.');
+            }}
+          />
+        ) : null}
+      </SheetHost>
 
       <SignOutSheet
         open={confirming}

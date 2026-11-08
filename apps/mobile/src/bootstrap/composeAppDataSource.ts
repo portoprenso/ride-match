@@ -1,6 +1,7 @@
+import type { InstallationId } from '@ride-match/contracts';
 import Constants from 'expo-constants';
 import type { QueryClient } from '@tanstack/react-query';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 
 import { AppConfigError, readAppConfig, type AppConfig } from '../config/appConfig';
 import type { AppDataSource } from '../data/AppDataSource';
@@ -16,13 +17,21 @@ import type { AppStateSource } from '../platform/appState';
 import { createMockDataSource, createMockSimulator } from '../data/mock/createMockDataSource';
 import { MOCK_DEMO_SIGN_IN } from '../data/mock/auth';
 import { createMockDevControls } from '../data/mock/createMockDevControls';
+import { startMockPush, type PushDelivery } from '../data/mock/push';
 import { isMockScenarioKey, MOCK_SCENARIO_KEYS } from '../data/mock/scenarios';
+import { createOperationId } from '../data/operationId';
+import {
+  createNotificationPermissionController,
+  type NotificationPermissionController,
+} from '../platform/notifications/createNotificationPermissionController';
+import { createInstallationIdSource } from '../platform/notifications/installationId';
 import { createLocalNotifications, type LocalNotifications } from '../platform/notifications/localNotifications';
 import { createSecureCredentialStore, type CredentialStore } from '../platform/secureStorage/credentialStore';
 import { createAnalytics, type Analytics } from '../analytics/createAnalytics';
 import { selectAnalyticsSink } from '../analytics/sinks';
 import { clearNotificationsOnSignOut } from './clearNotificationsOnSignOut';
 import { createQueryClient } from './createQueryClient';
+import { syncPushRegistration, type PushRegistration } from './syncPushRegistration';
 import { withSessionRenewal } from './withSessionRenewal';
 
 /**
@@ -47,10 +56,18 @@ export type AppComposition =
        * preview, nothing in production; never sent anywhere. The root layout starts it.
        */
       analytics: Analytics;
+      /** The local-notification boundary; the root layout configures its presentation at launch. */
+      notifications: LocalNotifications;
+      /** The notification permission, read at launch and on foreground, never prompted for unasked. */
+      notificationPermission: NotificationPermissionController;
     }
   | { status: 'failed'; error: AppConfigError | DataSourceUnavailableError };
 
-const factories: DataSourceFactories = {
+/**
+ * The data-source builders. The mock one also starts the mock push service, whose deliveries go
+ * to `deliverPush` (NOTIFICATION-001-B).
+ */
+const createFactories = (deliverPush: PushDelivery): DataSourceFactories => ({
   mock({ scenario, devControls, accessToken }) {
     // The configuration checks only the key's format; the simulator knows which scenarios exist.
     if (!isMockScenarioKey(scenario)) {
@@ -59,14 +76,18 @@ const factories: DataSourceFactories = {
       ]);
     }
     const simulator = createMockSimulator(scenario);
+    const stopPush = startMockPush(simulator, deliverPush);
     return {
       dataSource: createMockDataSource(simulator, { accessToken }),
-      dispose: () => simulator.dispose(),
+      dispose: () => {
+        stopPush();
+        simulator.dispose();
+      },
       devControls: devControls ? createMockDevControls(simulator, scenario) : null,
       demoSignIn: MOCK_DEMO_SIGN_IN,
     };
   },
-};
+});
 
 /**
  * Starting a demo scenario signs everyone out of the simulator and ends every subscription, so
@@ -100,6 +121,8 @@ export type CompositionOptions = {
   appState?: AppStateSource;
   /** The local-notification boundary; Expo Notifications unless a test passes its own. */
   notifications?: LocalNotifications;
+  /** This installation's ID; stored in SecureStore unless a test passes its own. */
+  installationId?: () => Promise<InstallationId>;
 };
 
 /**
@@ -121,13 +144,18 @@ export function composeAppDataSource({
   credentialStore,
   appState = AppState,
   notifications = createLocalNotifications(),
+  installationId = createInstallationIdSource(createOperationId),
 }: CompositionOptions = {}): AppComposition {
   try {
     const config = readConfig();
     // The data source reads the token through this indirection, because the session that holds
     // it needs the data source's auth operations and is built just after it.
     let session: SessionController | null = null;
-    const composed = createDataSource(config.dataSource, factories, {
+    // A push delivered to this installation shows as a local notification; others are another device's.
+    const deliverPush: PushDelivery = (target, payload) => {
+      void installationId().then((own) => (own === target ? notifications.present(payload) : undefined));
+    };
+    const composed = createDataSource(config.dataSource, createFactories(deliverPush), {
       devControls: config.appEnv !== 'production',
       accessToken: () => session?.getAccessToken() ?? null,
     });
@@ -135,6 +163,7 @@ export function composeAppDataSource({
       auth: composed.dataSource.auth,
       store: credentialStore ?? createSecureCredentialStore(config.dataSource.kind),
       resumeStoredSession: config.dataSource.kind !== 'mock',
+      beforeSignOut: () => registration?.removeBeforeSignOut() ?? Promise.resolve(),
     });
     session = built;
     // Features get the data source whose signed-in calls renew an expired access token once.
@@ -149,6 +178,16 @@ export function composeAppDataSource({
     });
     // Local notifications belong to the rider signed in when they were made (NOTIFICATION-001-A).
     const stopClearingNotifications = clearNotificationsOnSignOut(built, notifications);
+    const notificationPermission = createNotificationPermissionController(notifications, appState);
+    // Only the mock source exists, so the token is synthetic: no real push token is requested.
+    const registration: PushRegistration = syncPushRegistration({
+      session: built,
+      permission: notificationPermission,
+      devices: dataSource.devices,
+      installationId,
+      pushToken: (id) => `ExponentPushToken[demo-${id}]`,
+      platform: Platform.OS === 'ios' ? 'ios' : 'android',
+    });
     const analytics = createAnalytics({
       sink: selectAnalyticsSink(config.appEnv),
       environment: config.appEnv,
@@ -166,7 +205,11 @@ export function composeAppDataSource({
       devControls: composed.devControls && resetOnScenarioStart(composed.devControls, built, sync),
       demoSignIn: composed.demoSignIn,
       analytics,
+      notifications,
+      notificationPermission,
       dispose: () => {
+        registration.dispose();
+        notificationPermission.dispose();
         stopClearingNotifications();
         analytics.dispose();
         sync.dispose();
