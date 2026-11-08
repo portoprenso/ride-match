@@ -226,6 +226,43 @@ function createActiveNeighborhood({ now, ids }: SeedContext): MockWorld {
   return world;
 }
 
+/**
+ * Scenario C's riders: one heading to Asia Mall, whom the source matches with a new own request,
+ * and two unrelated plans. No destination previews are supplied, so nothing is emphasized until
+ * the rider has a request of their own.
+ */
+const MATCH_SCENARIO_RIDES: readonly RideSeed[] = [
+  { rider: 'Aida', area: 'asanbay', offset: [0.0021, -0.0018], destination: 'place_asia_mall', createdSecondsAgo: 60, departureOffsetMinutes: 5 },
+  { rider: 'Bakyt', area: 'dzhal', offset: [-0.0016, 0.0024], destination: 'place_osh_bazaar', createdSecondsAgo: 30, departureOffsetMinutes: 10 },
+  { rider: 'Cholpon', area: 'vostok5', offset: [0.0012, 0.0019], destination: 'place_manas_airport', createdSecondsAgo: 120, departureOffsetMinutes: 10 },
+];
+
+/** How long after the rider's own request the match arrives, and how long it holds. */
+const MATCH_ARRIVES_AFTER_MS = 5 * SECOND;
+const MATCH_LIFETIME_MS = 3 * MINUTE;
+
+/**
+ * Scenario C: unrelated nearby activity, then five seconds after the rider creates a request the
+ * source supplies one excellent match with Aida's ride, holding for three minutes (or until
+ * either request ends).
+ */
+function createMatchAppears({ now, ids }: SeedContext): MockWorld {
+  const world = createEmptyWorld(now);
+  const created = MATCH_SCENARIO_RIDES.map((seed) => {
+    const ride = buildRide(world, ids, seed, now - seed.createdSecondsAgo * SECOND, { status: 'active', groupId: null });
+    world.rides.set(ride.id, ride);
+    return ride;
+  });
+  world.matchArrivals.push({
+    delayMs: MATCH_ARRIVES_AFTER_MS,
+    targetRideId: created[0]!.id,
+    level: 'excellent',
+    additionalMinutes: 2,
+    lifetimeMs: MATCH_LIFETIME_MS,
+  });
+  return world;
+}
+
 /** Invented first names for the busy map; they repeat, as names do. */
 const DENSITY_NAMES = ['Aidai', 'Bolot', 'Chinara', 'Dastan', 'Eldiyar', 'Gulzat', 'Kairat', 'Medina', 'Nurbek', 'Saltanat'];
 const DENSITY_DESTINATIONS = [
@@ -336,6 +373,8 @@ const SCENARIOS = {
   // Scenario B: no activity at all, and nothing appears; the curated places still exist.
   'empty-neighborhood': { createWorld: ({ now }) => createEmptyWorld(now) },
   // Scenario M: a hundred items for clusters, the list and the snapshot limit.
+  // Scenario C: unrelated activity, then a supplied match five seconds after the rider's request.
+  'match-appears': { createWorld: createMatchAppears },
   'map-density': { createWorld: createMapDensity },
 } satisfies Record<string, ScenarioDefinition>;
 

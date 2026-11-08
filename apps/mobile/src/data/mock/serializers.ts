@@ -7,6 +7,7 @@ import {
   type GroupPreviewDto,
   type JoinTargetDto,
   type MatchPreviewDto,
+  type MatchesChangedEventDto,
   type NearbyItemDto,
   type NearbyRemovalReason,
   type NearbyRemovedEventDto,
@@ -204,6 +205,16 @@ export function toMatchPreviewDto(match: SuppliedMatchRecord): MatchPreviewDto {
     target: { kind: match.target.kind, id: match.target.id },
     level: match.level,
     additionalMinutes: match.additionalMinutes,
+  };
+}
+
+/** Tells the owner their match set changed; they reread it (`GET /rides/{rideId}/matches`). */
+export function matchesChanged(envelope: EventEnvelope, ride: RideRecord, version: number): MatchesChangedEventDto {
+  return {
+    ...envelope,
+    type: 'matches.changed',
+    audience: { kind: 'user', userId: ride.userId },
+    payload: { rideRequestId: ride.id, version },
   };
 }
 

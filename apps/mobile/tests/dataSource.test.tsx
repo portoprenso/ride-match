@@ -139,7 +139,7 @@ describe('composeAppDataSource', () => {
     });
     await jest.advanceTimersByTimeAsync(700);
     await expect(places).resolves.toEqual([expect.objectContaining({ id: 'place_asia_mall' })]);
-    await expect(composition.dataSource.rides.getMatches('ride_1')).rejects.toThrow(DataSourceUnavailableError);
+    await expect(composition.dataSource.chat.send('group_1', {} as never)).rejects.toThrow(DataSourceUnavailableError);
 
     expect(jest.getTimerCount()).toBeGreaterThan(0);
     composition.dispose();
@@ -163,11 +163,11 @@ describe('composeAppDataSource', () => {
   });
 
   it('fails the composition for a scenario the simulator does not know', () => {
-    const composition = composeAppDataSource({ readConfig: config({ kind: 'mock', scenario: 'match-appears' }) });
+    const composition = composeAppDataSource({ readConfig: config({ kind: 'mock', scenario: 'group-formation' }) });
 
     expect(composition.status === 'failed' && composition.error).toBeInstanceOf(AppConfigError);
     expect(composition.status === 'failed' && composition.error instanceof AppConfigError && composition.error.problems).toEqual([
-      'EXPO_PUBLIC_MOCK_SCENARIO is "match-appears"; use one of active-neighborhood, empty-neighborhood, map-density.',
+      'EXPO_PUBLIC_MOCK_SCENARIO is "group-formation"; use one of active-neighborhood, empty-neighborhood, match-appears, map-density.',
     ]);
   });
 
@@ -241,12 +241,12 @@ describe('root layout', () => {
   });
 
   it('shows an unknown scenario as a configuration problem', async () => {
-    process.env.EXPO_PUBLIC_MOCK_SCENARIO = 'match-appears';
+    process.env.EXPO_PUBLIC_MOCK_SCENARIO = 'group-formation';
     await renderApp('/');
 
     expect(screen.getByRole('header', { name: 'This build can’t start' })).toBeOnTheScreen();
     expect(
-      screen.getByText('EXPO_PUBLIC_MOCK_SCENARIO is "match-appears"; use one of active-neighborhood, empty-neighborhood, map-density.'),
+      screen.getByText('EXPO_PUBLIC_MOCK_SCENARIO is "group-formation"; use one of active-neighborhood, empty-neighborhood, match-appears, map-density.'),
     ).toBeOnTheScreen();
   });
 

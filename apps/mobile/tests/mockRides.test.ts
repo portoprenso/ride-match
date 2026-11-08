@@ -4,6 +4,7 @@ import {
   OwnRideRequestSchema,
   RIDE_POLICY,
   RideChangedEventSchema,
+  RideMatchSetSchema,
   type ApiErrorCode,
   type CreateRideRequestInput,
   type DomainEventDto,
@@ -35,8 +36,8 @@ const CITY: MapViewport = {
 let simulators: Simulator<MockWorld>[] = [];
 
 /** An empty neighbourhood, so the only request is the rider's own, and the token it sends. */
-function source() {
-  const simulator = createMockSimulator('empty-neighborhood', {
+function source(scenario: 'empty-neighborhood' | 'match-appears' = 'empty-neighborhood') {
+  const simulator = createMockSimulator(scenario, {
     latencyMs: { min: MOCK_LATENCY_MS, max: MOCK_LATENCY_MS },
   });
   simulators.push(simulator);
@@ -301,5 +302,61 @@ describe('publicAreaFor', () => {
       expect(area.center).toEqual({ latitude: 42.875, longitude: 74.595 });
       expect(distanceMeters(area.center, origin)).toBeLessThan(area.radiusMeters);
     }
+  });
+});
+
+describe('supplied matches of the own request (scenario C)', () => {
+  it('supplies one excellent match five seconds after creation, then drops it when it expires', async () => {
+    const mock = source('match-appears');
+    await signIn(mock);
+    const events = recordEvents(mock.simulator);
+    const created = await create(mock);
+    const read = () => settle(mock.dataSource.rides.getMatches(created.id));
+
+    await expect(read()).resolves.toEqual({ version: 1, matches: [] });
+    mock.simulator.advanceTime(5 * SECOND);
+    const set = await read();
+    expect(RideMatchSetSchema.parse(set)).toEqual(set);
+    expect(set).toMatchObject({
+      version: 2,
+      matches: [{ level: 'excellent', additionalMinutes: 2, target: { kind: 'ride' } }],
+    });
+    const aida = await settle(mock.dataSource.rides.getRide(set.matches[0]!.target.id));
+    expect(aida.user.displayName).toBe('Aida');
+    expect(events.filter((event) => event.type === 'matches.changed')).toEqual([
+      expect.objectContaining({
+        audience: { kind: 'user', userId: created.user.id },
+        payload: { rideRequestId: created.id, version: 2 },
+      }),
+    ]);
+
+    mock.simulator.advanceTime(3 * MINUTE);
+    await signIn(mock);
+    await expect(read()).resolves.toEqual({ version: 3, matches: [] });
+  });
+
+  it('has no matches once the request is cancelled, and none for another rider to read', async () => {
+    const mock = source('match-appears');
+    await signIn(mock);
+    const created = await create(mock);
+    mock.simulator.advanceTime(5 * SECOND);
+    await cancel(mock, created.id, 1);
+
+    await expect(settle(mock.dataSource.rides.getMatches(created.id))).resolves.toMatchObject({ matches: [] });
+    await signIn(mock, OTHER_DEMO_NUMBER);
+    await expect(settle(mock.dataSource.rides.getMatches(created.id))).rejects.toEqual(sourceError('FORBIDDEN'));
+  });
+
+  it('a lost acknowledgement leaves one request, which the retry returns', async () => {
+    const mock = source();
+    await signIn(mock);
+    const input = createInput();
+    mock.simulator.failNext({ kind: 'network', afterCommit: true }, 'rides.create');
+
+    await expect(create(mock, input)).rejects.toMatchObject({ kind: 'network' });
+    const current = await settle(mock.dataSource.rides.getOwnRequest());
+    expect(current).toMatchObject({ status: 'active' });
+    await expect(create(mock, input)).resolves.toEqual(current);
+    expect([...mock.simulator.state.rides.values()]).toHaveLength(1);
   });
 });

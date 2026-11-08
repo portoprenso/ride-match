@@ -139,7 +139,7 @@ export function PreviewPanel({
       )}
       {state.kind === 'failed' ? <Button label="Try again" variant="secondary" onPress={onRetry} /> : null}
       {available && joinRequested ? (
-        <Notice message="Joining starts from your own ride request, which this build can’t create yet. Nothing was reserved, and no seat is held." />
+        <Notice message="Joining isn’t available in this demo build yet. Nothing was reserved, and no seat is held." />
       ) : null}
       {available ? <JoinAction item={state.item} onJoin={onJoin} /> : null}
       {back}

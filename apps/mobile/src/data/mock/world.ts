@@ -142,6 +142,27 @@ export type SuppliedMatchRecord = {
 };
 
 /**
+ * A match the scenario supplies to a rider's own request after they create it (scenario C,
+ * RIDE-001-D): `delayMs` after creation the source matches it with `targetRideId`, if both are
+ * still active, for `lifetimeMs`. Fixture data; the mock never computes compatibility.
+ */
+export type MatchArrivalPlan = {
+  delayMs: number;
+  targetRideId: string;
+  level: MatchLevel;
+  additionalMinutes: number | null;
+  lifetimeMs: number;
+};
+
+/** One supplied match of an own request, owner-only; it holds until `expiresAt`. */
+export type OwnerMatchRecord = {
+  target: { kind: 'ride' | 'group'; id: string };
+  level: MatchLevel;
+  additionalMinutes: number | null;
+  expiresAt: number;
+};
+
+/**
  * The mock source's world. Curated places are not part of it: they are a fixed catalog shared by
  * every scenario (`places.ts`). Later cards add their own records, such as messages.
  */
@@ -153,6 +174,10 @@ export type MockWorld = {
   groups: Map<string, GroupRecord>;
   /** Matches the scenario supplies for destination choices, in seed order. */
   suppliedMatches: SuppliedMatchRecord[];
+  /** Matches the scenario supplies to every own request created in it (scenario C). */
+  matchArrivals: MatchArrivalPlan[];
+  /** Each own request's match set: its version and the matches it gained, in arrival order. */
+  ownerMatches: Map<string, { version: number; matches: OwnerMatchRecord[] }>;
   /** Starts empty in every scenario, so a reset signs everyone out. */
   auth: AuthRecords;
 };
@@ -165,6 +190,8 @@ export function createEmptyWorld(now: number): MockWorld {
     rides: new Map(),
     groups: new Map(),
     suppliedMatches: [],
+    matchArrivals: [],
+    ownerMatches: new Map(),
     auth: {
       accounts: new Map(),
       challenges: new Map(),

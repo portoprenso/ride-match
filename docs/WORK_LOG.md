@@ -2589,3 +2589,24 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** the card's states and clock, the cancel sheet and its error rules, the own marker's privacy, `useOwnRequest`, `describeOwnRequest`, `withSessionRenewal`, the home screen's request flow.
 - **Remaining/next:** RIDE-001-D (scenario C, match arrival, unknown-create recovery) or GROUP-001-A; the native pass.
 - **Ownership:** Released; no active task.
+
+## 2026-11-07 — RIDE-001-D: Matches and unknown-create recovery
+
+- **Actor/session:** Claude Code / ride-001-d.
+- **Status:** implemented; `Paused` for its native check (next native pass). Parent RIDE-001 `Paused` (A completed; B, C, D implemented, native checks pending). Ownership released.
+- **Working copy:** `main` at `64fcff7` (RIDE-001-C); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start RIDE-001-D": the mock match scenario and the match and unknown-create recovery screens (designs 11, 30). Acceptance: scenario C one valid supplied match; expired match removed; lost acknowledgement does not duplicate creation.
+- **Changes:**
+  - Mock: `world.ts` (`MatchArrivalPlan`, `OwnerMatchRecord`, `matchArrivals`, `ownerMatches`), `serializers.ts` (`matchesChanged`), `rides.ts` (arrival scheduled at creation, `supplyOwnerMatch`, `dropExpiredMatches`, `readMatches`), `createMockDataSource.ts` (`rides.getMatches`), `scenarios.ts` (scenario C `match-appears`).
+  - App: new `src/features/rides/useOwnMatches.ts`; `RequestCard.tsx` (match block, `MatchArrival`); `CreateRequestSheet.tsx` (`finish`, `UnknownOutcome`, check/retry); `MapHomeScreen.tsx` (own matches as emphasis, set-aside matches, review opens the preview); `PreviewPanel.tsx` (join note).
+  - Tests: new `tests/rideMatches.test.tsx` (5); `tests/mockRides.test.ts` (+3); `tests/previews.test.tsx` (note copy); `tests/mockDataSource.test.ts`, `tests/dataSource.test.tsx`, `tests/demoControls.test.tsx` use `group-formation` as the unbuilt scenario and `chat.send` as an unbuilt operation.
+- **Decisions:**
+  - Matches are a scenario plan, applied to any own request created in it; the mock never computes compatibility.
+  - Own matches replace destination previews as the map's emphasis while a request searches.
+  - Unknown outcome: the check finishes only when the live request holds this plan's destination; a different live request shows "You already have a live request"; none says nothing was created.
+- **Mistake during the work:** a `git checkout` meant to undo Prettier's reformatting of `scenarios.ts` also discarded the uncommitted scenario C edit; it was reapplied unchanged from this session (39 lines) before any check ran.
+- **Checks:** `pnpm typecheck`, `pnpm lint`, `npx jest` in `apps/mobile` (31 suites, 465 tests) passed. Prettier clean on new and changed files except four files that were already unformatted at HEAD (`scenarios.ts` and three tests), left as they were. **Not run:** native builds or device checks (DEVELOPMENT's match check). Screen readers waived.
+- **Docs:** PRODUCT (matches, preview note), ARCHITECTURE, MOCK_SCENARIOS (status, matches, lost acknowledgement, scenario C row), api/rides.md, DEVELOPMENT (tests, 465; match check), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line, RIDE-001 row), AI_CONTEXT.
+- **JSDoc:** the arrival plan and owner matches, `readMatches`, `supplyOwnerMatch`, `dropExpiredMatches`, `matchesChanged`, scenario C, `useOwnMatches`, `MatchArrival`, `UnknownOutcome`.
+- **Remaining/next:** GROUP-001-A (mock joins); the native pass, which would complete MAP-001, MAP-002, DESTINATION-001 and RIDE-001.
+- **Ownership:** Released; no active task.

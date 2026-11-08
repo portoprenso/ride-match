@@ -1,4 +1,4 @@
-import type { OwnRideRequestDto } from '@ride-match/contracts';
+import type { OwnRideRequestDto, RideMatchDto } from '@ride-match/contracts';
 import { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -9,7 +9,15 @@ import { Button } from '../../ui/Button';
 import { spacing } from '../../ui/tokens';
 import { departureText } from '../discovery/nearbyItems';
 import { useClock } from '../discovery/useClock';
+import { matchLabel } from '../destinations/matches';
 import { describeOwnRequest, formatCountdown } from './useOwnRequest';
+
+/** A supplied match to show on the searching card (screen 11), with the target's words if known. */
+export type MatchArrival = {
+  match: RideMatchDto;
+  /** Such as "Aida → Asia Mall · ~350 m · Leaving in 5 min", or `null` while it is not on the map. */
+  summary: string | null;
+};
 
 type RequestCardProps = {
   /** The rider's current or latest request, from the source. */
@@ -17,6 +25,12 @@ type RequestCardProps = {
   /** An expired request whose outcome the rider dismissed; it shows nothing. */
   dismissedId: string | null;
   onCancel: () => void;
+  /** The best supplied match the rider has not set aside, or `null`. */
+  arrival: MatchArrival | null;
+  /** "Review and join": opens the match's preview. Nothing is reserved. */
+  onReviewMatch: (match: RideMatchDto) => void;
+  /** "Keep looking": sets this match aside; a later or different match shows again. */
+  onKeepLooking: (match: RideMatchDto) => void;
   /** The device saw the deadline pass: read the request again for the source's answer. */
   onDeadline: () => void;
   /** Opens a new draft to the same destination; nothing is created until the rider publishes it. */
@@ -29,7 +43,8 @@ type RequestCardProps = {
  * Home's card for the rider's own request (screens 10 and 27), from the source's status:
  *
  * - Searching: where it heads, when it leaves, the time left in the search window (device
- *   countdown, presentation only) and "Cancel request".
+ *   countdown, presentation only) and "Cancel request". When the source supplies a match
+ *   (screen 11) it says so, with "Review and join" (the match's preview) and "Keep looking".
  * - Ending: the device saw the deadline pass; no action is offered while the source's answer
  *   is read, so a cancel never races an expiry.
  * - Grouped: it joined a group (group screens arrive with GROUP-002).
@@ -47,6 +62,9 @@ function RequestCardContent({
   request: latest,
   dismissedId,
   onCancel,
+  arrival,
+  onReviewMatch,
+  onKeepLooking,
   onDeadline,
   onCreateAgain,
   onDismiss,
@@ -86,9 +104,24 @@ function RequestCardContent({
           <Badge label={`Searching · ${formatCountdown(state.secondsLeft)} left`} tone="success" />
           {destination}
           <AppText variant="label">You · {departureText(request.departureAt, now).toLowerCase()}</AppText>
-          <AppText color="muted">
-            Let’s find your people. Compatible plans stand out on the map; you can keep exploring while you wait.
-          </AppText>
+          {arrival === null ? (
+            <AppText color="muted">
+              Let’s find your people. Compatible plans stand out on the map; you can keep exploring while you wait.
+            </AppText>
+          ) : (
+            <View style={styles.match}>
+              <Badge label={matchLabel(arrival.match.level)} tone="success" />
+              <AppText variant="label" accessibilityLiveRegion="polite">
+                Someone’s going your way.
+              </AppText>
+              {arrival.summary === null ? null : <AppText color="muted">{arrival.summary}</AppText>}
+              <AppText variant="small" color="muted">
+                Similar destination and departure. This preview does not reserve a seat.
+              </AppText>
+              <Button label="Review and join" onPress={() => onReviewMatch(arrival.match)} />
+              <Button label="Keep looking" variant="ghost" onPress={() => onKeepLooking(arrival.match)} />
+            </View>
+          )}
           <Button label="Cancel request" variant="secondary" onPress={onCancel} />
         </View>
       );
@@ -128,6 +161,10 @@ function RequestCardContent({
 }
 
 const styles = StyleSheet.create({
+  match: {
+    gap: spacing.sm,
+    alignItems: 'stretch',
+  },
   card: {
     gap: spacing.sm,
     alignItems: 'stretch',

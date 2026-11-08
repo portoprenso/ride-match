@@ -1,5 +1,7 @@
 import {
   CancelRideRequestInputSchema,
+  type MatchLevel,
+  type RideMatchSetDto,
   CreateRideRequestInputSchema,
   RIDE_POLICY,
   isLocationFixFresh,
@@ -12,9 +14,16 @@ import { authenticate } from './auth';
 import { contains } from './geometry';
 import { expireRide } from './lifecycle';
 import { COVERAGE, findPlace } from './places';
-import { nearbyRemoved, nearbyUpserted, rideChanged, toNearbyItemDto, toOwnRideRequestDto } from './serializers';
+import {
+  matchesChanged,
+  nearbyRemoved,
+  nearbyUpserted,
+  rideChanged,
+  toNearbyItemDto,
+  toOwnRideRequestDto,
+} from './serializers';
 import type { WorkContext } from './simulator';
-import type { MockWorld, RideRecord } from './world';
+import { isDiscoverableRide, isLiveGroup, type MatchArrivalPlan, type MockWorld, type RideRecord } from './world';
 
 /*
  * The signed-in rider's own ride request (docs/api/rides.md): create, read the current or latest
@@ -112,6 +121,9 @@ export function createRide(context: Context, accessToken: string | null, input: 
       );
       context.emit(rideChanged(context.eventEnvelope(), ride));
       context.schedule(ride.expiresAt, (later) => expireRide(later, ride.id));
+      for (const plan of context.state.matchArrivals) {
+        context.schedule(context.now + plan.delayMs, (later) => supplyOwnerMatch(later, ride.id, plan));
+      }
       return toOwnRideRequestDto(context.state, ride);
     },
   );
@@ -185,4 +197,80 @@ export function cancelRide(
       return toOwnRideRequestDto(context.state, ride);
     },
   );
+}
+
+/**
+ * A scenario's match arrives for an own request (scenario C): only while the request and the
+ * target are both still active. The set's version rises and the owner is told
+ * (`matches.changed`); the match is removed again when it expires.
+ */
+function supplyOwnerMatch(context: Context, rideId: string, plan: MatchArrivalPlan): void {
+  const own = context.state.rides.get(rideId);
+  const target = context.state.rides.get(plan.targetRideId);
+  if (own?.status !== 'active' || target === undefined || !isDiscoverableRide(target)) return;
+  const set = context.state.ownerMatches.get(rideId) ?? { version: 1, matches: [] };
+  const expiresAt = context.now + plan.lifetimeMs;
+  set.matches = [
+    ...set.matches.filter((match) => match.target.id !== target.id),
+    {
+      target: { kind: 'ride', id: target.id },
+      level: plan.level,
+      additionalMinutes: plan.additionalMinutes,
+      expiresAt,
+    },
+  ];
+  set.version += 1;
+  context.state.ownerMatches.set(rideId, set);
+  context.emit(matchesChanged(context.eventEnvelope(), own, set.version));
+  context.schedule(expiresAt, (later) => dropExpiredMatches(later, rideId));
+}
+
+/** Removes an own request's matches whose time is up, and tells the owner if any were. */
+function dropExpiredMatches(context: Context, rideId: string): void {
+  const own = context.state.rides.get(rideId);
+  const set = context.state.ownerMatches.get(rideId);
+  if (own === undefined || set === undefined) return;
+  const kept = set.matches.filter((match) => match.expiresAt > context.now);
+  if (kept.length === set.matches.length) return;
+  set.matches = kept;
+  set.version += 1;
+  context.emit(matchesChanged(context.eventEnvelope(), own, set.version));
+}
+
+const LEVEL_RANK: Record<MatchLevel, number> = { excellent: 0, good: 1, possible: 2 };
+
+/**
+ * `GET /rides/{rideId}/matches`: the owner's current matches, best first. `NOT_FOUND` for an
+ * unknown request, `FORBIDDEN` for another rider's. Only an active request has matches: for any
+ * other status the set is empty. A match whose time is up or whose target left discovery is
+ * never returned, even before its removal is announced.
+ */
+export function readMatches(context: Context, accessToken: string | null, rideId: string): RideMatchSetDto {
+  const user = authenticate(context, accessToken);
+  const ride = context.state.rides.get(rideId);
+  if (ride === undefined) throw context.sourceError('NOT_FOUND', 'This ride request does not exist.');
+  if (ride.userId !== user.id) throw context.sourceError('FORBIDDEN', 'Only its owner can read these matches.');
+  const set = context.state.ownerMatches.get(rideId) ?? { version: 1, matches: [] };
+  if (ride.status !== 'active') return { version: set.version, matches: [] };
+  const { rides, groups } = context.state;
+  const live = set.matches.filter((match) => {
+    if (match.expiresAt <= context.now) return false;
+    if (match.target.kind === 'ride') {
+      const target = rides.get(match.target.id);
+      return target !== undefined && isDiscoverableRide(target);
+    }
+    const group = groups.get(match.target.id);
+    return group !== undefined && isLiveGroup(group);
+  });
+  return {
+    version: set.version,
+    matches: live
+      .sort((first, second) => LEVEL_RANK[first.level] - LEVEL_RANK[second.level])
+      .map((match) => ({
+        target: { kind: match.target.kind, id: match.target.id },
+        level: match.level,
+        additionalMinutes: match.additionalMinutes,
+        expiresAt: new Date(match.expiresAt).toISOString(),
+      })),
+  };
 }

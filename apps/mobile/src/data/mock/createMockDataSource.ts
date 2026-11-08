@@ -14,7 +14,7 @@ import {
   readRide,
   searchPlaces,
 } from './discovery';
-import { cancelRide, createRide, readOwnRequest } from './rides';
+import { cancelRide, createRide, readMatches, readOwnRequest } from './rides';
 import { scenarioOptions, type MockScenarioKey } from './scenarios';
 import { createSimulator, type LatencyRange, type Simulator } from './simulator';
 import type { MockWorld } from './world';
@@ -97,6 +97,10 @@ export function createMockDataSource(
       create: (input) => {
         const token = accessToken();
         return simulator.run('rides.create', (context) => createRide(context, token, input));
+      },
+      getMatches: (rideId, options) => {
+        const token = accessToken();
+        return simulator.run('rides.getMatches', (context) => readMatches(context, token, rideId), options);
       },
       cancel: (rideId, input) => {
         const token = accessToken();

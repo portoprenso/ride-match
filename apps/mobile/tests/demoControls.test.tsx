@@ -81,7 +81,7 @@ describe('createMockDevControls', () => {
   it('refuses a scenario that is not built', () => {
     const { controls } = setup();
 
-    expect(() => controls.selectScenario('match-appears')).toThrow(RangeError);
+    expect(() => controls.selectScenario('group-formation')).toThrow(RangeError);
     expect(controls.getSnapshot().scenario).toBe('active-neighborhood');
   });
 

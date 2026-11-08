@@ -96,9 +96,9 @@ afterEach(() => {
 
 describe('scenarios', () => {
   it('knows only the implemented scenario keys', () => {
-    expect(MOCK_SCENARIO_KEYS).toEqual(['active-neighborhood', 'empty-neighborhood', 'map-density']);
+    expect(MOCK_SCENARIO_KEYS).toEqual(['active-neighborhood', 'empty-neighborhood', 'match-appears', 'map-density']);
     expect(isMockScenarioKey('empty-neighborhood')).toBe(true);
-    expect(isMockScenarioKey('match-appears')).toBe(false);
+    expect(isMockScenarioKey('group-formation')).toBe(false);
     expect(isMockScenarioKey('toString')).toBe(false);
   });
 
@@ -558,7 +558,7 @@ describe('operations without a mock yet', () => {
   it('reject at once as unavailable, without simulated latency', async () => {
     const { dataSource } = source();
 
-    await expect(dataSource.rides.getMatches('ride_1')).rejects.toThrow(DataSourceUnavailableError);
+    await expect(dataSource.chat.send('group_1', {} as never)).rejects.toThrow(DataSourceUnavailableError);
     await expect(dataSource.groups.getGroup('group_1')).rejects.toThrow(
       'The mock data source does not support this operation yet.',
     );

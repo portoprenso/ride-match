@@ -22,7 +22,7 @@ import { DestinationPanel, summarizeDestination } from '../destinations/Destinat
 import { DestinationSheet } from '../destinations/DestinationSheet';
 import { DiscoveryMarkers } from '../discovery/DiscoveryMarkers';
 import { DiscoveryPanel } from '../discovery/DiscoveryPanel';
-import { clusterItems, clusterZoomRegion, itemKey } from '../discovery/nearbyItems';
+import { clusterItems, clusterZoomRegion, describeItem, itemKey } from '../discovery/nearbyItems';
 import { NearbyListSheet, type NearbyListContent } from '../discovery/NearbyListSheet';
 import { PreviewPanel, previewTitle } from '../discovery/PreviewPanel';
 import { useTargetPreview, type PreviewTarget } from '../discovery/useTargetPreview';
@@ -35,7 +35,9 @@ import { CancelRequestSheet } from '../rides/CancelRequestSheet';
 import { OwnRequestMarker } from '../rides/OwnRequestMarker';
 import { RequestCard } from '../rides/RequestCard';
 import { resolveOrigin } from '../rides/rideDraft';
+import { useOwnMatches } from '../rides/useOwnMatches';
 import { isLive, useOwnRequest } from '../rides/useOwnRequest';
+import { indexMatches } from '../destinations/matches';
 import { HomeMap } from './HomeMap';
 import { CentrePin, MapPointPanel, useMapPointPicker } from './MapPointPicker';
 import { CAMERA_ANIMATION_MS, streetRegion, useHomeCamera } from './mapCamera';
@@ -141,6 +143,30 @@ export function MapHomeScreen({
   const [list, setList] = useState<NearbyListContent | null>(null);
   const now = useClock();
   const fixPoint = fix?.coordinates ?? null;
+  // The own request's supplied matches (RIDE-001-D) emphasize the map in place of a destination's
+  // previews while a request searches; the best one the rider has not set aside is on the card.
+  const ownMatches = useOwnMatches(ownRequest, now);
+  const [setAside, setSetAside] = useState<ReadonlySet<string>>(new Set());
+  const emphasis = ownMatches === null ? discovery.matches : indexMatches(ownMatches);
+  const arrivalMatch =
+    ownMatches?.find((match) => !setAside.has(`${ownRequest?.id}:${itemKey(match.target)}:${match.level}`)) ?? null;
+  const arrivalItem =
+    arrivalMatch === null
+      ? null
+      : (snapshot?.items.find((item) => itemKey(item) === itemKey(arrivalMatch.target)) ?? null);
+  const arrival =
+    arrivalMatch === null
+      ? null
+      : {
+          match: arrivalMatch,
+          summary:
+            arrivalItem === null
+              ? null
+              : (() => {
+                  const words = describeItem(arrivalItem, fixPoint, now);
+                  return `${words.title} · ${words.detail}`;
+                })(),
+        };
 
   /** A camera move the user asked for (a cluster or a list row), which ends any automatic one. */
   const moveTo = (target: Region) => {
@@ -241,7 +267,7 @@ export function MapHomeScreen({
                 fix={fixPoint}
                 now={now}
                 stale={staleSnapshot}
-                matches={discovery.matches}
+                matches={emphasis}
                 onSelectItem={(item) => openPreview(item)}
                 onPressCluster={pressCluster}
               />
@@ -351,7 +377,7 @@ export function MapHomeScreen({
               now={now}
               demo={demo}
               joinRequested={joinRequested}
-              match={(previewKey === null ? undefined : discovery.matches?.get(previewKey)?.level) ?? null}
+              match={(previewKey === null ? undefined : emphasis?.get(previewKey)?.level) ?? null}
               onJoin={planToJoin}
               onRetry={previewState.retry}
               onRefreshNearby={() => {
@@ -366,6 +392,16 @@ export function MapHomeScreen({
                 request={ownRequest}
                 dismissedId={dismissedId}
                 onCancel={() => setCancelOpen(true)}
+                arrival={arrival}
+                onReviewMatch={(match) => {
+                  openPreview(match.target);
+                  if (arrivalItem !== null) moveTo(streetRegion(arrivalItem.publicOrigin.center));
+                }}
+                onKeepLooking={(match) =>
+                  setSetAside((previous) =>
+                    new Set(previous).add(`${ownRequest?.id}:${itemKey(match.target)}:${match.level}`),
+                  )
+                }
                 onDeadline={refreshOwnRequest}
                 onCreateAgain={(ended) => {
                   // An explicit new draft to the same place; nothing is published until confirmed.
@@ -413,7 +449,7 @@ export function MapHomeScreen({
         fix={fixPoint}
         now={now}
         demo={demo}
-        matches={discovery.matches}
+        matches={emphasis}
       />
       <DestinationSheet open={destinationOpen} onClose={() => setDestinationOpen(false)} onChoose={chooseDestination} />
       <CancelRequestSheet

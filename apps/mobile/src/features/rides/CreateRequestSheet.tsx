@@ -169,22 +169,50 @@ function ReviewStep({
         void queryClient.invalidateQueries({ queryKey: queryKeys.ownRequest(rider) });
       }
     },
-    onSuccess: (request, input) => {
-      if (rider !== null) {
-        queryClient.setQueryData(queryKeys.ownRequest(rider), request);
-        void queryClient.invalidateQueries({ queryKey: queryKeys.currentUser(rider) });
-      }
-      analytics.track('ride_request_created', {
-        departureOffsetMinutes: input.departureOffsetMinutes,
-        pickup: input.origin.source,
-      });
-      onPublished(request);
-    },
+    onSuccess: (request, input) => finish(request, input),
   });
+  /** The source created the request: keep its canonical answer, record it once, close. */
+  function finish(request: OwnRideRequestDto, input: CreateRideRequestInput) {
+    if (rider !== null) {
+      queryClient.setQueryData(queryKeys.ownRequest(rider), request);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.currentUser(rider) });
+    }
+    analytics.track('ride_request_created', {
+      departureOffsetMinutes: input.departureOffsetMinutes,
+      pickup: input.origin.source,
+    });
+    onPublished(request);
+  }
+  // After an unknown outcome (screen 30): what reading the current request found.
+  const [checked, setChecked] = useState<'not-yet' | 'checking' | 'none' | 'other'>('not-yet');
+  const checkCurrent = async () => {
+    setChecked('checking');
+    const found = (await own.refetch()).data ?? null;
+    const isLiveRequest = found !== null && (found.status === 'active' || found.status === 'grouped');
+    if (isLiveRequest && sent !== null && found.destination.id === sent.destinationPlaceId) {
+      finish(found, sent);
+      return;
+    }
+    setChecked(isLiveRequest ? 'other' : 'none');
+  };
 
   const live =
     own.data !== undefined && own.data !== null && (own.data.status === 'active' || own.data.status === 'grouped');
   const failure = create.error === null ? null : describeCreateError(create.error);
+  if (failure?.action === 'retry' && checked !== 'other') {
+    return (
+      <UnknownOutcome
+        checked={checked}
+        busy={create.isPending}
+        onCheck={() => void checkCurrent()}
+        onRetry={() => {
+          if (sent === null || create.isPending) return;
+          setChecked('not-yet');
+          create.mutate(sent);
+        }}
+      />
+    );
+  }
   if (live || failure?.action === 'existing') {
     return <ExistingRequest request={live ? own.data! : null} onClose={onClose} />;
   }
@@ -246,6 +274,46 @@ function ReviewStep({
       )}
       <Summary label="Search window: 15 minutes" value={describeDeparture(departure)} />
       <Notice message="Others see your approximate pickup area. This creates a ride intention, not a taxi booking." />
+    </SheetContent>
+  );
+}
+
+/**
+ * The create's answer was lost (screen 30): the request may exist. Checking reads the rider's
+ * current request; retrying resends the same input and operation ID, so the source returns the
+ * original request rather than creating a second one.
+ */
+function UnknownOutcome({
+  checked,
+  busy,
+  onCheck,
+  onRetry,
+}: {
+  checked: 'not-yet' | 'checking' | 'none';
+  busy: boolean;
+  onCheck: () => void;
+  onRetry: () => void;
+}) {
+  return (
+    <SheetContent
+      footer={
+        <ActionFooter>
+          <Button label="Check current request" busy={checked === 'checking'} disabled={busy} onPress={onCheck} />
+          <Button label="Retry this request" variant="secondary" busy={busy} onPress={onRetry} />
+        </ActionFooter>
+      }
+    >
+      <View style={styles.heading}>
+        <AppText variant="section" accessibilityRole="header" accessibilityLiveRegion="polite">
+          We’re checking what happened.
+        </AppText>
+        <AppText color="muted">The response was interrupted. Your request may already have been created.</AppText>
+      </View>
+      {checked === 'none' ? (
+        <Notice message="No live request was found, so it wasn’t created. You can retry it now." />
+      ) : (
+        <Notice message="Check your current request before trying again. Retrying will not create a duplicate request." />
+      )}
     </SheetContent>
   );
 }

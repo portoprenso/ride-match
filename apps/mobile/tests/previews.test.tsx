@@ -120,9 +120,7 @@ describe('ride and group previews', () => {
     await wait(ANSWER_MS);
     expect(screen.getByRole('header', { name: 'Heading to Asia Mall' })).toBeOnTheScreen();
     expect(
-      screen.getByText(
-        'Joining starts from your own ride request, which this build can’t create yet. Nothing was reserved, and no seat is held.',
-      ),
+      screen.getByText('Joining isn’t available in this demo build yet. Nothing was reserved, and no seat is held.'),
     ).toBeOnTheScreen();
     // The target was read again for the signed-in rider, and is still offered.
     expect(screen.getByRole('button', { name: 'Plan to join this rider' })).toBeOnTheScreen();

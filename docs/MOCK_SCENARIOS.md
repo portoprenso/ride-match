@@ -1,6 +1,6 @@
 # Mock simulator and scenarios
 
-Status: partly implemented: the simulator foundation (MOCK-001-A), the discovery world, seeds and public reads that the app runs on (MOCK-001-B), the demo controls (MOCK-001-C), sign-in and sessions (AUTH-001-A), supplied destination matches (DESTINATION-001-A), and the rider's own request (RIDE-001-A); the other operations and scenarios are planned. Last updated: 2026-11-07.
+Status: partly implemented: the simulator foundation (MOCK-001-A), the discovery world, seeds and public reads that the app runs on (MOCK-001-B), the demo controls (MOCK-001-C), sign-in and sessions (AUTH-001-A), supplied destination matches (DESTINATION-001-A), the rider's own request (RIDE-001-A), and scenario C with own-request matches (RIDE-001-D); the other operations and scenarios are planned. Last updated: 2026-11-07.
 
 ## Purpose
 
@@ -83,6 +83,7 @@ Rechecking after delay enables actual last-seat and expired-target conflicts. Us
 | --- | --- | --- |
 | `active-neighborhood` | Six solo rides in six districts; a forming group of three, and a ready group of two with a member-only meeting point. Eleven riders, one live request each | +8 s: a seventh solo ride appears; +20 s: a seeded ride reaches its deadline. Every other ride and group ends at its own deadline, so the area is empty after 26 minutes until a reset |
 | `empty-neighborhood` | No riders; the curated places still exist | None |
+| `match-appears` (RIDE-001-D) | Three solo rides: Aida (Asanbay → Asia Mall, +5 min) and two unrelated plans (Dzhal → Osh Bazaar, Vostok-5 → Manas airport). No destination previews | 5 s after the rider's own request is created: one excellent match with Aida's ride (+2 min), holding 3 minutes or until either request ends |
 | `map-density` (MAP-002-B) | 100 discovery items in the demo city's opening view: 25 synthetic "Demo block N" areas on a 5 × 5 grid about 1.3 km apart, each with three solo rides and one forming group of two (75 rides, 25 groups, 125 requests). Names and values repeat deterministically | None; rides and groups end at their own deadlines |
 
 ### Own ride request (RIDE-001-A)
@@ -95,7 +96,9 @@ Rechecking after delay enables actual last-seat and expired-target conflicts. Us
 - **Cancel (`rides.cancel`):** `VALIDATION_FAILED`, authentication, the receipt, `NOT_FOUND`, `FORBIDDEN` (another rider's), then `USE_LEAVE_GROUP`, `RIDE_EXPIRED`, `INVALID_TRANSITION`, and only then `VERSION_CONFLICT`. Success emits `nearby.removed` (`unavailable`) and `ride.changed`.
 - **Expiry:** the existing lifecycle (`expireRide`), scheduled at creation; it emits `nearby.removed` (`expired`) and `ride.changed`.
 - **Current user:** `auth.getCurrentUser` names the live request (`rideRequestId`).
-- **Not yet:** matches for the own request (`rides.getMatches`, RIDE-001-D); grouping (GROUP-001).
+- **Matches (`rides.getMatches`, RIDE-001-D):** the owner's set, best first, with its own version (1 before any match). `NOT_FOUND` for an unknown request, `FORBIDDEN` for another rider's. Only an active request has matches; a match past its `expiresAt` or whose target left discovery is never returned. Matches come only from a scenario's `matchArrivals` plan (`MatchArrivalPlan`): scheduled at creation, supplied if both requests are still active, announced with `matches.changed` to the owner, and removed (with another `matches.changed`) when they expire.
+- **Lost acknowledgement:** `failNext({ kind: 'network', afterCommit: true }, 'rides.create')` creates the request and loses the answer; a retry with the same input and operation ID returns it, and `getOwnRequest` already shows it.
+- **Not yet:** grouping (GROUP-001).
 
 ### Supplied destination matches (DESTINATION-001-A)
 
