@@ -1,6 +1,6 @@
 # Future API: groups, meeting points, chat, and safety
 
-Status: planned; the group, membership, join, leave and status contracts (CONTRACT-003-A), the chat contracts (CONTRACT-003-B) and the block and report contracts (CONTRACT-003-C) exist in `packages/contracts`. The mock source implements joining (GROUP-001-A; [mock rules](../MOCK_SCENARIOS.md#joining-group-001-a)), leaving and the member-only group read (GROUP-001-B; [mock rules](../MOCK_SCENARIOS.md#leaving-group-001-b)), the coordinator's status changes with expiry and terminal access (GROUP-001-C; [mock rules](../MOCK_SCENARIOS.md#group-status-group-001-c)), and meeting points with per-viewer walking estimates (MEETING-001-A; [mock rules](../MOCK_SCENARIOS.md#meeting-points-meeting-001-a)). Last updated: 2026-11-08.
+Status: planned; the group, membership, join, leave and status contracts (CONTRACT-003-A), the chat contracts (CONTRACT-003-B) and the block and report contracts (CONTRACT-003-C) exist in `packages/contracts`. The mock source implements joining (GROUP-001-A; [mock rules](../MOCK_SCENARIOS.md#joining-group-001-a)), leaving and the member-only group read (GROUP-001-B; [mock rules](../MOCK_SCENARIOS.md#leaving-group-001-b)), the coordinator's status changes with expiry and terminal access (GROUP-001-C; [mock rules](../MOCK_SCENARIOS.md#group-status-group-001-c)), meeting points with per-viewer walking estimates (MEETING-001-A; [mock rules](../MOCK_SCENARIOS.md#meeting-points-meeting-001-a)), and chat history and sending (CHAT-001-A; [mock rules](../MOCK_SCENARIOS.md#chat-chat-001-a)). Last updated: 2026-11-08.
 
 Paths use `/v1`. Common envelopes/errors/idempotency are in [overview](overview.md). `Member` requires current membership; `Coordinator` also requires that role. Retained terminal history is accessible to members authorized at closure, not users who previously left.
 
@@ -146,6 +146,7 @@ No error codes were added. `GROUP_CLOSED` answers a join to a ready group and a 
 - Membership/lifecycle is checked on every read/send and subscription.
 - Leaving or revocation clears history/composer private data immediately; stale events cannot restore access.
 - No background offline send queue, attachments, editing, deletion, reactions, threads, presence, or read receipts.
+- **Check order for a history read (decided in CHAT-001-A):** `VALIDATION_FAILED` for an invalid query, authentication, `MEMBERSHIP_REQUIRED`, `HISTORY_EXPIRED`, then `VALIDATION_FAILED` for a cursor that is malformed, from another group, or never issued; only after the access checks, so a cursor never reveals anything about a group the caller cannot read.
 
 ## Implemented chat contracts (CONTRACT-003-B)
 

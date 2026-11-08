@@ -2789,3 +2789,25 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** `MeetingPointSheet` (no route, return changes nothing, replaced and withdrawn states), `describeWalk`, `GroupScreen`'s meeting point section and taxi rule.
 - **Remaining/next:** CHAT-001-A or TAXI-001-A with the user's go-ahead; the native pass.
 - **Ownership:** Released; no active task.
+
+## 2026-11-08 — CHAT-001-A: Mock chat history, sending and pagination
+
+- **Actor/session:** Claude Code / chat-001-a.
+- **Status:** `Completed`. Parent CHAT-001 `In progress`. Ownership released.
+- **Working copy:** `main` at `b7a3c43` (MEETING-001-B); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Начни CHAT-001-A": mock history and send with sequence pagination and idempotency. Prerequisite GROUP-002 is implemented but paused for its native checks; the user's explicit request is taken as the go-ahead. Acceptance: text bounds; source sender; retries and lost responses create one message; history and complete catch-up pagination.
+- **Changes:**
+  - New `src/data/mock/chat.ts`: `readChatHistory`, `sendChatMessage`, `storeMessage`, `CHAT_REPLY_DELAY_MS`, `SIMULATED_REPLIES`, the scheduled simulated reply.
+  - `world.ts`: `MessageRecord` and `world.messages`. `serializers.ts`: `toChatMessageDto`, `chatMessageCreated`. `createMockDataSource.ts`: `chat.getHistory` and `chat.send`; `group` subscriptions now carry chat events too.
+  - `scenarios.ts`: optional seeded chat per group; scenario A's TSUM group has three messages.
+  - Tests: new `tests/mockChat.test.ts` (15); `tests/mockDataSource.test.ts` and `tests/dataSource.test.tsx` use safety operations as the unavailable examples.
+- **Decisions:**
+  - Sends are matched by sender, group and client message ID in the stored messages, not the general receipt store, because the contract scopes the key to sender and group and checks membership before it.
+  - History checks access before the cursor; cursors are `chat~<groupId>~<sequence>`, and a cursor never issued (sequence 1 or beyond the newest) is invalid.
+  - Simulated replies come only from seeded demo riders, 4 s after the last message, with generic lines; riders who sign in never answer automatically.
+  - Scenario H (`failed-message`) is left to CHAT-001-C, where its retry UI lives.
+- **Checks:** `pnpm typecheck`, `pnpm lint`, `npx jest` in `apps/mobile` (37 suites, 544 tests) passed; Prettier clean on the new and changed files except `scenarios.ts` and `tests/mockDataSource.test.ts`, already unformatted at HEAD and edited without reformatting. No native check applies (mock only; no screen changed).
+- **Docs:** MOCK_SCENARIOS (status, module table, chat rules), api/groups.md (status, history check order), api/realtime.md (chat event from the mock), DEVELOPMENT (tests, 544), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line, CHAT-001 row), AI_CONTEXT.
+- **JSDoc:** the chat module's rules, `readChatHistory` and `sendChatMessage` with their check orders, `storeMessage`, the reply rule, `MessageRecord`, the serializers.
+- **Remaining/next:** CHAT-001-B (chat route and composer) or TAXI-001-A with the user's go-ahead; the native pass.
+- **Ownership:** Released; no active task.

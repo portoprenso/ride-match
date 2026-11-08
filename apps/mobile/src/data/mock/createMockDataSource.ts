@@ -14,6 +14,7 @@ import {
   readRide,
   searchPlaces,
 } from './discovery';
+import { readChatHistory, sendChatMessage } from './chat';
 import { acceptGroupSubscription, isMember, joinGroup, leaveGroup, readGroup, updateGroupStatus } from './groups';
 import { cancelRide, createRide, readMatches, readOwnRequest } from './rides';
 import { scenarioOptions, type MockScenarioKey } from './scenarios';
@@ -47,7 +48,8 @@ export function createMockSimulator(
  *   take an abort signal); the caller's own request: create, read and cancel (RIDE-001-A,
  *   `rides.ts`); joining a ride or group (GROUP-001-A, `groups.ts`), leaving it and the
  *   member-only group read (GROUP-001-B), and the coordinator's status changes (GROUP-001-C);
- *   nearby and `user` subscriptions and the connection state.
+ *   chat history pages and sending (CHAT-001-A, `chat.ts`); nearby and `user` subscriptions and
+ *   the connection state.
  * - Every other operation rejects at once with a `DataSourceUnavailableError` until the card
  *   that implements it lands, never with invented data. `group` subscriptions are
  *   delivered since GROUP-002-B.
@@ -132,6 +134,16 @@ export function createMockDataSource(
       getPreview: (groupId, options) =>
         simulator.run('groups.getPreview', (context) => readGroupPreview(context, groupId), options),
     },
+    chat: {
+      getHistory: (groupId, input, options) => {
+        const token = accessToken();
+        return simulator.run('chat.getHistory', (context) => readChatHistory(context, token, groupId, input), options);
+      },
+      send: (groupId, input) => {
+        const token = accessToken();
+        return simulator.run('chat.send', (context) => sendChatMessage(context, token, groupId, input));
+      },
+    },
     events: {
       subscribe: <Request extends SubscriptionRequest>(
         request: Request,
@@ -211,7 +223,7 @@ async function subscribeUser(
 
 /**
  * Accepts a `group` subscription for a member of that group after the simulated round trip, then
- * delivers every event addressed to the group (`group.changed`), only while the subscriber is
+ * delivers every event addressed to the group (`group.changed`, `chat.message.created`), only while the subscriber is
  * still a member: a member who leaves stops receiving it at once. It ends like a nearby
  * subscription.
  */

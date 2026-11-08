@@ -139,7 +139,7 @@ describe('composeAppDataSource', () => {
     });
     await jest.advanceTimersByTimeAsync(700);
     await expect(places).resolves.toEqual([expect.objectContaining({ id: 'place_asia_mall' })]);
-    await expect(composition.dataSource.chat.send('group_1', {} as never)).rejects.toThrow(DataSourceUnavailableError);
+    await expect(composition.dataSource.safety.report({} as never)).rejects.toThrow(DataSourceUnavailableError);
 
     expect(jest.getTimerCount()).toBeGreaterThan(0);
     composition.dispose();

@@ -1,6 +1,6 @@
 # Mock simulator and scenarios
 
-Status: partly implemented: the simulator foundation (MOCK-001-A), the discovery world, seeds and public reads that the app runs on (MOCK-001-B), the demo controls (MOCK-001-C), sign-in and sessions (AUTH-001-A), supplied destination matches (DESTINATION-001-A), the rider's own request (RIDE-001-A), scenario C with own-request matches (RIDE-001-D), joining a ride or group (GROUP-001-A), leaving it with the member-only group read (GROUP-001-B), the coordinator's status changes (GROUP-001-C), and meeting points (MEETING-001-A); the other operations and scenarios are planned. Last updated: 2026-11-08.
+Status: partly implemented: the simulator foundation (MOCK-001-A), the discovery world, seeds and public reads that the app runs on (MOCK-001-B), the demo controls (MOCK-001-C), sign-in and sessions (AUTH-001-A), supplied destination matches (DESTINATION-001-A), the rider's own request (RIDE-001-A), scenario C with own-request matches (RIDE-001-D), joining a ride or group (GROUP-001-A), leaving it with the member-only group read (GROUP-001-B), the coordinator's status changes (GROUP-001-C), meeting points (MEETING-001-A), and chat history and sending with simulated replies (CHAT-001-A); the other operations and scenarios are planned. Last updated: 2026-11-08.
 
 ## Purpose
 
@@ -75,6 +75,7 @@ Rechecking after delay enables actual last-seat and expired-target conflicts. Us
 | `rides.ts` (RIDE-001-A) | The signed-in rider's own request: create, read the current or latest one, cancel; [below](#own-ride-request-ride-001-a) |
 | `groups.ts` (GROUP-001) | Joining a solo ride or a group with the caller's active request, leaving it, the coordinator's status changes, and the member-only group read; [joining](#joining-group-001-a), [leaving](#leaving-group-001-b), [status](#group-status-group-001-c) |
 | `meetingPoints.ts`, `walking.ts` (MEETING-001-A) | Supplying, replacing and withdrawing a group's meeting point, and each member's walking estimate; [below](#meeting-points-meeting-001-a) |
+| `chat.ts` (CHAT-001-A) | Chat history pages, idempotent sending and the demo riders' simulated replies; [below](#chat-chat-001-a) |
 | `createMockDataSource.ts` | `createMockSimulator(scenario)` and the `AppDataSource` adapter. Each implemented call goes through `Simulator.run` (latency, failure controls, connection); every other operation rejects at once with `DataSourceUnavailableError` |
 
 - **Place search:** the curated places inside the area's circle, at most `limit`. Without a query, nearest the center first; with one (ignoring case), a label that starts with the text, then a label word that does, then a label or detail that contains it, each rank by distance. An area that does not reach the coverage box fails with `UNSUPPORTED_AREA`, and an invalid input with `VALIDATION_FAILED` (without field errors for now).
@@ -145,6 +146,17 @@ Rechecking after delay enables actual last-seat and expired-target conflicts. Us
 - **Replace and withdraw:** `replaceMeetingPoint` picks the next nearest place under a new ID; `withdrawMeetingPoint` sets `null`. No scenario triggers them yet; tests and future scenarios run them as simulator work. A closed group never changes, and a group that already has a point is not supplied again.
 - **Effects:** each change raises the group version and emits `group.changed` (`meeting_point_changed`) to the group's members. A ready group returns to forming, with a `nearby.upserted` of its new status; the point is never in a preview or a public event. Without a point, marking ready answers `INVALID_TRANSITION`.
 - **Walking estimate:** per viewer, in the member-only group: the straight-line distance from that member's own exact origin at 80 m per minute, rounded up; `null` without a point or beyond 60 minutes. Reading it never changes the group version, and the origin is never returned.
+
+### Chat (CHAT-001-A)
+
+`chat.ts`, covered by `tests/mockChat.test.ts`. Rules follow [chat](api/groups.md#chat).
+
+- **Storage:** each group's messages in sequence order (`world.messages`); the source sets the message ID, sender (the authenticated caller), time and sequence (1, 2, 3… with no gaps). Scenario A's forming TSUM group starts with three seeded messages from its demo riders; other groups start empty.
+- **Access:** current members, and the members at closure until `historyExpiresAt`, as for the group read. An unknown group, a non-member and a member who left all get `MEMBERSHIP_REQUIRED`; then `HISTORY_EXPIRED`.
+- **Sending:** in the contract's order: `VALIDATION_FAILED` (text bounds, a non-UUID client message ID, any field the source sets), authentication, `MEMBERSHIP_REQUIRED` (a former member's retry too), `HISTORY_EXPIRED`, then the stored message for a client message ID the sender already used in that group (`IDEMPOTENCY_CONFLICT` for different text), and only then `GROUP_CLOSED`. A retry after a lost answer, even once the group closed, returns the one stored message and emits nothing. A new message emits `chat.message.created` to the group's members, the sender included.
+- **History:** no position reads the newest `limit` messages; `beforeCursor` the `limit` before the page the cursor came from; `afterSequence` the first `limit` after it (empty beyond the newest). Cursors are `chat~<groupId>~<sequence>`, opaque to the app; a malformed one, one from another group or one never issued answers `VALIDATION_FAILED` after the access checks.
+- **Simulated replies:** `CHAT_REPLY_DELAY_MS` (4 s) after a new message, the earliest other member who is a seeded demo rider (never a rider who signs in, the app's or a test's) answers with the next of four generic lines (`SIMULATED_REPLIES`, no place, time or location). Nobody answers if the group closed, a newer message arrived meanwhile (so only the last of several quick messages gets an answer), or no such rider remains. Answers are stored directly, so demo riders never answer each other.
+- **Not here:** scenario H (`failed-message`) and its duplicate event belong to CHAT-001-C; blocks do not hide messages yet (SAFETY-001).
 
 ### Supplied destination matches (DESTINATION-001-A)
 

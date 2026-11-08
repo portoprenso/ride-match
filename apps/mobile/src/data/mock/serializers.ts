@@ -1,6 +1,8 @@
 import {
   GROUP_POLICY,
   type AuthSessionDto,
+  type ChatMessageCreatedEventDto,
+  type ChatMessageDto,
   type CurrentUserDto,
   type GroupChangeReason,
   type GroupChangedEventDto,
@@ -30,6 +32,7 @@ import {
   isDiscoverableRide,
   isLiveGroup,
   type GroupRecord,
+  type MessageRecord,
   type MockWorld,
   type OtpChallengeRecord,
   type RideRecord,
@@ -303,5 +306,28 @@ export function groupChanged(
     type: 'group.changed',
     audience: { kind: 'group', groupId: group.id },
     payload: { groupId: group.id, version: group.version, reason },
+  };
+}
+
+/** A stored message as its group's members see it, with its sender's public summary. */
+export function toChatMessageDto(world: MockWorld, groupId: string, message: MessageRecord): ChatMessageDto {
+  return {
+    id: message.id,
+    groupId,
+    sender: toUserDto(requireUser(world, message.senderId)),
+    text: message.text,
+    createdAt: toTimestamp(message.createdAt),
+    sequence: message.sequence,
+    clientMessageId: message.clientMessageId,
+  };
+}
+
+/** `chat.message.created` for the members of the message's group, the sender included. */
+export function chatMessageCreated(envelope: EventEnvelope, message: ChatMessageDto): ChatMessageCreatedEventDto {
+  return {
+    ...envelope,
+    type: 'chat.message.created',
+    audience: { kind: 'group', groupId: message.groupId },
+    payload: { message },
   };
 }

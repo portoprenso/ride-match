@@ -7,6 +7,7 @@ import {
   type PublicLocationDto,
 } from '@ride-match/contracts';
 
+import { storeMessage } from './chat';
 import type { IdGenerator } from './ids';
 import { admitRide, scheduleDeadlines, type Schedule } from './lifecycle';
 import { scheduleSeededMeetingPoints } from './meetingPoints';
@@ -73,6 +74,8 @@ type GroupSeed = {
   version: number;
   /** Supplied matches for the group, shown while it is live. */
   matches?: readonly MatchSeed[];
+  /** The group's chat so far, oldest first; `from` is a member's rider name. */
+  chat?: readonly { from: string; text: string; sentSecondsAgo: number }[];
 };
 
 /** Records a seed's supplied matches for `target` in the world. */
@@ -110,6 +113,11 @@ const ACTIVE_GROUPS: readonly GroupSeed[] = [
     ],
     meetingPoint: null,
     version: 2,
+    chat: [
+      { from: 'Gulnara', text: 'Hi both! Leaving in about ten minutes.', sentSecondsAgo: 330 },
+      { from: 'Ilyas', text: 'Great, I’m ready whenever you are.', sentSecondsAgo: 300 },
+      { from: 'Jyldyz', text: 'Just joined. Happy to share the fare.', sentSecondsAgo: 140 },
+    ],
     // A ready group takes no riders, so the airport group below has no matches.
     matches: [
       { destination: 'place_tsum', level: 'excellent', additionalMinutes: 0 },
@@ -213,6 +221,11 @@ function addGroup(world: MockWorld, ids: IdGenerator, seed: GroupSeed, now: numb
     version: seed.version,
   });
   supplyMatches(world, { kind: 'group', id: groupId }, seed.matches);
+  for (const line of seed.chat ?? []) {
+    const sender = members.find((member) => world.users.get(member.userId)?.displayName === line.from);
+    if (sender === undefined) throw new Error(`${line.from} is not a member of the seeded group.`);
+    storeMessage(world, ids, groupId, { senderId: sender.userId, text: line.text, createdAt: now - line.sentSecondsAgo * SECOND });
+  }
 }
 
 /** Scenario A: six solo rides and two groups (one forming with three members, one ready with two). */

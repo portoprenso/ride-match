@@ -81,6 +81,22 @@ export type GroupRecord = {
 };
 
 /**
+ * One stored chat message. `sequence` is its position in its group's chat (1, 2, 3… with no
+ * gaps). `senderId` names a user record, which outlives membership, so a message keeps its
+ * sender's public summary after they leave. `clientMessageId` is the sender's send intent:
+ * with the sender and the group, it identifies one message. The text is private to the
+ * group's members and never reaches a public DTO, an event for anyone else, or a log.
+ */
+export type MessageRecord = {
+  id: string;
+  senderId: string;
+  text: string;
+  createdAt: number;
+  sequence: number;
+  clientMessageId: string;
+};
+
+/**
  * A one-time code challenge. `wrongCodes` counts rejected codes; a challenge ends `used` by a
  * successful verification or `replaced` by a newer one for the same number, and also stops
  * working at `expiresAt`.
@@ -164,7 +180,7 @@ export type OwnerMatchRecord = {
 
 /**
  * The mock source's world. Curated places are not part of it: they are a fixed catalog shared by
- * every scenario (`places.ts`). Later cards add their own records, such as messages.
+ * every scenario (`places.ts`). Later cards add their own records, such as blocks.
  */
 export type MockWorld = {
   /** Simulated time the scenario was activated; its timed events count from here. */
@@ -178,6 +194,8 @@ export type MockWorld = {
   matchArrivals: MatchArrivalPlan[];
   /** Each own request's match set: its version and the matches it gained, in arrival order. */
   ownerMatches: Map<string, { version: number; matches: OwnerMatchRecord[] }>;
+  /** Each group's chat, in sequence order (CHAT-001-A); a group without messages has no entry. */
+  messages: Map<string, MessageRecord[]>;
   /** Starts empty in every scenario, so a reset signs everyone out. */
   auth: AuthRecords;
 };
@@ -192,6 +210,7 @@ export function createEmptyWorld(now: number): MockWorld {
     suppliedMatches: [],
     matchArrivals: [],
     ownerMatches: new Map(),
+    messages: new Map(),
     auth: {
       accounts: new Map(),
       challenges: new Map(),

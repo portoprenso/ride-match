@@ -559,7 +559,7 @@ describe('operations without a mock yet', () => {
   it('reject at once as unavailable, without simulated latency', async () => {
     const { dataSource } = source();
 
-    await expect(dataSource.chat.send('group_1', {} as never)).rejects.toThrow(DataSourceUnavailableError);
+    await expect(dataSource.safety.block('user_1', {} as never)).rejects.toThrow(DataSourceUnavailableError);
     await expect(dataSource.safety.report({} as never)).rejects.toThrow(
       'The mock data source does not support this operation yet.',
     );
