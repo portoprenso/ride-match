@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; RIDE-001 is in progress with A's mock request operations completed and B's draft, departure and review implemented, its native check pending; DESTINATION-001 is paused with A's supplied matches completed and B's destination search, selection and map emphasis implemented, its native check pending; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; MAP-002 is paused with A's discovery read and states, B's markers, clusters, list and tile notice, and C's ride and group previews and disappeared target implemented, their native checks pending; all other implementation tasks are planned.**
+Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; RIDE-001 is in progress with A's mock request operations completed and B's draft and review and C's request card, cancel and expiry implemented, their native checks pending; DESTINATION-001 is paused with A's supplied matches completed and B's destination search, selection and map emphasis implemented, its native check pending; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; MAP-002 is paused with A's discovery read and states, B's markers, clusters, list and tile notice, and C's ride and group previews and disappeared target implemented, their native checks pending; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,19 @@ Last updated: 2026-11-07. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**RIDE-001-C — Implemented (2026-11-07), native check pending; RIDE-001 `In progress`.**
+
+- **Done:**
+  - Home's card for the rider's request (10): destination, "You · leaving in 5 min", a countdown of the search window and "Cancel request"; a "You" marker at the published pickup. The countdown is presentation only: when the device sees the deadline pass, the card drops its action, says it is checking, and reads the request again; the source's status decides.
+  - Cancel (28): a confirmation; the cancel sends the request's version and an operation ID fixed at the first press, retries only an unknown outcome, closes if the window ends meanwhile, and the card follows the source's answer. Nothing restarts by itself; "Create my ride request" returns.
+  - Expiry (27), in the foreground or after time in the background: "Your request expired.", "Review a new request" (a new draft to the same place, published only when confirmed) and "Keep browsing". `ride_request_expired` once per request.
+  - The own request stays current through a `user` subscription (`ride.changed`) and foreground reads.
+  - Found and fixed: access tokens last 15 minutes, like the search window, and no feature renewed them, so a rider's own reads failed when the window ended. The composition root now runs every signed-in operation through the session's `runAuthenticated`.
+  - 457 mobile tests (7 new).
+- **Not covered here:** matches and "View current results" (RIDE-001-D); group screens for a grouped request (GROUP-002).
+- **Pending:** the native check (DEVELOPMENT, request card check).
+- **Next available:** RIDE-001-D (match scenario C, unknown-create recovery) or GROUP-001-A, or the native pass.
 
 **RIDE-001-B — Implemented (2026-11-07), native check pending; RIDE-001 `In progress`.**
 

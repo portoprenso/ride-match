@@ -21,6 +21,7 @@ import { createSecureCredentialStore, type CredentialStore } from '../platform/s
 import { createAnalytics, type Analytics } from '../analytics/createAnalytics';
 import { selectAnalyticsSink } from '../analytics/sinks';
 import { createQueryClient } from './createQueryClient';
+import { withSessionRenewal } from './withSessionRenewal';
 
 /**
  * The data source the app runs on, the auth session that supplies its access token, the Query
@@ -131,6 +132,8 @@ export function composeAppDataSource({
       resumeStoredSession: config.dataSource.kind !== 'mock',
     });
     session = built;
+    // Features get the data source whose signed-in calls renew an expired access token once.
+    const dataSource = withSessionRenewal(composed.dataSource, () => session);
     const pendingIntents = createPendingIntentGate(built);
     const queryClient = createQueryClient();
     const sync = createSyncCoordinator({
@@ -148,7 +151,7 @@ export function composeAppDataSource({
     });
     return {
       status: 'ready',
-      dataSource: composed.dataSource,
+      dataSource,
       session: built,
       pendingIntents,
       queryClient,

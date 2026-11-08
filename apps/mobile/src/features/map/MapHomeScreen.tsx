@@ -31,7 +31,9 @@ import { useNearbyDiscovery } from '../discovery/useNearbyDiscovery';
 import { useLocationChoices } from '../location/LocationChoicesProvider';
 import { PickupPlaceSheet } from '../location/PickupPlaceSheet';
 import { CreateRequestSheet, type CreateStep } from '../rides/CreateRequestSheet';
-import { PublishedRequestPanel } from '../rides/PublishedRequestPanel';
+import { CancelRequestSheet } from '../rides/CancelRequestSheet';
+import { OwnRequestMarker } from '../rides/OwnRequestMarker';
+import { RequestCard } from '../rides/RequestCard';
 import { resolveOrigin } from '../rides/rideDraft';
 import { isLive, useOwnRequest } from '../rides/useOwnRequest';
 import { HomeMap } from './HomeMap';
@@ -51,7 +53,9 @@ import { CAMERA_ANIMATION_MS, streetRegion, useHomeCamera } from './mapCamera';
  *
  * With a destination, "Create my ride request" opens the request draft (screens 06 and 09,
  * RIDE-001-B): departure, pickup, sign-in when needed (the draft stays here meanwhile), review and
- * publish. While the rider has a live request the sheet says so and offers no second create.
+ * publish. While the rider has a live request no second create is offered: the card (screen 10)
+ * counts down the search window and offers "Cancel request" (28); an expired request says so
+ * (27) and offers an explicit new draft. The own request is a "You" marker at its pickup.
  *
  * A marker, or a row of the nearby list, opens that ride or group's public preview in the sheet
  * (screens 05 and 19, MAP-002-C), with its marker highlighted. The preview reads the target again;
@@ -128,8 +132,12 @@ export function MapHomeScreen({
   // The map picker was opened from the draft, so confirming a point returns to it.
   const [pickingForDraft, setPickingForDraft] = useState(false);
   const origin = resolveOrigin(pickup, status);
-  const ownRequest = useOwnRequest();
+  // The rider's own request (RIDE-001-C): its card, its marker, and the cancel confirmation.
+  const { request: ownRequest, refresh: refreshOwnRequest } = useOwnRequest();
   const liveRequest = isLive(ownRequest) ? ownRequest : null;
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [dismissedId, setDismissedId] = useState<string | null>(null);
+  const closeCancel = useCallback(() => setCancelOpen(false), []);
   const [list, setList] = useState<NearbyListContent | null>(null);
   const now = useClock();
   const fixPoint = fix?.coordinates ?? null;
@@ -223,8 +231,10 @@ export function MapHomeScreen({
               onMapLoaded={tiles.onMapLoaded}
               coverage={mapCoverage}
               location={status}
-              pickup={pickup}
+              // A published request draws its own marker at that pickup instead.
+              pickup={ownRequest?.status === 'active' ? null : pickup}
             >
+              {ownRequest?.status === 'active' && !picking ? <OwnRequestMarker request={ownRequest} now={now} /> : null}
               <DiscoveryMarkers
                 entries={entries}
                 selectedKey={previewKey}
@@ -352,7 +362,19 @@ export function MapHomeScreen({
             />
           ) : (
             <>
-              {liveRequest !== null ? <PublishedRequestPanel request={liveRequest} /> : null}
+              <RequestCard
+                request={ownRequest}
+                dismissedId={dismissedId}
+                onCancel={() => setCancelOpen(true)}
+                onDeadline={refreshOwnRequest}
+                onCreateAgain={(ended) => {
+                  // An explicit new draft to the same place; nothing is published until confirmed.
+                  setDismissedId(ended.id);
+                  setDestination(ended.destination);
+                  setCreateStep('departure');
+                }}
+                onDismiss={(ended) => setDismissedId(ended.id)}
+              />
               <DestinationPanel
                 destination={destination}
                 summary={destination === null ? { kind: 'unknown' } : summarizeDestination(discovery)}
@@ -394,6 +416,11 @@ export function MapHomeScreen({
         matches={discovery.matches}
       />
       <DestinationSheet open={destinationOpen} onClose={() => setDestinationOpen(false)} onChoose={chooseDestination} />
+      <CancelRequestSheet
+        request={cancelOpen && ownRequest?.status === 'active' ? ownRequest : null}
+        now={now}
+        onClose={closeCancel}
+      />
       <CreateRequestSheet
         step={createStep}
         destination={destination}

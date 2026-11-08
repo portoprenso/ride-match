@@ -2564,3 +2564,28 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** the create sheet's steps and publish rules, `resolveOrigin`, `describeCreateError`, `describeDeparture`, `useOwnRequest`, `isLive`, `PublishedRequestPanel`, `createOperationId`, `PickupPlaceFlow`, the home screen's draft flow.
 - **Remaining/next:** RIDE-001-C (card, countdown, cancel, expiry, own marker); the native pass.
 - **Ownership:** Released; no active task.
+
+## 2026-11-07 — RIDE-001-C: Request card, cancel and expiry
+
+- **Actor/session:** Claude Code / ride-001-c.
+- **Status:** implemented; `Paused` for its native check (next native pass). Parent RIDE-001 `In progress`. Ownership released.
+- **Working copy:** `main` at `29a54fe` (RIDE-001-B); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start RIDE-001-C": the active card, countdown, cancel and expiry (designs 10, 27, 28). Acceptance: foreground/background expiry removes invalid actions; cancellation uses canonical success; explicit create-again.
+- **Changes:**
+  - New in `src/features/rides/`: `RequestCard.tsx`, `CancelRequestSheet.tsx` (`describeCancelError`), `OwnRequestMarker.tsx`. `useOwnRequest.ts` now returns `{ request, refresh }`, holds the `user` subscription, and adds `describeOwnRequest` and `formatCountdown`. `PublishedRequestPanel.tsx` removed.
+  - `src/features/discovery/useClock.ts`: optional interval.
+  - `MapHomeScreen.tsx`: the card, cancel sheet, dismissed outcome, "Review a new request" into a new draft, the own marker (the confirmed-pickup pin hidden while a request is active).
+  - New `src/bootstrap/withSessionRenewal.ts`, applied in `composeAppDataSource.ts`.
+  - Tests: new `tests/requestCard.test.tsx` (7); `tests/createRequest.test.tsx` checks the card.
+- **Decisions and findings:**
+  - **Token renewal (found here):** `AUTH_POLICY.accessTokenLifetimeSeconds` is 900, the same as the search window, and nothing called the session's `runAuthenticated`, so the own-request read after expiry failed with `SESSION_EXPIRED` and the card stayed "checking". Fixed once at the composition root for all signed-in operations; each is safe to repeat (reads; mutations keep their operation ID; unblock and device removal are idempotent). Auth calls, public reads and subscriptions are unchanged.
+  - The device countdown never decides: past the deadline the card shows "ending" with no action and asks the source; only the source's `expired` shows 27.
+  - The countdown's one-second clock lives in the card, mounted only when there is a request. When it ran on home all the time, a router test hit a fake-timer crash (`callAt`), and it also re-rendered the map every second.
+  - Cancel: the sheet closes at the deadline unless a cancel is in flight; state refusals and version conflicts reread the request instead of retrying.
+  - The "You" marker uses the owner's exact pickup, drawn only on their device.
+- **Test notes:** passing 15 minutes in one `wait` defers React's renders until the end, so the tests advance a minute at a time. Jumping the clock with `setSystemTime` while backgrounded did not redraw the card in Jest, so the background test passes time with timers instead; the "ending" state is covered by `describeOwnRequest`.
+- **Checks:** `pnpm typecheck`, `pnpm lint`, `npx jest` in `apps/mobile` (30 suites, 457 tests) passed; Prettier clean on the changed files. **Not run:** native builds or device checks (DEVELOPMENT's request card check). Screen readers waived.
+- **Docs:** PRODUCT (own request), ARCHITECTURE, api/authentication.md (renewal), DEVELOPMENT (tests, 457; request card check), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line), AI_CONTEXT.
+- **JSDoc:** the card's states and clock, the cancel sheet and its error rules, the own marker's privacy, `useOwnRequest`, `describeOwnRequest`, `withSessionRenewal`, the home screen's request flow.
+- **Remaining/next:** RIDE-001-D (scenario C, match arrival, unknown-create recovery) or GROUP-001-A; the native pass.
+- **Ownership:** Released; no active task.

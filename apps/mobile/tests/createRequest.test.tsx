@@ -89,7 +89,7 @@ describe('creating a ride request', () => {
     await wait(ANSWER_MS);
 
     expect(screen.queryByRole('header', { name: 'Ready to find company?' })).not.toBeOnTheScreen();
-    expect(screen.getByRole('header', { name: 'Your request is published.' })).toBeOnTheScreen();
+    expect(screen.getByText(/^Searching · \d+:\d{2} left$/)).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'Create my ride request' })).not.toBeOnTheScreen();
     const names = events().map((event) => [event.name, event.properties]);
     expect(names.filter(([name]) => name === 'ride_request_create_clicked')).toEqual([
@@ -117,7 +117,7 @@ describe('creating a ride request', () => {
     await pressLast('Keep browsing');
 
     expect(screen.queryByRole('header', { name: 'When are you leaving?' })).not.toBeOnTheScreen();
-    expect(screen.queryByRole('header', { name: 'Your request is published.' })).not.toBeOnTheScreen();
+    expect(screen.queryByText(/^Searching · /)).not.toBeOnTheScreen();
     expect(events().some((event) => event.name === 'ride_request_created')).toBe(false);
   });
 
