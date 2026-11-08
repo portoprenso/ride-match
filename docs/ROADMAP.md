@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-08. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; RIDE-001 is paused with A's mock request operations completed and B's draft and review, C's request card, cancel and expiry, and D's matches and unknown-outcome recovery implemented, their native checks pending; DESTINATION-001 is paused with A's supplied matches completed and B's destination search, selection and map emphasis implemented, its native check pending; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; MAP-002 is paused with A's discovery read and states, B's markers, clusters, list and tile notice, and C's ride and group previews and disappeared target implemented, their native checks pending; GROUP-001 is in progress with A's mock joins completed; all other implementation tasks are planned.**
+Last updated: 2026-11-08. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; RIDE-001 is paused with A's mock request operations completed and B's draft and review, C's request card, cancel and expiry, and D's matches and unknown-outcome recovery implemented, their native checks pending; DESTINATION-001 is paused with A's supplied matches completed and B's destination search, selection and map emphasis implemented, its native check pending; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; MAP-002 is paused with A's discovery read and states, B's markers, clusters, list and tile notice, and C's ride and group previews and disappeared target implemented, their native checks pending; GROUP-001 is in progress with A's mock joins and B's leave and coordinator transfer completed; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,17 @@ Last updated: 2026-11-08. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**GROUP-001-B — Completed (2026-11-08); GROUP-001 `In progress`.**
+
+- **Done:**
+  - The mock source lets a member leave a live group (`groups.leave`) and serves the member-only group read (`groups.getGroup`), so a leave ends access at once: the leaver's next read answers `MEMBERSHIP_REQUIRED`.
+  - The leaver's request is cancelled and never restored; they may publish a new one. A repeated leave with the same operation ID returns the original result; a new one answers `MEMBERSHIP_REQUIRED`; a closed group answers `GROUP_CLOSED`.
+  - Two or more remain: a ready group returns to forming with its meeting point, and the earliest remaining member takes over if the coordinator left. One remains: the group is cancelled (`members_left`), that member's request is cancelled too, and they can read the group for an hour, then `HISTORY_EXPIRED`.
+  - 487 mobile tests (7 new).
+- **Decisions:** the member-only read landed here rather than in GROUP-001-C, because revocation is only observable through it.
+- **Not covered here:** ready, reopen, complete and cancel (GROUP-001-C); leaving by blocking (SAFETY-001); `group` subscriptions; the group screens (GROUP-002).
+- **Next available:** GROUP-001-C (status changes and terminal access), or the native pass.
 
 **GROUP-001-A — Completed (2026-11-08); GROUP-001 `In progress`.**
 
@@ -492,7 +503,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | MAP-002 | Live nearby activity | Paused (A, B and C implemented, native checks pending) |
 | DESTINATION-001 | Destination selection and compatibility | Paused (A completed; B implemented, native check pending) |
 | RIDE-001 | Creation, matching, expiration | Paused (A completed; B, C and D implemented, native checks pending) |
-| GROUP-001 | Atomic mock group operations | In progress (A completed) |
+| GROUP-001 | Atomic mock group operations | In progress (A and B completed) |
 | GROUP-002 | Group product flow | Planned |
 | CHAT-001 | Temporary text chat | Planned |
 | MEETING-001 | Meeting point and readiness | Planned |

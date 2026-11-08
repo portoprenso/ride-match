@@ -14,7 +14,7 @@ import {
   readRide,
   searchPlaces,
 } from './discovery';
-import { joinGroup } from './groups';
+import { joinGroup, leaveGroup, readGroup } from './groups';
 import { cancelRide, createRide, readMatches, readOwnRequest } from './rides';
 import { scenarioOptions, type MockScenarioKey } from './scenarios';
 import { createSimulator, type LatencyRange, type Simulator } from './simulator';
@@ -45,7 +45,8 @@ export function createMockSimulator(
  * - Implemented: sign-in, refresh, logout and the current user (AUTH-001-A, `auth.ts`); place
  *   search, nearby discovery, one ride's public view and a group's public preview (reads that
  *   take an abort signal); the caller's own request: create, read and cancel (RIDE-001-A,
- *   `rides.ts`); joining a ride or group (GROUP-001-A, `groups.ts`); nearby and `user` subscriptions and the connection state.
+ *   `rides.ts`); joining a ride or group (GROUP-001-A, `groups.ts`), leaving it and the
+ *   member-only group read (GROUP-001-B); nearby and `user` subscriptions and the connection state.
  * - Every other operation rejects at once with a `DataSourceUnavailableError` until the card
  *   that implements it lands, never with invented data. So do `group` subscriptions for now,
  *   although joins already emit `group.changed`; a later GROUP card delivers them.
@@ -114,6 +115,14 @@ export function createMockDataSource(
       join: (input) => {
         const token = accessToken();
         return simulator.run('groups.join', (context) => joinGroup(context, token, input));
+      },
+      getGroup: (groupId, options) => {
+        const token = accessToken();
+        return simulator.run('groups.getGroup', (context) => readGroup(context, token, groupId), options);
+      },
+      leave: (groupId, input) => {
+        const token = accessToken();
+        return simulator.run('groups.leave', (context) => leaveGroup(context, token, groupId, input));
       },
       getPreview: (groupId, options) =>
         simulator.run('groups.getPreview', (context) => readGroupPreview(context, groupId), options),

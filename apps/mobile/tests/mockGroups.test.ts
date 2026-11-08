@@ -2,9 +2,11 @@ import {
   GROUP_POLICY,
   GroupChangedEventSchema,
   JoinGroupResultSchema,
+  LeaveGroupResultSchema,
   NearbyRemovedEventSchema,
   NearbyUpsertedEventSchema,
   RideChangedEventSchema,
+  RideGroupSchema,
   type ApiErrorCode,
   type DomainEventDto,
   type JoinGroupInput,
@@ -423,5 +425,174 @@ describe('a formed group’s deadline', () => {
     expect(simulator.state.groups.get(group.id)).toMatchObject({ status: 'cancelled', closure: { reason: 'expired' } });
     expect(simulator.state.rides.get(me.rideId)?.status).toBe('cancelled');
     expect(simulator.state.rides.get(target.rideId)?.status).toBe('cancelled');
+  });
+});
+
+/** A group formed in the empty neighbourhood: rider 1's ride, joined by riders 2.. in order. */
+async function formedGroup(simulator: Simulator<MockWorld>, size: number) {
+  const riders = [await rider(simulator, 1)];
+  let groupId = '';
+  for (let n = 2; n <= size; n += 1) {
+    const joiner = await rider(simulator, n);
+    groupId = (await join(joiner, { kind: 'ride', id: riders[0]?.rideId ?? '' })).group.id;
+    riders.push(joiner);
+  }
+  return { riders, groupId };
+}
+
+const leave = (who: Rider, groupId: string, id = nextOperationId()) =>
+  settle(who.dataSource.groups.leave(groupId, { operationId: id }));
+const readGroup = (who: Rider, groupId: string) => settle(who.dataSource.groups.getGroup(groupId));
+
+describe('leaving a group', () => {
+  it('removes the member at once, cancels their request and keeps the group forming for the rest', async () => {
+    const simulator = world('empty-neighborhood');
+    const { riders, groupId } = await formedGroup(simulator, 3);
+    const [coordinator, second, third] = riders as [Rider, Rider, Rider];
+    const events = recordEvents(simulator);
+
+    const result = await leave(third, groupId);
+
+    expect(LeaveGroupResultSchema.parse(result)).toEqual(result);
+    expect(result).toMatchObject({ groupId, rideRequest: { id: third.rideId, status: 'cancelled', groupId } });
+    await expect(readGroup(third, groupId)).rejects.toEqual(sourceError('MEMBERSHIP_REQUIRED'));
+    const group = RideGroupSchema.parse(await readGroup(second, groupId));
+    expect(group).toMatchObject({ status: 'forming', coordinatorId: coordinator.userId, version: 3 });
+    expect(group.members.map((member) => member.user.id)).toEqual([coordinator.userId, second.userId]);
+
+    expect(events.map((event) => event.type)).toEqual(['nearby.upserted', 'group.changed', 'ride.changed']);
+    expect(events[0]).toMatchObject({ payload: { item: { id: groupId, memberCount: 2 } } });
+    expect(GroupChangedEventSchema.parse(events[1]).payload).toEqual({ groupId, version: 3, reason: 'member_left' });
+    expect(events[2]).toMatchObject({ audience: { userId: third.userId }, payload: { status: 'cancelled' } });
+    // Nothing brings the request back, and the rider may publish a new one.
+    await expect(settle(third.dataSource.rides.getOwnRequest())).resolves.toMatchObject({ status: 'cancelled' });
+    await expect(
+      settle(
+        third.dataSource.rides.create({
+          operationId: nextOperationId(),
+          origin: { source: 'manual', coordinates: ORIGIN },
+          destinationPlaceId: 'place_tsum',
+          departureOffsetMinutes: 0,
+        }),
+      ),
+    ).resolves.toMatchObject({ status: 'active' });
+  });
+
+  it('hands the coordinator role to the earliest remaining member', async () => {
+    const simulator = world('empty-neighborhood');
+    const { riders, groupId } = await formedGroup(simulator, 4);
+    const [coordinator, second, third, fourth] = riders as [Rider, Rider, Rider, Rider];
+
+    await leave(coordinator, groupId);
+
+    const group = await readGroup(fourth, groupId);
+    expect(group.coordinatorId).toBe(second.userId);
+    expect(group.members.map((member) => member.user.id)).toEqual([second.userId, third.userId, fourth.userId]);
+  });
+
+  it('returns a ready group to forming, keeping its meeting point', async () => {
+    const simulator = world('empty-neighborhood');
+    const { riders, groupId } = await formedGroup(simulator, 3);
+    const [, second, third] = riders as [Rider, Rider, Rider];
+    // Marking ready arrives with GROUP-001-C; the test sets the state the source would reach.
+    const record = simulator.state.groups.get(groupId);
+    if (record === undefined) throw new Error('No group.');
+    record.status = 'ready';
+    record.meetingPoint = { id: 'meeting_test', label: 'Synthetic corner', coordinates: { ...ORIGIN } };
+
+    await leave(third, groupId);
+
+    expect(await readGroup(second, groupId)).toMatchObject({
+      status: 'forming',
+      meetingPoint: { id: 'meeting_test', label: 'Synthetic corner' },
+    });
+  });
+
+  it('cancels a group left with one member, who keeps read access for an hour', async () => {
+    const simulator = world('empty-neighborhood');
+    const { riders, groupId } = await formedGroup(simulator, 2);
+    const [coordinator, second] = riders as [Rider, Rider];
+    const events = recordEvents(simulator);
+
+    await leave(coordinator, groupId);
+
+    const group = RideGroupSchema.parse(await readGroup(second, groupId));
+    expect(group).toMatchObject({
+      status: 'cancelled',
+      coordinatorId: second.userId,
+      closure: { reason: 'members_left' },
+      version: 2,
+    });
+    expect(group.members.map((member) => member.user.id)).toEqual([second.userId]);
+    expect(Date.parse(group.closure?.historyExpiresAt ?? '') - Date.parse(group.closure?.closedAt ?? '')).toBe(
+      GROUP_POLICY.historyRetentionSeconds * SECOND,
+    );
+    await expect(settle(second.dataSource.rides.getOwnRequest())).resolves.toMatchObject({
+      status: 'cancelled',
+      groupId,
+    });
+    expect(events.map((event) => event.type)).toEqual([
+      'nearby.removed',
+      'group.changed',
+      'ride.changed',
+      'ride.changed',
+    ]);
+    expect(NearbyRemovedEventSchema.parse(events[0]).payload).toEqual({
+      target: { kind: 'group', id: groupId },
+      version: 2,
+      reason: 'unavailable',
+    });
+    expect(events[1]).toMatchObject({ payload: { reason: 'cancelled' } });
+    // The remaining member cannot leave a closed group.
+    await expect(leave(second, groupId)).rejects.toEqual(sourceError('GROUP_CLOSED'));
+
+    // The group's own deadline later finds it closed and changes nothing.
+    for (let minute = 0; minute < 60; minute += 1) await jest.advanceTimersByTimeAsync(MINUTE);
+    expect(simulator.state.groups.get(groupId)?.closure?.reason).toBe('members_left');
+    // Tokens last 15 minutes, so the member signs in again on the same number.
+    const again = await rider(simulator, 2, { request: false });
+    await expect(readGroup(again, groupId)).rejects.toEqual(sourceError('HISTORY_EXPIRED'));
+  });
+
+  it('returns the original result for a repeated leave and refuses a new one', async () => {
+    const simulator = world('empty-neighborhood');
+    const { riders, groupId } = await formedGroup(simulator, 3);
+    const third = riders[2] as Rider;
+    const id = nextOperationId();
+    const original = await leave(third, groupId, id);
+    const events = recordEvents(simulator);
+
+    await expect(leave(third, groupId, id)).resolves.toEqual(original);
+    expect(events).toEqual([]);
+    await expect(leave(third, groupId)).rejects.toEqual(sourceError('MEMBERSHIP_REQUIRED'));
+    await expect(leave(third, 'group_other', id)).rejects.toEqual(sourceError('IDEMPOTENCY_CONFLICT'));
+    expect(simulator.state.groups.get(groupId)?.members).toHaveLength(2);
+  });
+
+  it('recovers a leave whose answer was lost after it committed', async () => {
+    const simulator = world('empty-neighborhood');
+    const { riders, groupId } = await formedGroup(simulator, 3);
+    const third = riders[2] as Rider;
+    const id = nextOperationId();
+    simulator.failNext({ kind: 'network', afterCommit: true }, 'groups.leave');
+
+    await expect(leave(third, groupId, id)).rejects.toEqual(expect.objectContaining({ kind: 'network' }));
+    await expect(leave(third, groupId, id)).resolves.toMatchObject({ rideRequest: { status: 'cancelled' } });
+    expect(simulator.state.groups.get(groupId)?.members).toHaveLength(2);
+  });
+
+  it('answers non-members, unknown groups and anonymous callers without revealing the group', async () => {
+    const simulator = world('empty-neighborhood');
+    const { groupId } = await formedGroup(simulator, 2);
+    const stranger = await rider(simulator, 9);
+
+    await expect(leave(stranger, groupId)).rejects.toEqual(sourceError('MEMBERSHIP_REQUIRED'));
+    await expect(readGroup(stranger, groupId)).rejects.toEqual(sourceError('MEMBERSHIP_REQUIRED'));
+    await expect(readGroup(stranger, 'group_unknown')).rejects.toEqual(sourceError('MEMBERSHIP_REQUIRED'));
+    const anonymous = createMockDataSource(simulator);
+    await expect(settle(anonymous.groups.getGroup(groupId))).rejects.toEqual(sourceError('UNAUTHENTICATED'));
+    await expect(settle(anonymous.groups.leave(groupId, { operationId: nextOperationId() }))).rejects.toEqual(
+      sourceError('UNAUTHENTICATED'),
+    );
   });
 });

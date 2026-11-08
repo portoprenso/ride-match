@@ -1,6 +1,6 @@
 # Mock simulator and scenarios
 
-Status: partly implemented: the simulator foundation (MOCK-001-A), the discovery world, seeds and public reads that the app runs on (MOCK-001-B), the demo controls (MOCK-001-C), sign-in and sessions (AUTH-001-A), supplied destination matches (DESTINATION-001-A), the rider's own request (RIDE-001-A), scenario C with own-request matches (RIDE-001-D), and joining a ride or group (GROUP-001-A); the other operations and scenarios are planned. Last updated: 2026-11-08.
+Status: partly implemented: the simulator foundation (MOCK-001-A), the discovery world, seeds and public reads that the app runs on (MOCK-001-B), the demo controls (MOCK-001-C), sign-in and sessions (AUTH-001-A), supplied destination matches (DESTINATION-001-A), the rider's own request (RIDE-001-A), scenario C with own-request matches (RIDE-001-D), joining a ride or group (GROUP-001-A), and leaving it with the member-only group read (GROUP-001-B); the other operations and scenarios are planned. Last updated: 2026-11-08.
 
 ## Purpose
 
@@ -73,7 +73,7 @@ Rechecking after delay enables actual last-seat and expired-target conflicts. Us
 | `discovery.ts` | `places.search`, `rides.getNearby`, `rides.getRide`, `groups.getPreview` and accepting a nearby subscription, validating every input as the source would |
 | `auth.ts` (AUTH-001-A) | Demo-number challenges, the demo code, sessions, rotation, logout and the current user, with the world's private `auth` records (accounts, challenges, sessions, tokens); rules in [authentication](api/authentication.md#implemented-mock-auth-001-a) |
 | `rides.ts` (RIDE-001-A) | The signed-in rider's own request: create, read the current or latest one, cancel; [below](#own-ride-request-ride-001-a) |
-| `groups.ts` (GROUP-001-A) | Joining a solo ride or a group with the caller's active request; [below](#joining-group-001-a) |
+| `groups.ts` (GROUP-001-A, B) | Joining a solo ride or a group with the caller's active request, leaving it, and the member-only group read; [joining](#joining-group-001-a), [leaving](#leaving-group-001-b) |
 | `createMockDataSource.ts` | `createMockSimulator(scenario)` and the `AppDataSource` adapter. Each implemented call goes through `Simulator.run` (latency, failure controls, connection); every other operation rejects at once with `DataSourceUnavailableError` |
 
 - **Place search:** the curated places inside the area's circle, at most `limit`. Without a query, nearest the center first; with one (ignoring case), a label that starts with the text, then a label word that does, then a label or detail that contains it, each rank by distance. An area that does not reach the coverage box fails with `UNSUPPORTED_AREA`, and an invalid input with `VALIDATION_FAILED` (without field errors for now).
@@ -111,7 +111,18 @@ Rechecking after delay enables actual last-seat and expired-target conflicts. Us
 - **Ride already grouped:** resolved to its group, so two first joins of one ride end in one group of three, and a full or ready group answers as if the group itself were named.
 - **Group target:** the caller becomes the last member; the group stays `forming` even with four members, and its members are told (`group.changed`, `member_joined`).
 - **Every success:** discovery removes the caller's ride (`unavailable`, never saying it joined a group) and upserts the group with its new count; the caller is told (`ride.changed`). The result is the member-only group (`toRideGroupDto`; the meeting point's walking estimate is `null`) and the grouped request.
-- **Not yet:** blocks (no block records until SAFETY-001, so `BLOCKED_RELATIONSHIP` never occurs), the member-only group read, leaving (GROUP-001-B), status changes and terminal access (GROUP-001-C), and `group` subscriptions, which stay unavailable.
+- **Not yet:** blocks (no block records until SAFETY-001, so `BLOCKED_RELATIONSHIP` never occurs), status changes (GROUP-001-C), and `group` subscriptions, which stay unavailable.
+
+### Leaving (GROUP-001-B)
+
+`groups.ts`, covered by `tests/mockGroups.test.ts`. Rules follow the [state machine](api/groups.md#state-machine).
+
+- **Read (`groups.getGroup`):** the member-only group for its current members. `MEMBERSHIP_REQUIRED` for an unknown group, a non-member and a member who left, so access ends with the leave and a private read never reveals that a group exists. A closed group stays readable by the members it had at closure until `historyExpiresAt`, then answers `HISTORY_EXPIRED`.
+- **Leave (`groups.leave`):** `VALIDATION_FAILED`, authentication, the receipt (same ID: the original result, even though the caller is no longer a member; another group: `IDEMPOTENCY_CONFLICT`), then `MEMBERSHIP_REQUIRED` (unknown group, non-member, former member) and `GROUP_CLOSED` (completed or cancelled). No version check.
+- **Effect:** the caller leaves the member list and their request is `cancelled`, keeping the group's ID; nothing replaces it, and they may publish a new request. The group's version rises once.
+  - **Two or more remain:** a `ready` group returns to `forming` and keeps its meeting point; the earliest remaining member coordinates if the coordinator left. Discovery upserts the new count; `group.changed` (`member_left`).
+  - **One remains:** `cancelled` with closure `members_left`, closed now, history for one hour; that member coordinates and their request is cancelled too. Discovery removes the group (`unavailable`); `group.changed` (`cancelled`). The group's later deadline finds it closed and does nothing.
+  - Each owner whose request ended gets `ride.changed`.
 
 ### Supplied destination matches (DESTINATION-001-A)
 

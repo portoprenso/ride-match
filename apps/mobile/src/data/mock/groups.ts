@@ -1,4 +1,11 @@
-import { GROUP_POLICY, JoinGroupInputSchema, type JoinGroupResultDto } from '@ride-match/contracts';
+import {
+  GROUP_POLICY,
+  JoinGroupInputSchema,
+  LeaveGroupInputSchema,
+  type JoinGroupResultDto,
+  type LeaveGroupResultDto,
+  type RideGroupDto,
+} from '@ride-match/contracts';
 
 import { authenticate } from './auth';
 import { expireGroup } from './lifecycle';
@@ -15,7 +22,8 @@ import type { WorkContext } from './simulator';
 import type { GroupRecord, MockWorld, RideRecord } from './world';
 
 /*
- * Joining a ride or a group (docs/api/groups.md, "Atomic joining"). The simulator runs each
+ * Joining a ride or a group (docs/api/groups.md, "Atomic joining"), leaving one, and the
+ * member-only group read. The simulator runs each
  * piece of work alone and to completion, so a join reads and changes the world in one step:
  * of two joins that arrive together, the second sees what the first did. That is the mock's
  * stand-in for the backend's transaction; it resolves the canonical group and checks seats at
@@ -171,4 +179,120 @@ function formGroup(context: Context, target: RideRecord, joiner: RideRecord): Gr
   context.emit(rideChanged(context.eventEnvelope(), target));
   context.schedule(group.expiresAt, (later) => expireGroup(later, group.id));
   return group;
+}
+
+/** Whether `userId` is listed among the group's members now; a member who left is not. */
+function isMember(group: GroupRecord, userId: string): boolean {
+  return group.members.some((member) => member.userId === userId);
+}
+
+/**
+ * `GET /groups/{groupId}`: the member-only group, for its current members.
+ *
+ * `MEMBERSHIP_REQUIRED` for an unknown group, a non-member and a member who left, so a private
+ * read never reveals whether a group exists, and leaving ends access at once. A closed group
+ * stays readable by the members it had at closure (for a group closed because members left,
+ * the one who remained) until its `historyExpiresAt`, then answers `HISTORY_EXPIRED`.
+ */
+export function readGroup(context: Context, accessToken: string | null, groupId: string): RideGroupDto {
+  const user = authenticate(context, accessToken);
+  const group = context.state.groups.get(groupId);
+  if (group === undefined || !isMember(group, user.id)) {
+    throw context.sourceError('MEMBERSHIP_REQUIRED', 'Only this group’s members can see it.');
+  }
+  if (group.closure !== null && context.now >= group.closure.historyExpiresAt) {
+    throw context.sourceError('HISTORY_EXPIRED', 'This group’s history is no longer kept.');
+  }
+  return toRideGroupDto(context.state, group);
+}
+
+/** Cancels a grouped request with its group; its `groupId` stays, naming the group it ended with. */
+function cancelGrouped(ride: RideRecord | undefined): RideRecord | null {
+  if (ride?.status !== 'grouped') return null;
+  ride.status = 'cancelled';
+  ride.version += 1;
+  return ride;
+}
+
+/**
+ * `DELETE /groups/{groupId}/members/me`: the caller leaves a live group.
+ *
+ * In this order: `VALIDATION_FAILED`, `UNAUTHENTICATED`/`SESSION_EXPIRED`, then the receipt: a
+ * retry with the same operation ID returns the original result, even though the caller is no
+ * longer a member; the same ID with another group fails with `IDEMPOTENCY_CONFLICT`. A new leave
+ * then fails with `MEMBERSHIP_REQUIRED` for an unknown group or a non-member (a former member
+ * too), and with `GROUP_CLOSED` for a completed or cancelled group. There is no version check.
+ *
+ * On success the caller is removed from the members, so their access ends at once, and their
+ * request is `cancelled` (keeping the group's ID); nothing replaces it. Then:
+ *
+ * - **At least two remain:** a `ready` group returns to `forming`, keeping its meeting point; a
+ *   `forming` group stays. If the coordinator left, the earliest remaining member (join order)
+ *   takes over. Discovery shows the new count; the members are told (`group.changed`,
+ *   `member_left`).
+ * - **One remains:** the group is `cancelled` with closure `members_left`, closed now and
+ *   readable by the remaining member for `GROUP_POLICY.historyRetentionSeconds`. That member
+ *   becomes coordinator if needed (the coordinator is always listed) and their request is
+ *   cancelled too. Discovery removes the group (`unavailable`); the members are told
+ *   (`group.changed`, `cancelled`).
+ *
+ * Every owner whose request ended is told (`ride.changed`). The group's version rises once.
+ */
+export function leaveGroup(
+  context: Context,
+  accessToken: string | null,
+  groupId: string,
+  input: unknown,
+): LeaveGroupResultDto {
+  const parsed = LeaveGroupInputSchema.safeParse(input);
+  if (!parsed.success) throw context.sourceError('VALIDATION_FAILED', 'The leave is not valid.');
+  const { operationId } = parsed.data;
+  const user = authenticate(context, accessToken);
+
+  return context.receipts.once(
+    { actorId: user.id, operationId },
+    { operation: 'groups.leave', input: { groupId } },
+    () => {
+      const { state } = context;
+      const group = state.groups.get(groupId);
+      if (group === undefined || !isMember(group, user.id)) {
+        throw context.sourceError('MEMBERSHIP_REQUIRED', 'You are not a member of this group.');
+      }
+      if (group.status === 'completed' || group.status === 'cancelled') {
+        throw context.sourceError('GROUP_CLOSED', 'This group has already closed.');
+      }
+
+      const leaving = group.members.find((member) => member.userId === user.id);
+      const own = cancelGrouped(state.rides.get(leaving?.rideRequestId ?? ''));
+      if (own === null) throw new Error(`The leaver of group ${group.id} had no grouped request.`);
+      group.members = group.members.filter((member) => member.userId !== user.id);
+      const [earliest] = group.members;
+      if (earliest === undefined) throw new Error(`Group ${group.id} had fewer than two members.`);
+      if (group.coordinatorId === user.id) group.coordinatorId = earliest.userId;
+      group.version += 1;
+      const ended = [own];
+
+      if (group.members.length >= GROUP_POLICY.minMembers) {
+        if (group.status === 'ready') group.status = 'forming';
+        context.emit(nearbyUpserted(context.eventEnvelope(), toNearbyItemDto(state, { kind: 'group', record: group })));
+        context.emit(groupChanged(context.eventEnvelope(), group, 'member_left'));
+      } else {
+        group.status = 'cancelled';
+        group.closure = {
+          reason: 'members_left',
+          closedAt: context.now,
+          historyExpiresAt: context.now + GROUP_POLICY.historyRetentionSeconds * SECOND,
+        };
+        const remaining = cancelGrouped(state.rides.get(earliest.rideRequestId));
+        if (remaining !== null) ended.push(remaining);
+        context.emit(
+          nearbyRemoved(context.eventEnvelope(), { kind: 'group', id: group.id }, group.version, 'unavailable'),
+        );
+        context.emit(groupChanged(context.eventEnvelope(), group, 'cancelled'));
+      }
+
+      for (const ride of ended) context.emit(rideChanged(context.eventEnvelope(), ride));
+      return { groupId: group.id, rideRequest: toOwnRideRequestDto(state, own) };
+    },
+  );
 }

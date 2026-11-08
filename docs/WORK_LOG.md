@@ -2632,3 +2632,24 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** `joinGroup` (order of checks, effects, events), `resolveTarget`, `formGroup`, `groupRide`, `toRideGroupDto`, the module's atomicity note.
 - **Remaining/next:** GROUP-001-B (leave and coordinator transfer); the native pass, which would complete MAP-001, MAP-002, DESTINATION-001 and RIDE-001.
 - **Ownership:** Released; no active task.
+
+## 2026-11-08 — GROUP-001-B: Mock leave and coordinator transfer
+
+- **Actor/session:** Claude Code / group-001-b.
+- **Status:** `Completed`. Parent GROUP-001 `In progress`. Ownership released.
+- **Working copy:** `main` at `38aa824` (GROUP-001-A); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start GROUP-001-B": mock leave and coordinator transfer. Acceptance: immediate revocation; survivor and under-two rules; leaver request cancelled; repeated leave idempotent.
+- **Changes:**
+  - `src/data/mock/groups.ts`: `leaveGroup` (`DELETE /groups/{groupId}/members/me`), `readGroup` (`GET /groups/{groupId}`), `isMember`, `cancelGrouped`.
+  - `createMockDataSource.ts`: `groups.leave`, `groups.getGroup`.
+  - Tests: `tests/mockGroups.test.ts` (+7, with a `formedGroup` helper built from real joins); `tests/mockDataSource.test.ts` uses `groups.updateStatus` as the unbuilt operation.
+- **Decisions:**
+  - The member-only read is implemented here, because "immediate revocation" is only observable through it; GROUP-001-C adds the status changes that create other closed groups.
+  - Leave checks membership before closure, as the contract orders them: a non-member of a closed group gets `MEMBERSHIP_REQUIRED`, a member at closure `GROUP_CLOSED`.
+  - A leaver's cancelled request keeps the group's ID (the contract allows either for `cancelled`).
+  - The ready-group test sets `ready` and a meeting point directly on the record, since marking ready arrives with GROUP-001-C.
+- **Checks:** `pnpm typecheck`, `pnpm lint`, `npx jest` in `apps/mobile` (32 suites, 487 tests) passed; Prettier clean on the new and changed files except `tests/mockDataSource.test.ts`, already unformatted at HEAD and left as it was. No native check applies (mock only).
+- **Docs:** MOCK_SCENARIOS (status, module table, leaving rules), api/groups.md (status), DEVELOPMENT (tests, 487), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line, GROUP-001 row), AI_CONTEXT.
+- **JSDoc:** `leaveGroup` (order of checks, survivor and under-two effects, events), `readGroup` (revocation, retention), `isMember`, `cancelGrouped`.
+- **Remaining/next:** GROUP-001-C (ready, reopen, complete, cancel, expiry, terminal access); the native pass.
+- **Ownership:** Released; no active task.

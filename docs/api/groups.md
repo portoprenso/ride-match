@@ -1,6 +1,6 @@
 # Future API: groups, meeting points, chat, and safety
 
-Status: planned; the group, membership, join, leave and status contracts (CONTRACT-003-A), the chat contracts (CONTRACT-003-B) and the block and report contracts (CONTRACT-003-C) exist in `packages/contracts`. The mock source implements joining (GROUP-001-A; [mock rules](../MOCK_SCENARIOS.md#joining-group-001-a)). Last updated: 2026-11-08.
+Status: planned; the group, membership, join, leave and status contracts (CONTRACT-003-A), the chat contracts (CONTRACT-003-B) and the block and report contracts (CONTRACT-003-C) exist in `packages/contracts`. The mock source implements joining (GROUP-001-A; [mock rules](../MOCK_SCENARIOS.md#joining-group-001-a)), and leaving and the member-only group read (GROUP-001-B; [mock rules](../MOCK_SCENARIOS.md#leaving-group-001-b)). Last updated: 2026-11-08.
 
 Paths use `/v1`. Common envelopes/errors/idempotency are in [overview](overview.md). `Member` requires current membership; `Coordinator` also requires that role. Retained terminal history is accessible to members authorized at closure, not users who previously left.
 

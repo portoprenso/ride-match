@@ -559,7 +559,7 @@ describe('operations without a mock yet', () => {
     const { dataSource } = source();
 
     await expect(dataSource.chat.send('group_1', {} as never)).rejects.toThrow(DataSourceUnavailableError);
-    await expect(dataSource.groups.getGroup('group_1')).rejects.toThrow(
+    await expect(dataSource.groups.updateStatus('group_1', {} as never)).rejects.toThrow(
       'The mock data source does not support this operation yet.',
     );
   });
