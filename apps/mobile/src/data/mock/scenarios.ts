@@ -9,6 +9,7 @@ import {
 
 import type { IdGenerator } from './ids';
 import { admitRide, scheduleDeadlines, type Schedule } from './lifecycle';
+import { scheduleSeededMeetingPoints } from './meetingPoints';
 import type { SeedContext, Simulator, SimulatorOptions } from './simulator';
 import { createEmptyWorld, type GroupMemberRecord, type MockWorld, type RideRecord } from './world';
 
@@ -390,7 +391,8 @@ export function isMockScenarioKey(key: string): key is MockScenarioKey {
 
 /**
  * The simulator options that run a scenario: its world, and on every activation (creation and
- * reset) the deadlines of its live rides and groups and its timed events.
+ * reset) the deadlines of its live rides and groups, the meeting points of its live groups that
+ * have none, and its timed events.
  */
 export function scenarioOptions(key: MockScenarioKey): Pick<SimulatorOptions<MockWorld>, 'createState' | 'activate'> {
   const scenario: ScenarioDefinition = SCENARIOS[key];
@@ -399,6 +401,7 @@ export function scenarioOptions(key: MockScenarioKey): Pick<SimulatorOptions<Moc
     activate(simulator: Simulator<MockWorld>) {
       const schedule: Schedule = (dueAt, work) => simulator.schedule(dueAt, work);
       scheduleDeadlines(simulator.state, schedule);
+      scheduleSeededMeetingPoints(simulator.state, schedule);
       scenario.scheduleEvents?.(simulator.state, schedule);
     },
   };

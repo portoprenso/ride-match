@@ -1,6 +1,6 @@
 # Mock simulator and scenarios
 
-Status: partly implemented: the simulator foundation (MOCK-001-A), the discovery world, seeds and public reads that the app runs on (MOCK-001-B), the demo controls (MOCK-001-C), sign-in and sessions (AUTH-001-A), supplied destination matches (DESTINATION-001-A), the rider's own request (RIDE-001-A), scenario C with own-request matches (RIDE-001-D), joining a ride or group (GROUP-001-A), leaving it with the member-only group read (GROUP-001-B), and the coordinator's status changes (GROUP-001-C); the other operations and scenarios are planned. Last updated: 2026-11-08.
+Status: partly implemented: the simulator foundation (MOCK-001-A), the discovery world, seeds and public reads that the app runs on (MOCK-001-B), the demo controls (MOCK-001-C), sign-in and sessions (AUTH-001-A), supplied destination matches (DESTINATION-001-A), the rider's own request (RIDE-001-A), scenario C with own-request matches (RIDE-001-D), joining a ride or group (GROUP-001-A), leaving it with the member-only group read (GROUP-001-B), the coordinator's status changes (GROUP-001-C), and meeting points (MEETING-001-A); the other operations and scenarios are planned. Last updated: 2026-11-08.
 
 ## Purpose
 
@@ -74,6 +74,7 @@ Rechecking after delay enables actual last-seat and expired-target conflicts. Us
 | `auth.ts` (AUTH-001-A) | Demo-number challenges, the demo code, sessions, rotation, logout and the current user, with the world's private `auth` records (accounts, challenges, sessions, tokens); rules in [authentication](api/authentication.md#implemented-mock-auth-001-a) |
 | `rides.ts` (RIDE-001-A) | The signed-in rider's own request: create, read the current or latest one, cancel; [below](#own-ride-request-ride-001-a) |
 | `groups.ts` (GROUP-001) | Joining a solo ride or a group with the caller's active request, leaving it, the coordinator's status changes, and the member-only group read; [joining](#joining-group-001-a), [leaving](#leaving-group-001-b), [status](#group-status-group-001-c) |
+| `meetingPoints.ts`, `walking.ts` (MEETING-001-A) | Supplying, replacing and withdrawing a group's meeting point, and each member's walking estimate; [below](#meeting-points-meeting-001-a) |
 | `createMockDataSource.ts` | `createMockSimulator(scenario)` and the `AppDataSource` adapter. Each implemented call goes through `Simulator.run` (latency, failure controls, connection); every other operation rejects at once with `DataSourceUnavailableError` |
 
 - **Place search:** the curated places inside the area's circle, at most `limit`. Without a query, nearest the center first; with one (ignoring case), a label that starts with the text, then a label word that does, then a label or detail that contains it, each rank by distance. An area that does not reach the coverage box fails with `UNSUPPORTED_AREA`, and an invalid input with `VALIDATION_FAILED` (without field errors for now).
@@ -133,8 +134,17 @@ Rechecking after delay enables actual last-seat and expired-target conflicts. Us
 - **Complete and cancel:** `ready` → `completed`, or either live status → `cancelled` (`coordinator_cancelled`), closes the group now through `closeGroup`: the members' requests become `completed` or `cancelled` (keeping the group's ID), discovery removes it (`unavailable`), and the members and owners are told.
 - **Expiry:** the same `closeGroup` with reason `expired` at `expiresAt`, dated at the deadline even when the task runs late after time in the background; grouped requests follow this deadline, not their own.
 - **Terminal access:** a closed group is read-only (leave and status changes answer `GROUP_CLOSED`) and readable by its members at closure until `historyExpiresAt`, one hour after closing, then `HISTORY_EXPIRED`.
-- **Meeting points:** no scenario supplies one yet (MEETING-001-A); scenario A's ready group has a seeded point, and tests set one on the record.
+- **Meeting points:** supplied by the source ([below](#meeting-points-meeting-001-a)); scenario A's ready group has a seeded point.
 - **Nothing else changes a status:** the source has no taxi operation, so opening a taxi link can never complete or close a group.
+
+### Meeting points (MEETING-001-A)
+
+`meetingPoints.ts` and `walking.ts`, covered by `tests/mockGroups.test.ts`. Rules follow [meeting points](api/groups.md#meeting-points).
+
+- **Supply:** `MEETING_POINT_DELAY_MS` (10 s) after a join forms a group, or after activation for a seeded live group without one (scenario A's forming group), the source suggests the curated place nearest the group's public area that is not its destination, labelled "<place> · main entrance". Never anyone's exact location.
+- **Replace and withdraw:** `replaceMeetingPoint` picks the next nearest place under a new ID; `withdrawMeetingPoint` sets `null`. No scenario triggers them yet; tests and future scenarios run them as simulator work. A closed group never changes, and a group that already has a point is not supplied again.
+- **Effects:** each change raises the group version and emits `group.changed` (`meeting_point_changed`) to the group's members. A ready group returns to forming, with a `nearby.upserted` of its new status; the point is never in a preview or a public event. Without a point, marking ready answers `INVALID_TRANSITION`.
+- **Walking estimate:** per viewer, in the member-only group: the straight-line distance from that member's own exact origin at 80 m per minute, rounded up; `null` without a point or beyond 60 minutes. Reading it never changes the group version, and the origin is never returned.
 
 ### Supplied destination matches (DESTINATION-001-A)
 

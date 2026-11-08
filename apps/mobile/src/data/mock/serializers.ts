@@ -24,6 +24,7 @@ import {
 } from '@ride-match/contracts';
 
 import { findPlace } from './places';
+import { walkingMinutes } from './walking';
 import type { EventEnvelope } from './simulator';
 import {
   isDiscoverableRide,
@@ -184,12 +185,12 @@ export function toGroupPreviewDto(group: GroupRecord): GroupPreviewDto {
 }
 
 /**
- * The member-only view of a group (`RideGroupDto`): its members' public summaries in join order,
- * the coordinator, the meeting point and the closure. Only the group's members may receive it;
- * it never holds a member's exact origin. The meeting point's walking estimate is viewer-specific
- * and the mock supplies none yet, so it is `null`.
+ * The member-only view of a group (`RideGroupDto`) for its member `viewerId`: members' public
+ * summaries in join order, the coordinator, the meeting point and the closure. Only the group's
+ * members may receive it; it never holds a member's exact origin. The meeting point's walking
+ * estimate is the viewer's own (`walkingMinutes`), so it may differ between members.
  */
-export function toRideGroupDto(world: MockWorld, group: GroupRecord): RideGroupDto {
+export function toRideGroupDto(world: MockWorld, group: GroupRecord, viewerId: string): RideGroupDto {
   const { meetingPoint, closure } = group;
   return {
     id: group.id,
@@ -210,7 +211,7 @@ export function toRideGroupDto(world: MockWorld, group: GroupRecord): RideGroupD
             id: meetingPoint.id,
             coordinates: { latitude: meetingPoint.coordinates.latitude, longitude: meetingPoint.coordinates.longitude },
             label: meetingPoint.label,
-            walkingMinutes: null,
+            walkingMinutes: walkingMinutes(world, group, viewerId),
           },
     createdAt: toTimestamp(group.createdAt),
     expiresAt: toTimestamp(group.expiresAt),

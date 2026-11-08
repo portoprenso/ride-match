@@ -2747,3 +2747,25 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** `GroupScreen` (access, controls, leaving, closed, revoked), `groupControls`, `describeActionError`, `describeClosure`, `MemberMenu`, `actAs`.
 - **Remaining/next:** CHAT-001-A or MEETING-001-A with the user's go-ahead; the native pass, which would complete MAP-001, MAP-002, DESTINATION-001, RIDE-001 and GROUP-002.
 - **Ownership:** Released; no active task.
+
+## 2026-11-08 — MEETING-001-A: Mock meeting points
+
+- **Actor/session:** Claude Code / meeting-001-a.
+- **Status:** `Completed`. Parent MEETING-001 `In progress`. Ownership released.
+- **Working copy:** `main` at `4152fea` (GROUP-002-C); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "Start MEETING-001-A": mock nullable point assignment and updates through the existing groups namespace. Prerequisite GROUP-002 is implemented but paused for native checks; the user's explicit request is taken as the go-ahead. Acceptance: member-only reads/events; supplied estimate; documented update policy; null prevents ready.
+- **Changes:**
+  - New `src/data/mock/meetingPoints.ts` (`MEETING_POINT_DELAY_MS`, `supplyMeetingPoint`, `replaceMeetingPoint`, `withdrawMeetingPoint`, `scheduleMeetingPoint`, `scheduleSeededMeetingPoints`) and `walking.ts` (`walkingMinutes`).
+  - `groups.ts`: a formed group schedules its point; `toRideGroupDto` now takes the viewer for the estimate (join, status change, read). `scenarios.ts`: activation schedules points for seeded live groups without one. `serializers.ts`: per-viewer `walkingMinutes`.
+  - Tests: `tests/mockGroups.test.ts` (+6; `rider` takes an origin); `tests/mockDataSource.test.ts` counts the seeded point's event in the full run.
+- **Decisions:**
+  - Points come from the curated catalog (nearest to the group's public area, never its destination), labelled "<place> · main entrance": public landmarks, never anyone's location, and no optimization.
+  - The estimate is the mock's straight-line approximation from the viewer's own origin, documented as a supplied value; beyond 60 minutes it is `null`, as the contract caps it.
+  - Replacement and withdrawal exist as source work with no scenario trigger yet; a later scenario or demo control can run them.
+  - A change while ready returns the group to forming and upserts discovery (status change), as api/groups.md already specified.
+  - `walking.ts` is separate so the serializers do not import the point module (which imports the serializers).
+- **Checks:** `pnpm typecheck`, `pnpm lint`, `npx jest` in `apps/mobile` (35 suites, 524 tests) passed; Prettier clean on the new and changed files except `scenarios.ts` and `tests/mockDataSource.test.ts`, already unformatted at HEAD and edited without reformatting. No native check applies (mock only); the app now shows the supplied point's label on the group screen through the existing `group.changed` handling, not checked on a device.
+- **Docs:** api/groups.md (status, update policy), MOCK_SCENARIOS (status, module table, meeting points), PRODUCT, DEVELOPMENT (tests, 524), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line, MEETING-001 row), AI_CONTEXT.
+- **JSDoc:** the module's update policy, each supply/replace/withdraw function, `walkingMinutes`, `toRideGroupDto`'s viewer, `scenarioOptions`.
+- **Remaining/next:** MEETING-001-B (sheet and map landmark), CHAT-001-A, or the native pass.
+- **Ownership:** Released; no active task.

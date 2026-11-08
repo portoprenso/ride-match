@@ -20,6 +20,8 @@ import { DEMO_OTP_CODE } from '../src/data/mock/auth';
 import { createMockDataSource, createMockSimulator } from '../src/data/mock/createMockDataSource';
 import type { Simulator } from '../src/data/mock/simulator';
 import type { MockWorld } from '../src/data/mock/world';
+import { distanceMeters } from '../src/data/mock/geometry';
+import { MEETING_POINT_DELAY_MS, replaceMeetingPoint, withdrawMeetingPoint } from '../src/data/mock/meetingPoints';
 import { MOCK_LATENCY_MS, settle } from './helpers/mockSource';
 
 const START = Date.parse('2026-11-01T09:00:00.000Z');
@@ -52,7 +54,11 @@ type Rider = { dataSource: AppDataSource; userId: string; rideId: string };
  * created from a manual pickup (which does not age). Each phone number is synthetic, from
  * Ofcom's range for fiction.
  */
-async function rider(simulator: Simulator<MockWorld>, n: number, options: { request?: boolean } = {}): Promise<Rider> {
+async function rider(
+  simulator: Simulator<MockWorld>,
+  n: number,
+  options: { request?: boolean; origin?: { latitude: number; longitude: number } } = {},
+): Promise<Rider> {
   const session = { accessToken: null as string | null };
   const dataSource = createMockDataSource(simulator, { accessToken: () => session.accessToken });
   const phoneNumber = `+4477009001${String(n).padStart(2, '0')}`;
@@ -63,7 +69,7 @@ async function rider(simulator: Simulator<MockWorld>, n: number, options: { requ
   const ride = await settle(
     dataSource.rides.create({
       operationId: nextOperationId(),
-      origin: { source: 'manual', coordinates: ORIGIN },
+      origin: { source: 'manual', coordinates: options.origin ?? ORIGIN },
       destinationPlaceId: 'place_tsum',
       departureOffsetMinutes: 5,
     }),
@@ -755,5 +761,119 @@ describe('closing a group', () => {
     expect(simulator.state.rides.get(coordinator.rideId)?.status).toBe('cancelled');
     // Only the source's deadline and the coordinator's changes close a group; time alone does nothing else.
     expect(record.version).toBe(4);
+  });
+});
+
+/** A second synthetic pickup, about 1.5 km from the first, so the two members' walks differ. */
+const FARTHER = { latitude: 42.8822, longitude: 74.6055 };
+
+describe('meeting points', () => {
+  it('suggests a curated place after the group forms, for its members only', async () => {
+    const simulator = world('empty-neighborhood');
+    const target = await rider(simulator, 1);
+    const me = await rider(simulator, 2, { origin: FARTHER });
+    const { group } = await join(me, { kind: 'ride', id: target.rideId });
+    expect(group.meetingPoint).toBeNull();
+    const events = recordEvents(simulator);
+
+    await jest.advanceTimersByTimeAsync(MEETING_POINT_DELAY_MS);
+
+    const read = RideGroupSchema.parse(await readGroup(me, group.id));
+    expect(read.version).toBe(group.version + 1);
+    expect(read.meetingPoint).toMatchObject({ label: expect.stringMatching(/ · main entrance$/) });
+    // Never the group's own destination.
+    expect(read.meetingPoint?.label.startsWith(read.destination.label)).toBe(false);
+    expect(events.map((event) => event.type)).toEqual(['group.changed']);
+    expect(GroupChangedEventSchema.parse(events[0])).toMatchObject({
+      audience: { kind: 'group', groupId: group.id },
+      payload: { reason: 'meeting_point_changed', version: read.version },
+    });
+    // The public preview never carries it.
+    const preview = await settle(me.dataSource.groups.getPreview(group.id));
+    expect(JSON.stringify(preview)).not.toContain(String(read.meetingPoint?.coordinates.latitude));
+  });
+
+  it('gives each member their own walking estimate without changing the group', async () => {
+    const simulator = world('empty-neighborhood');
+    const target = await rider(simulator, 1);
+    const me = await rider(simulator, 2, { origin: FARTHER });
+    const { group } = await join(me, { kind: 'ride', id: target.rideId });
+    await jest.advanceTimersByTimeAsync(MEETING_POINT_DELAY_MS);
+
+    const mine = await readGroup(me, group.id);
+    const theirs = await readGroup(target, group.id);
+    const point = mine.meetingPoint!;
+    const minutes = (from: typeof ORIGIN) => Math.ceil(distanceMeters(from, point.coordinates) / 80);
+    expect(mine.meetingPoint?.walkingMinutes).toBe(minutes(FARTHER));
+    expect(theirs.meetingPoint?.walkingMinutes).toBe(minutes(ORIGIN));
+    expect(mine.meetingPoint?.walkingMinutes).not.toBe(theirs.meetingPoint?.walkingMinutes);
+    expect(theirs.version).toBe(mine.version);
+    // The estimate never reveals the origin behind it.
+    expect(JSON.stringify(mine)).not.toContain(String(FARTHER.latitude));
+  });
+
+  it('returns a ready group to forming when the point is replaced, under a new ID', async () => {
+    const simulator = world('empty-neighborhood');
+    const target = await rider(simulator, 1);
+    const me = await rider(simulator, 2);
+    const { group } = await join(me, { kind: 'ride', id: target.rideId });
+    await jest.advanceTimersByTimeAsync(MEETING_POINT_DELAY_MS);
+    const first = await readGroup(target, group.id);
+    await setStatus(target, group.id, 'ready', first.version);
+    const events = recordEvents(simulator);
+
+    simulator.schedule(0, (context) => replaceMeetingPoint(context, group.id));
+    await jest.advanceTimersByTimeAsync(0);
+
+    const replaced = await readGroup(target, group.id);
+    expect(replaced).toMatchObject({ status: 'forming', version: first.version + 2 });
+    expect(replaced.meetingPoint?.id).not.toBe(first.meetingPoint?.id);
+    expect(replaced.meetingPoint?.label).not.toBe(first.meetingPoint?.label);
+    expect(events.map((event) => event.type)).toEqual(['nearby.upserted', 'group.changed']);
+    expect(events[0]).toMatchObject({ payload: { item: { status: 'forming' } } });
+    expect(JSON.stringify(events[0])).not.toContain(String(replaced.meetingPoint?.coordinates.latitude));
+  });
+
+  it('withdraws the point, which stops the group from being marked ready', async () => {
+    const simulator = world('empty-neighborhood');
+    const target = await rider(simulator, 1);
+    const me = await rider(simulator, 2);
+    const { group } = await join(me, { kind: 'ride', id: target.rideId });
+    await jest.advanceTimersByTimeAsync(MEETING_POINT_DELAY_MS);
+
+    simulator.schedule(0, (context) => withdrawMeetingPoint(context, group.id));
+    await jest.advanceTimersByTimeAsync(0);
+
+    const withdrawn = await readGroup(target, group.id);
+    expect(withdrawn.meetingPoint).toBeNull();
+    await expect(setStatus(target, group.id, 'ready', withdrawn.version)).rejects.toEqual(
+      sourceError('INVALID_TRANSITION'),
+    );
+  });
+
+  it('never changes a closed group’s point', async () => {
+    const simulator = world('empty-neighborhood');
+    const target = await rider(simulator, 1);
+    const me = await rider(simulator, 2);
+    const { group } = await join(me, { kind: 'ride', id: target.rideId });
+    await setStatus(target, group.id, 'cancelled', 1);
+    // The scheduled supply finds the group closed.
+    await jest.advanceTimersByTimeAsync(MEETING_POINT_DELAY_MS);
+    simulator.schedule(0, (context) => replaceMeetingPoint(context, group.id));
+    await jest.advanceTimersByTimeAsync(0);
+
+    expect(simulator.state.groups.get(group.id)).toMatchObject({ meetingPoint: null, version: 2 });
+  });
+
+  it('suggests a point for a seeded forming group without one, after activation', async () => {
+    const simulator = world();
+    const forming = seededGroup(simulator, 'forming');
+    expect(forming.meetingPoint).toBeNull();
+
+    await jest.advanceTimersByTimeAsync(MEETING_POINT_DELAY_MS);
+
+    expect(forming.meetingPoint).toMatchObject({ label: expect.stringMatching(/ · main entrance$/) });
+    // The ready group already had its point and keeps it.
+    expect(seededGroup(simulator, 'ready').meetingPoint?.label).toBe('Tunguch, main bus stop');
   });
 });

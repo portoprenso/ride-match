@@ -1,6 +1,6 @@
 # Future API: groups, meeting points, chat, and safety
 
-Status: planned; the group, membership, join, leave and status contracts (CONTRACT-003-A), the chat contracts (CONTRACT-003-B) and the block and report contracts (CONTRACT-003-C) exist in `packages/contracts`. The mock source implements joining (GROUP-001-A; [mock rules](../MOCK_SCENARIOS.md#joining-group-001-a)), leaving and the member-only group read (GROUP-001-B; [mock rules](../MOCK_SCENARIOS.md#leaving-group-001-b)), and the coordinator's status changes with expiry and terminal access (GROUP-001-C; [mock rules](../MOCK_SCENARIOS.md#group-status-group-001-c)). Last updated: 2026-11-08.
+Status: planned; the group, membership, join, leave and status contracts (CONTRACT-003-A), the chat contracts (CONTRACT-003-B) and the block and report contracts (CONTRACT-003-C) exist in `packages/contracts`. The mock source implements joining (GROUP-001-A; [mock rules](../MOCK_SCENARIOS.md#joining-group-001-a)), leaving and the member-only group read (GROUP-001-B; [mock rules](../MOCK_SCENARIOS.md#leaving-group-001-b)), the coordinator's status changes with expiry and terminal access (GROUP-001-C; [mock rules](../MOCK_SCENARIOS.md#group-status-group-001-c)), and meeting points with per-viewer walking estimates (MEETING-001-A; [mock rules](../MOCK_SCENARIOS.md#meeting-points-meeting-001-a)). Last updated: 2026-11-08.
 
 Paths use `/v1`. Common envelopes/errors/idempotency are in [overview](overview.md). `Member` requires current membership; `Coordinator` also requires that role. Retained terminal history is accessible to members authorized at closure, not users who previously left.
 
@@ -102,6 +102,8 @@ The mock source supplies a suggested shared public place after group formation a
 A replaced point has a new `id`, which is how the app notices a change. The viewer-specific `walkingMinutes` may differ between members and reads without changing the group version. Changing or withdrawing a ready group's point returns the group to forming (see the [state machine](#state-machine)). A completed group keeps the point it was ready with.
 
 `MeetingPointDto` exists since CONTRACT-001-B: ID, coordinates, a 1–80 character label and `walkingMinutes` (0–60 or `null`); see [locations and users](overview.md#locations-and-users-contract-001-b). Meeting-point coordinates are not a member's live location. Keep them member-only. Walking estimates are supplied values, not client route calculations. Agreement happens through chat and readiness confirmation; no optimization or collaborative point-editing endpoint is needed now.
+
+Update policy (mock values, to revisit before a backend): the source suggests a point 10 seconds after a group forms; it may replace it (new `id`) or withdraw it (`null`) at any time while the group is live, each change raising the group version with `group.changed` (`meeting_point_changed`) and returning a ready group to forming; a closed group's point never changes. The mock's walking estimate is the straight-line distance from the viewer's own pickup at 80 m per minute, rounded up, `null` beyond 60 minutes: a supplied value, not a route.
 
 Group destination is a reviewed shared destination/venue. Do not expose members' private exact destinations or silently create multi-stop taxi bookings.
 

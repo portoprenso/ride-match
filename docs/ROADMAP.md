@@ -1,6 +1,6 @@
 # Mobile MVP roadmap
 
-Last updated: 2026-11-08. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; RIDE-001 is paused with A's mock request operations completed and B's draft and review, C's request card, cancel and expiry, and D's matches and unknown-outcome recovery implemented, their native checks pending; DESTINATION-001 is paused with A's supplied matches completed and B's destination search, selection and map emphasis implemented, its native check pending; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; MAP-002 is paused with A's discovery read and states, B's markers, clusters, list and tile notice, and C's ride and group previews and disappeared target implemented, their native checks pending; GROUP-001 is completed (A's joins, B's leave and coordinator transfer, C's status changes, expiry and terminal access); GROUP-002 is paused with A's join confirmation and conflict recovery, B's group screen and C's lifecycle controls and closed and revoked states implemented, their native checks pending; all other implementation tasks are planned.**
+Last updated: 2026-11-08. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, CONTRACT-002, CONTRACT-003 and CONTRACT-004 are completed; UI-001 is paused for an Android text fix (UI-001-D completed with its screen-reader checks waived until final device testing); DATA-001 is completed; MOCK-001 is completed (A, B, and C's demo controls); AUTH-001 is completed (A's mock operations, B's session controller with its native check in VERIFY-003, C's sign-in screens and pending-intent gate, D's settings and sign-out); SYNC-001 is completed (A's event synchronization, B's lifecycle integration); LOCATION-001 is completed (A's native checks in VERIFY-002, B's home recovery and named pickup); ANALYTICS-001 is completed; RIDE-001 is paused with A's mock request operations completed and B's draft and review, C's request card, cancel and expiry, and D's matches and unknown-outcome recovery implemented, their native checks pending; DESTINATION-001 is paused with A's supplied matches completed and B's destination search, selection and map emphasis implemented, its native check pending; MAP-001 is paused with A completed and B's map-centre picker implemented, its native check pending; MAP-002 is paused with A's discovery read and states, B's markers, clusters, list and tile notice, and C's ride and group previews and disappeared target implemented, their native checks pending; GROUP-001 is completed (A's joins, B's leave and coordinator transfer, C's status changes, expiry and terminal access); GROUP-002 is paused with A's join confirmation and conflict recovery, B's group screen and C's lifecycle controls and closed and revoked states implemented, their native checks pending; MEETING-001 is in progress with A's mock meeting points completed; all other implementation tasks are planned.**
 
 ## Milestone order
 
@@ -12,6 +12,17 @@ Last updated: 2026-11-08. **MONO-001, MOBILE-001, TOOLCHAIN-001, CONTRACT-001, C
 This roadmap covers only items 1–2. No backend implementation or real transport tasks are in the DAG. Completing a task does not authorize starting the next milestone automatically.
 
 ## Progress
+
+**MEETING-001-A — Completed (2026-11-08); MEETING-001 `In progress`.** Started at the user's request while GROUP-002's native checks are pending.
+
+- **Done:**
+  - The mock source suggests a meeting point 10 seconds after a group forms (and for scenario A's seeded forming group): the curated place nearest the group's public area that is not its destination, at its main entrance.
+  - It can replace the point (new ID) or withdraw it; each change reaches members only (`meeting_point_changed`) and returns a ready group to forming. Without a point, a group cannot be marked ready. Closed groups never change.
+  - Each member's group read carries their own walking estimate, supplied by the source from their own pickup (straight line, 80 m per minute), without revealing it or changing the version.
+  - 524 mobile tests (6 new).
+- **Decisions:** update policy documented in api/groups.md and MOCK_SCENARIOS; no scenario triggers replacement or withdrawal yet.
+- **Not covered here:** the meeting point sheet and map landmark (MEETING-001-B).
+- **Next available:** MEETING-001-B (needs MAP-001, paused for its native check), CHAT-001-A, or the native pass.
 
 **GROUP-002-C — Implemented (2026-11-08), native check pending; GROUP-002 `Paused` (A, B, C implemented, native checks pending).**
 
@@ -553,7 +564,7 @@ Use [FIRST_STEPS.md](FIRST_STEPS.md) to execute MONO-001 and MOBILE-001 as 13 bo
 | GROUP-001 | Atomic mock group operations | Completed |
 | GROUP-002 | Group product flow | Paused (A, B and C implemented, native checks pending) |
 | CHAT-001 | Temporary text chat | Planned |
-| MEETING-001 | Meeting point and readiness | Planned |
+| MEETING-001 | Meeting point and readiness | In progress (A completed) |
 | TAXI-001 | Yandex Go handoff | Planned |
 | SAFETY-001 | Block and report | Planned |
 | NOTIFICATION-001 | Local notification-driven flows | Planned |

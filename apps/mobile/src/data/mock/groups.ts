@@ -13,6 +13,7 @@ import {
 
 import { authenticate } from './auth';
 import { closeGroup, expireGroup } from './lifecycle';
+import { scheduleMeetingPoint } from './meetingPoints';
 import {
   groupChanged,
   nearbyRemoved,
@@ -93,7 +94,8 @@ function groupRide(ride: RideRecord, groupId: string): void {
  *
  * - A solo target becomes a new `forming` group of two, coordinated by the target's rider, with
  *   the target's destination, departure and public area, expiring
- *   `GROUP_POLICY.lifetimeSeconds` later (scheduled). Discovery removes the ride and shows the
+ *   `GROUP_POLICY.lifetimeSeconds` later (scheduled); its meeting point follows
+ *   `MEETING_POINT_DELAY_MS` later (`meetingPoints.ts`). Discovery removes the ride and shows the
  *   group; both requests become `grouped`, and both owners are told (`ride.changed`).
  * - A group target gains the caller as its last member and stays `forming`, even with four
  *   members. Discovery shows the new count; the members are told (`group.changed`,
@@ -149,7 +151,7 @@ export function joinGroup(context: Context, accessToken: string | null, input: u
       context.emit(nearbyUpserted(context.eventEnvelope(), toNearbyItemDto(state, { kind: 'group', record: group })));
       context.emit(rideChanged(context.eventEnvelope(), own));
       if (destination.kind === 'group') context.emit(groupChanged(context.eventEnvelope(), group, 'member_joined'));
-      return { group: toRideGroupDto(state, group), rideRequest: toOwnRideRequestDto(state, own) };
+      return { group: toRideGroupDto(state, group, user.id), rideRequest: toOwnRideRequestDto(state, own) };
     },
   );
 }
@@ -182,6 +184,7 @@ function formGroup(context: Context, target: RideRecord, joiner: RideRecord): Gr
   context.emit(nearbyRemoved(context.eventEnvelope(), { kind: 'ride', id: target.id }, target.version, 'unavailable'));
   context.emit(rideChanged(context.eventEnvelope(), target));
   context.schedule(group.expiresAt, (later) => expireGroup(later, group.id));
+  scheduleMeetingPoint(context, group.id);
   return group;
 }
 
@@ -207,7 +210,7 @@ export function readGroup(context: Context, accessToken: string | null, groupId:
   if (group.closure !== null && context.now >= group.closure.historyExpiresAt) {
     throw context.sourceError('HISTORY_EXPIRED', 'This group’s history is no longer kept.');
   }
-  return toRideGroupDto(context.state, group);
+  return toRideGroupDto(context.state, group, user.id);
 }
 
 /** Cancels a grouped request with its group; its `groupId` stays, naming the group it ended with. */
@@ -370,7 +373,7 @@ export function updateGroupStatus(
         context.emit(nearbyUpserted(context.eventEnvelope(), toNearbyItemDto(state, { kind: 'group', record: group })));
         context.emit(groupChanged(context.eventEnvelope(), group, status === 'ready' ? 'ready' : 'reopened'));
       }
-      return toRideGroupDto(state, group);
+      return toRideGroupDto(state, group, user.id);
     },
   );
 }

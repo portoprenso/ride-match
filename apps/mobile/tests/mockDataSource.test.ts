@@ -527,8 +527,9 @@ describe('a full active-neighborhood run', () => {
     for (const event of events) expect(DomainEventSchema.safeParse(event).success).toBe(true);
     expectNoPrivatePoints(simulator.state, events);
     const count = (type: DomainEventDto['type']) => events.filter((event) => event.type === type).length;
-    // One ride appears; seven rides and two groups end; seven expired and five cancelled requests reach their owners.
-    expect([count('nearby.upserted'), count('nearby.removed'), count('ride.changed'), count('group.changed')]).toEqual([1, 9, 12, 2]);
+    // One ride appears; seven rides and two groups end; seven expired and five cancelled requests reach their owners;
+    // the forming group gets its meeting point (MEETING-001-A), told to its members only.
+    expect([count('nearby.upserted'), count('nearby.removed'), count('ride.changed'), count('group.changed')]).toEqual([1, 9, 12, 3]);
     expect(events.filter((event) => event.audience.kind === 'public')).toHaveLength(10);
 
     const { rides, groups } = simulator.state;
