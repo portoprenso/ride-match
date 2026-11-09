@@ -107,7 +107,7 @@ export function MapHomeScreen({
   // The region the map last came to rest on, once it has; discovery reads it, and never moves
   // the camera. A move the app made counts as coming to rest even if the provider never says so.
   const [restedRegion, setRegion] = useState<Region | null>(null);
-  const { mapRef, initialRegion, onMapReady, onUserGesture, recenter, moveTo } = useHomeCamera({
+  const { mapRef, initialRegion, onMapReady, onUserGesture, onPaddingChanged, recenter, moveTo } = useHomeCamera({
     fix,
     pickup,
     onSettled: setRegion,
@@ -117,6 +117,8 @@ export function MapHomeScreen({
   const [picking, setPicking] = useState(false);
   const [namedOpen, setNamedOpen] = useState(false);
   const [coverage, setCoverage] = useState<MapCoverage>(NO_COVERAGE);
+  // A padding change can cancel a camera move the app just started (Android); repeat it.
+  useEffect(() => onPaddingChanged(), [coverage, onPaddingChanged]);
   const picker = useMapPointPicker(mapRef, coverage, picking);
   const region = restedRegion ?? initialRegion;
   // The rider's chosen destination (designs 03 and 04): local to this screen, it only changes

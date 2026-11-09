@@ -13,7 +13,7 @@ This roadmap covers only items 1–2. No backend implementation or real transpor
 
 ## Progress
 
-**VERIFY-005 — Paused (2026-11-09): native pass for the twenty pending cards, partly run. Five defects fixed, two open; no card status changed.** iPhone 17 Pro simulator (iOS 26.5) and Pixel 9 Pro XL emulator (Android 16, with the Google Maps key), clean prebuild and rebuild of both development clients.
+**VERIFY-005 — Paused (2026-11-09): native pass for the twenty pending cards, in two passes. Six defects fixed, two open; no card status changed.** iPhone 17 Pro simulator (iOS 26.5) and Pixel 9 Pro XL emulator (Android 16, with the Google Maps key), clean prebuild and rebuild of both development clients.
 
 - **Fixed (with tests):**
   - iOS: after "Show my location" from outside the demo area, MapKit sometimes sent no rest event for the app's own camera move, so discovery kept saying "No ride plans out here." over the city. `useHomeCamera` now reads the visible region back after each app-made move (`onSettled`, `moveTo`).
@@ -21,12 +21,13 @@ This roadmap covers only items 1–2. No backend implementation or real transpor
   - iOS: in the report sheet, the focused "Details" field (and its counter) stayed scrolled out of view above the keyboard. `SheetContent` now scrolls a focused field into view, in every sheet.
   - Android: an endless discovery read loop ("Updating for this area…" forever), because Google Maps reports the latitude span inside the map padding, which changed with the sheet's height. Discovery now reads `discoveryRegion` (height from width and the frame), the whole frame on both platforms.
   - Android: a red screen (`NullPointerException` in react-native-maps' `applyBaseMapPadding`) when the padding changed before Google Maps was ready, seen after a remount. `HomeMap` now passes the padding only after `onMapReady`.
-- **Open:** Android ghost default red pins stay after discovery markers are removed (react-native-maps removes features by index); `map-density` cluster labels overlap at the city view (a design choice: bigger cells, shorter labels or collision-aware clustering).
+  - Android (second pass): a camera move started while the sheet changed height ("Inspect highlighted ride", a list row) was cancelled, since react-native-maps moves the camera to where it is on every padding change. `useHomeCamera.onPaddingChanged` repeats an app-made move from the last 1.5 seconds.
+- **Open:** Android ghost default red pins stay after discovery markers are removed, even on a fresh install after one scenario switch, and the own "You" marker vanished once while its request stayed active. react-native-maps' `safeAddFeature` replaces where Fabric inserts, but patching that alone did not remove the ghosts (patch reverted); `map-density` cluster labels overlap at the city view (a design choice: bigger cells, shorter labels or collision-aware clustering).
 - **Finding:** the mock push service runs on JS timers, which both platforms pause in the background, so a banner arrives only when the app returns (no lock-screen banner from the mock). A real push service will not have this.
-- **Passed on iOS:** discovery, markers and list, previews, destination, request draft and card, match, join, group, meeting point, chat (keyboard), leave, notification permission, report and block, blocked riders, taxi handoff (store/website case), map picker, notification entry warm and cold (cold via a synthetic `xcrun simctl push`, which also shows 46). **Passed on Android:** discovery and recenter after the fixes, report sheet and receipt with Android back, notification permission (Android 13+ prompt), warm notification entry.
-- **Not run:** most Android checks, CHAT-001-C (scenario H), the iOS stale dot, larger text, background expiry; details in WORK_LOG.
-- 650 mobile tests (4 new).
-- **Next:** finish the Android checks in a second pass, then decide the two open defects.
+- **Passed on iOS:** discovery, markers and list, previews, destination, request draft and card, match, join, group, meeting point, chat (keyboard), leave, notification permission, report and block, blocked riders, taxi handoff (store/website case), map picker, notification entry warm and cold (cold via a synthetic `xcrun simctl push`, which also shows 46). **Passed on Android:** discovery and recenter after the fixes, list and previews (airport group), destination emphasis and inspect, request draft with a named pickup, sign-in and single publish, report sheet and receipt, meeting point map in its sheet, taxi handoff (browser case), coordinator cancel confirmation, Android back on sheets and previews, notification permission (Android 13+ prompt), warm and cold notification entry (cold through the development client's launcher).
+- **Not run:** on Android the match scenario, join confirmation, card cancel/expiry, chat keyboard (the emulator shows only Gboard's floating toolbar), block, map picker and network-off notices; "Your current location" (the emulator's fix is ±100 m); on iOS CHAT-001-C, the stale dot, larger text, background expiry. Details in WORK_LOG.
+- 652 mobile tests (6 new).
+- **Next:** the user decides the two open defects (the ghost pins need their own card); the remaining checks above can run with them.
 
 **NOTIFICATION-001-C — Implemented (2026-11-09), warm/cold native check pending; NOTIFICATION-001 `Paused`.** Started at the user's request while NOTIFICATION-001-A/B's native checks are pending.
 

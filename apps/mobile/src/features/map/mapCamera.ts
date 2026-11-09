@@ -29,6 +29,14 @@ export function streetRegion(coordinates: Readonly<CoordinatesDto>): Region {
  */
 export const CAMERA_SETTLE_CHECK_MS = CAMERA_ANIMATION_MS + 250;
 
+/**
+ * How long after a camera move the app made a change of map padding repeats that move.
+ * react-native-maps on Android keeps the camera where it is when the padding changes
+ * (`moveCamera` to the current position), which cancelled a move started as a sheet changed
+ * height, such as "Inspect highlighted ride" or a list row (VERIFY-005).
+ */
+export const PADDING_REPEAT_WINDOW_MS = 1500;
+
 type HomeCameraInput = {
   /** The device position the map shows, or `null` when there is none to show. */
   fix: LocationFix | null;
@@ -94,8 +102,12 @@ export function useHomeCamera({ fix, pickup, onSettled }: HomeCameraInput) {
   }, []);
   useEffect(() => cancelSettle, [cancelSettle]);
 
+  // The last move the app made, until the user touches the map.
+  const lastMove = useRef<{ region: Region; at: number } | null>(null);
+
   const animate = useCallback(
-    (region: Region) => {
+    (region: Region, at = Date.now()) => {
+      lastMove.current = { region, at };
       mapRef.current?.animateToRegion(region, CAMERA_ANIMATION_MS);
       cancelSettle();
       settleTimer.current = setTimeout(() => {
@@ -111,6 +123,13 @@ export function useHomeCamera({ fix, pickup, onSettled }: HomeCameraInput) {
     },
     [cancelSettle],
   );
+
+  /** The map padding changed: repeats a move the app made just before, which it may have cancelled. */
+  const onPaddingChanged = useCallback(() => {
+    const move = lastMove.current;
+    if (move === null || !ready.current || Date.now() - move.at > PADDING_REPEAT_WINDOW_MS) return;
+    animate(move.region, move.at);
+  }, [animate]);
 
   const show = useCallback(
     (region: Region) => {
@@ -145,8 +164,10 @@ export function useHomeCamera({ fix, pickup, onSettled }: HomeCameraInput) {
     /** The user touched the map, so automatic moves stop until they recenter. */
     onUserGesture() {
       followNextFix.current = false;
+      lastMove.current = null;
       cancelSettle();
     },
+    onPaddingChanged,
     /** A move the user asked for in the app (a cluster or a list row); it ends automatic moves. */
     moveTo(region: Region) {
       followNextFix.current = false;
