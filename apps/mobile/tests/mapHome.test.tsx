@@ -1,5 +1,6 @@
 import { act, fireEvent, screen, userEvent } from '@testing-library/react-native';
 import * as Location from 'expo-location';
+import { Platform } from 'react-native';
 
 import * as mapProvider from '../src/config/isMapProviderConfigured';
 import { DEMO_CITY_REGION, streetRegion } from '../src/features/map/mapCamera';
@@ -179,6 +180,35 @@ describe('home map', () => {
     expect(animateToRegion).toHaveBeenLastCalledWith(streetRegion(pin.props.coordinate), expect.any(Number));
     // A chosen place is never drawn as the device position.
     expect(screen.queryByLabelText(/Your location/)).not.toBeOnTheScreen();
+  });
+
+  it('replaces an Android map that reports ready again with a fresh one where the camera rested (VERIFY-006)', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    // The stand-in build has no Google Maps key; this Android build does.
+    jest.spyOn(mapProvider, 'isMapProviderConfigured').mockReturnValue(true);
+    device({ permission: BLOCKED });
+    await openHome();
+    const first = map();
+    const rested = { latitude: 42.88, longitude: 74.61, latitudeDelta: 0.02, longitudeDelta: 0.02 };
+    await fireEvent(first, 'regionChangeComplete', rested);
+
+    // Re-attached after another screen covered home: its native markers can no longer be trusted.
+    await fireEvent(first, 'mapReady');
+
+    expect(map()).not.toBe(first);
+    expect(map().props.initialRegion).toEqual(rested);
+    expect(screen.getByText('Location is off')).toBeOnTheScreen();
+  });
+
+  it('keeps an iOS map that reports ready again', async () => {
+    device({ permission: BLOCKED });
+    await openHome();
+    const first = map();
+
+    await fireEvent(first, 'mapReady');
+
+    expect(map()).toBe(first);
+    expect(map().props.initialRegion).toEqual(DEMO_CITY_REGION);
   });
 
   it('explains a build without a map and keeps the pickup choice', async () => {

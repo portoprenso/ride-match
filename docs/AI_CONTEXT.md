@@ -1,6 +1,6 @@
 # AI context
 
-Last updated: 2026-11-08
+Last updated: 2026-11-09
 
 ## Purpose and state
 
@@ -173,7 +173,8 @@ Last updated: 2026-11-08
 
 ## Shared handoff and active work
 
-- Active work: **None.** VERIFY-005 (Claude Code / verify-005, 2026-11-09) is `Paused` with ownership released and committed after two passes: six defects fixed, two open (Android ghost pins; `map-density` label overlap), no card status changed (ROADMAP, WORK_LOG).
+- Active work: **None.** VERIFY-006 (Claude Code / verify-006, 2026-11-09) is `Completed` and committed: the Android ghost pins and the vanishing "You" marker came from react-native-maps losing track of markers while home was detached under another screen; `HomeMap` now remounts a re-attached Android map (ROADMAP, WORK_LOG).
+- Previous work: VERIFY-005 (Claude Code / verify-005, 2026-11-09) is `Paused` with ownership released and committed after two passes: six defects fixed, two open (Android ghost pins; `map-density` label overlap), no card status changed (ROADMAP, WORK_LOG).
 - Previous work: NOTIFICATION-001-C (Claude Code / notification-001-c, 2026-11-09) is implemented and `Paused` for its warm/cold native check, committed; NOTIFICATION-001 is `Paused`.
 - Previous work: NOTIFICATION-001-B (Claude Code / notification-001-b, 2026-11-08) is implemented and `Paused` for its native check, and committed.
 - Previous work: NOTIFICATION-001-A (Claude Code / notification-001-a, 2026-11-08) is implemented and `Paused` for its native check, and committed. The user started it while CHAT-001's and MEETING-001's native checks are pending.
@@ -249,7 +250,7 @@ Last updated: 2026-11-08
   - **UI-001-A:** fix Android line-height clipping at enlarged text (`AppText`/`typography`), then recheck at 150% and 200% on Android and at XXXL on iOS.
   - **Final device testing (deferred by the user, 2026-11-01):** TalkBack and VoiceOver checks of `SheetHost` and `ConfirmAction` (focus returns to the opener after a sheet closes, the VoiceOver escape gesture closes it, the confirmation error is announced), once everything including the backend works. VoiceOver needs a signed development build on the user's iPhone; which team signs it (their Personal Team or the HRS company team) is the user's decision. A temporary sample like VERIFY-002's (see WORK_LOG) or the real screens can host the checks.
   - **MAP-001-A stale dot:** fixed at the user's request (2026-11-07) after first being deferred.
-  - **Available cards:** none outside the native pass. VERIFY-005 is paused after two passes: the user decides the two open defects (Android ghost pins after markers are removed, which needs its own card; `map-density` cluster labels overlapping at the city view); the checks it did not run are listed in WORK_LOG. QA-001-A needs TAXI-001, SAFETY-001 and NOTIFICATION-001 completed. The user chooses what is next.
+  - **Available cards:** none outside the native pass. VERIFY-005 is paused after two passes: the user decides the open `map-density` defect (cluster labels overlapping at the city view; VERIFY-006 fixed the Android ghost pins); the checks it did not run are listed in WORK_LOG. QA-001-A needs TAXI-001, SAFETY-001 and NOTIFICATION-001 completed. The user chooses what is next.
   - **NOTIFICATION-001 so far:** A: `expo-notifications` 57.0.23 (no config plugin), `src/platform/notifications/localNotifications.ts` (validated generic local notifications, permission, taps, `clearAll`), `src/bootstrap/clearNotificationsOnSignOut.ts`, mock `src/data/mock/devices.ts`; development clients need rebuilding (native check pending). B: settings row (40) and `src/features/notifications/NotificationPermissionSheet.tsx` (39), `createNotificationPermissionController`, `syncPushRegistration` (installation ID, synthetic token, `beforeSignOut` removal), mock push service `src/data/mock/push.ts` presented locally; native check pending. C: `src/features/notifications/` tap coordinator, `resolveNotification`, `NotificationTapRouter` (root layout) and `/notification-unavailable` (46); warm/cold native check pending.
   - **SAFETY-001 so far:** B: `src/features/safety/ReportSheet.tsx` and `reportFlow.ts`, opened from `MemberMenu` in the group and chat; its native check is pending. A: mock `src/data/mock/safety.ts` (block-and-leave via `leaveLiveGroup`, unblock, block list, reports), block filtering in discovery, nearby subscriptions, matches and joins; scenario J `safety`. Rules in MOCK_SCENARIOS, Safety. B added the report form (41, 42, 52). C added `BlockSheet` (43; `blockFlow.ts`, `blockCache.ts`) from the member menu and the report receipt, and `BlockedRidersScreen` (44) at `/blocked-riders` from a settings row (40); its native check is pending.
   - **TAXI-001 so far:** `src/platform/taxi/yandexGo.ts` (documented link), `src/platform/taxi/openTaxi.ts` (the one boundary; outcomes `handed-off`/`failed`/`invalid`; nothing logged), `src/features/groups/taxiReview.ts` (ready-group review, `isReviewCurrent`). B: `TaxiReviewSheet` (17, 38, changed details), the review in `GroupScreen` from a fresh read, analytics, share-sheet copy, scenario L `taxi-unavailable`; its both-platform check is pending.

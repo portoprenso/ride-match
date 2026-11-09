@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import MapView, { Circle, Marker, type MapMarker, type Region } from 'react-native-maps';
 
 import { isMapProviderConfigured } from '../../config/isMapProviderConfigured';
@@ -48,24 +48,19 @@ type HomeMapProps = {
  * throws a NullPointerException (`GoogleMap.setPadding` on a null map) when the padding changes
  * after the view is laid out but before Google Maps is ready, which a remount showed (VERIFY-005)
  * and a slow device could hit on any start, since the sheet's coverage arrives after layout.
+ *
+ * On Android a map that was detached under another screen is replaced by a fresh instance at the
+ * last rested camera region when it reports ready again (`NativeHomeMap`), so markers removed or
+ * added meanwhile are drawn correctly. `onMapReady` is then called again for the new instance.
  */
-export function HomeMap({
-  mapRef,
-  initialRegion,
-  onMapReady,
-  onUserGesture,
-  onRegionChange,
-  onRegionChangeComplete,
-  onMapLoaded,
-  coverage,
-  location,
-  pickup,
-  children,
-}: HomeMapProps) {
-  const [ready, setReady] = useState(false);
+export function HomeMap({ initialRegion, onRegionChangeComplete, ...mapProps }: HomeMapProps) {
+  // One native map instance at a time; a re-attached Android map is replaced by a fresh one
+  // that opens where the camera last came to rest (see `NativeHomeMap`).
+  const [instance, setInstance] = useState({ key: 0, region: initialRegion });
+  const restedRegion = useRef(initialRegion);
   if (!isMapProviderConfigured()) {
     return (
-      <View style={[styles.unavailable, { paddingTop: coverage.top + spacing.lg }]}>
+      <View style={[styles.unavailable, { paddingTop: mapProps.coverage.top + spacing.lg }]}>
         <Notice
           tone="warning"
           message="The map can't be shown in this build. You can still choose a pickup point by name."
@@ -75,6 +70,52 @@ export function HomeMap({
   }
 
   return (
+    <NativeHomeMap
+      key={instance.key}
+      {...mapProps}
+      initialRegion={instance.region}
+      onRegionChangeComplete={(region) => {
+        restedRegion.current = region;
+        onRegionChangeComplete?.(region);
+      }}
+      onReattached={() => setInstance(({ key }) => ({ key: key + 1, region: restedRegion.current }))}
+    />
+  );
+}
+
+/**
+ * One native map. On Android, react-native-maps 1.27.2 loses track of its markers while the view
+ * is detached from the window, which happens whenever another screen is pushed over home
+ * (react-native-screens detaches the screen underneath). `onDetachedFromWindow` moves the tracked
+ * features aside and empties the list Fabric reads children from, so every marker removed while
+ * detached is a no-op (`SurfaceMountingManager` logs "view already removed from parent!"): the
+ * marker stays on the map and, once its custom view is dropped, turns into a default red pin
+ * ("ghost pin", VERIFY-006). A marker added while detached can also replace a tracked one, which
+ * is how the own "You" marker vanished. On re-attaching, the view reports itself ready a second
+ * time and re-adds the set-aside features to new marker collections.
+ *
+ * That second ready report is the signal: instead of drawing on the corrupted instance, the
+ * caller mounts a fresh one (`onReattached`), which drops every native marker of the old one.
+ * Apple Maps never reports ready twice, and iOS keeps its markers anyway.
+ */
+function NativeHomeMap({
+  mapRef,
+  initialRegion,
+  onMapReady,
+  onReattached,
+  onUserGesture,
+  onRegionChange,
+  onRegionChangeComplete,
+  onMapLoaded,
+  coverage,
+  location,
+  pickup,
+  children,
+}: HomeMapProps & { onReattached: () => void }) {
+  const [ready, setReady] = useState(false);
+  const reportedReady = useRef(false);
+
+  return (
     <MapView
       ref={mapRef}
       testID="home-map"
@@ -82,6 +123,11 @@ export function HomeMap({
       initialRegion={initialRegion}
       mapPadding={ready ? coverage : undefined}
       onMapReady={() => {
+        if (reportedReady.current) {
+          if (Platform.OS === 'android') onReattached();
+          return;
+        }
+        reportedReady.current = true;
         setReady(true);
         onMapReady();
       }}

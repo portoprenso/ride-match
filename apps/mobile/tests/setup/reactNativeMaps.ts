@@ -2,7 +2,7 @@
  * react-native-maps draws native views that Jest cannot render, so every test gets this stand-in.
  * `MapView`, `Marker` and `Circle` render plain views that keep their props, so tests read the
  * camera's initial region, the padding, the markers' labels and the circle's radius from them.
- * A map reports itself ready right after mounting. Camera moves are recorded by the shared
+ * A map reports itself ready right after mounting; `fireEvent(map, 'mapReady')` reports it again. Camera moves are recorded by the shared
  * `animateToRegion` mock (`jest.requireMock('react-native-maps').animateToRegion`), and marker
  * redraws by the shared `redrawMarker` mock, both reset by `clearMocks` before every test. The
  * point under a screen position comes from the shared `coordinateForPoint` mock, which answers
@@ -42,7 +42,9 @@ jest.mock('react-native-maps', () => {
     // Ready once, on mounting, as the native map reports it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     React.useEffect(() => onMapReady?.(), []);
-    return React.createElement(View, props);
+    // Kept on the view too, so a test can report ready again, as a re-attached Android map does.
+    const viewProps = { ...props, onMapReady };
+    return React.createElement(View, viewProps);
   }
   function Marker({ ref, ...props }: MockStandInProps) {
     React.useImperativeHandle(ref, () => ({ redraw: redrawMarker }), []);
