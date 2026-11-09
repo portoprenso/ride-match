@@ -25,6 +25,7 @@ import { DiscoveryPanel } from '../discovery/DiscoveryPanel';
 import { clusterItems, clusterZoomRegion, describeItem, itemKey } from '../discovery/nearbyItems';
 import { NearbyListSheet, type NearbyListContent } from '../discovery/NearbyListSheet';
 import { PreviewPanel, previewTitle } from '../discovery/PreviewPanel';
+import { discoveryRegion } from '../discovery/viewport';
 import { useTargetPreview, type PreviewTarget } from '../discovery/useTargetPreview';
 import { useClock } from '../discovery/useClock';
 import { useNearbyDiscovery } from '../discovery/useNearbyDiscovery';
@@ -41,7 +42,7 @@ import { isLive, useOwnRequest } from '../rides/useOwnRequest';
 import { indexMatches } from '../destinations/matches';
 import { HomeMap } from './HomeMap';
 import { CentrePin, MapPointPanel, useMapPointPicker } from './MapPointPicker';
-import { CAMERA_ANIMATION_MS, streetRegion, useHomeCamera } from './mapCamera';
+import { streetRegion, useHomeCamera } from './mapCamera';
 
 /**
  * The map-first home (screens 02 and 21): anyone can pan and zoom it, with or without location
@@ -103,20 +104,29 @@ export function MapHomeScreen({
   const { pickup } = useLocationChoices();
   const status = useLocationStatus();
   const fix = status.kind === 'located' ? status.fix : null;
-  const { mapRef, initialRegion, onMapReady, onUserGesture, recenter } = useHomeCamera({ fix, pickup });
+  // The region the map last came to rest on, once it has; discovery reads it, and never moves
+  // the camera. A move the app made counts as coming to rest even if the provider never says so.
+  const [restedRegion, setRegion] = useState<Region | null>(null);
+  const { mapRef, initialRegion, onMapReady, onUserGesture, recenter, moveTo } = useHomeCamera({
+    fix,
+    pickup,
+    onSettled: setRegion,
+  });
   const configured = isMapProviderConfigured();
   const tiles = useMapTileStatus({ configured, reportsLoading: Platform.OS === 'android' });
   const [picking, setPicking] = useState(false);
   const [namedOpen, setNamedOpen] = useState(false);
   const [coverage, setCoverage] = useState<MapCoverage>(NO_COVERAGE);
   const picker = useMapPointPicker(mapRef, coverage, picking);
-  // The region the map last came to rest on; discovery reads it, and never moves the camera.
-  const [region, setRegion] = useState<Region>(initialRegion);
+  const region = restedRegion ?? initialRegion;
   // The rider's chosen destination (designs 03 and 04): local to this screen, it only changes
   // what discovery reads and emphasizes. Clearing it returns to general browsing.
   const [destination, setDestination] = useState<PlaceDto | null>(null);
   const [destinationOpen, setDestinationOpen] = useState(false);
-  const discovery = useNearbyDiscovery(region, destination?.id ?? null);
+  // The map's size, so discovery reads the whole frame whatever the sheet covers (see `discoveryRegion`).
+  const [mapFrame, setMapFrame] = useState({ width: 0, height: 0 });
+  const discoveryView = useMemo(() => discoveryRegion(region, mapFrame), [region, mapFrame]);
+  const discovery = useNearbyDiscovery(discoveryView, destination?.id ?? null);
   const analytics = useAnalytics();
   const demo = useDemoSignIn() !== null;
   // What the map draws: this view's snapshot, the previous view's while this one loads, or the
@@ -182,11 +192,6 @@ export function MapHomeScreen({
                 })(),
         };
 
-  /** A camera move the user asked for (a cluster or a list row), which ends any automatic one. */
-  const moveTo = (target: Region) => {
-    onUserGesture();
-    mapRef.current?.animateToRegion(target, CAMERA_ANIMATION_MS);
-  };
   const openList = () =>
     snapshot &&
     setList({ items: snapshot.items, truncated: snapshot.truncated, stale: staleSnapshot, fromCluster: false });
@@ -297,7 +302,15 @@ export function MapHomeScreen({
     <>
       <MapLayout
         renderMap={(mapCoverage) => (
-          <View style={StyleSheet.absoluteFill} onLayout={picker.onLayout} testID="home-map-area">
+          <View
+            style={StyleSheet.absoluteFill}
+            onLayout={(event) => {
+              picker.onLayout(event);
+              const { width, height } = event.nativeEvent.layout;
+              setMapFrame((frame) => (frame.width === width && frame.height === height ? frame : { width, height }));
+            }}
+            testID="home-map-area"
+          >
             <CoverageTracker coverage={mapCoverage} onChange={setCoverage} />
             <HomeMap
               mapRef={mapRef}

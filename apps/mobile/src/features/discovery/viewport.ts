@@ -27,3 +27,25 @@ export function toViewport(region: Readonly<Region>): MapViewport | null {
     northEast: { latitude: Math.max(north, south + 1) / HUNDREDTHS, longitude: Math.max(east, west + 1) / HUNDREDTHS },
   };
 }
+
+/**
+ * The map region discovery reads: the reported region with its height worked out from its width
+ * and the map frame's proportions, so it covers the whole frame whatever the map padding.
+ *
+ * Google Maps (Android) reports only the part inside the map padding, so its latitude span
+ * changed with the sheet's height. A sheet that grew while a view was read ("Outside the demo
+ * area" against "Updating for this area…") then changed the viewport, which started another
+ * read, which changed the sheet back: an endless loop of reads (VERIFY-005). The padding is
+ * vertical, so the longitude span is stable; Apple Maps already reports the whole frame, which
+ * this matches. Without a measured frame the region is returned as it is.
+ *
+ * @param region The region the map last came to rest on.
+ * @param frame The map view's size in points, or zero before it is laid out.
+ */
+export function discoveryRegion(region: Readonly<Region>, frame: { width: number; height: number }): Region {
+  if (frame.width <= 0 || frame.height <= 0) return region;
+  // On a Mercator map, a degree of latitude is shorter on screen by the cosine of the latitude.
+  const latitudeDelta =
+    region.longitudeDelta * (frame.height / frame.width) * Math.cos((region.latitude * Math.PI) / 180);
+  return { ...region, latitudeDelta };
+}

@@ -22,11 +22,37 @@ export function streetRegion(coordinates: Readonly<CoordinatesDto>): Region {
   return { ...coordinates, latitudeDelta: 0.01, longitudeDelta: 0.01 };
 }
 
+/**
+ * How long after a camera move the app made itself the visible region is read back. iOS MapKit
+ * sometimes sends no rest event for such a move (seen when a second move to the same place
+ * follows the first, as after "Show my location"), which left discovery reading the old view.
+ */
+export const CAMERA_SETTLE_CHECK_MS = CAMERA_ANIMATION_MS + 250;
+
 type HomeCameraInput = {
   /** The device position the map shows, or `null` when there is none to show. */
   fix: LocationFix | null;
   pickup: ConfirmedPickup | null;
+  /**
+   * Called with the region actually visible once a camera move the app made has had time to end,
+   * whether or not the provider reported it. The user's own gestures are left to the provider's
+   * `onRegionChangeComplete`, so a touch cancels the pending read-back.
+   */
+  onSettled?: (region: Region) => void;
 };
+
+/** The region covering `bounds`, as the provider's own region events describe it. */
+export function regionFromBounds(bounds: {
+  northEast: Readonly<CoordinatesDto>;
+  southWest: Readonly<CoordinatesDto>;
+}): Region {
+  return {
+    latitude: (bounds.northEast.latitude + bounds.southWest.latitude) / 2,
+    longitude: (bounds.northEast.longitude + bounds.southWest.longitude) / 2,
+    latitudeDelta: bounds.northEast.latitude - bounds.southWest.latitude,
+    longitudeDelta: bounds.northEast.longitude - bounds.southWest.longitude,
+  };
+}
 
 /**
  * Where the home map's camera goes, decided once per cause so nothing keeps pulling it back.
@@ -39,22 +65,60 @@ type HomeCameraInput = {
  * - Later positions only move the dot.
  *
  * Moves asked for before the map is ready happen when it becomes ready, since Google Maps
- * ignores camera commands until then.
+ * ignores camera commands until then. After each move it makes (also `moveTo`), it reads the
+ * visible region back for `onSettled` (see `CAMERA_SETTLE_CHECK_MS`).
  */
-export function useHomeCamera({ fix, pickup }: HomeCameraInput) {
+export function useHomeCamera({ fix, pickup, onSettled }: HomeCameraInput) {
   const mapRef = useRef<MapView>(null);
   const [initialRegion] = useState(() =>
-    pickup !== null ? streetRegion(pickup.location.coordinates) : fix !== null ? streetRegion(fix.coordinates) : DEMO_CITY_REGION,
+    pickup !== null
+      ? streetRegion(pickup.location.coordinates)
+      : fix !== null
+        ? streetRegion(fix.coordinates)
+        : DEMO_CITY_REGION,
   );
   const ready = useRef(false);
   const pending = useRef<Region | null>(null);
   const followNextFix = useRef(fix === null && pickup === null);
   const shownPickup = useRef(pickup);
 
-  const show = useCallback((region: Region) => {
-    if (ready.current) mapRef.current?.animateToRegion(region, CAMERA_ANIMATION_MS);
-    else pending.current = region;
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onSettledRef = useRef(onSettled);
+  useEffect(() => {
+    onSettledRef.current = onSettled;
+  });
+
+  const cancelSettle = useCallback(() => {
+    if (settleTimer.current !== null) clearTimeout(settleTimer.current);
+    settleTimer.current = null;
   }, []);
+  useEffect(() => cancelSettle, [cancelSettle]);
+
+  const animate = useCallback(
+    (region: Region) => {
+      mapRef.current?.animateToRegion(region, CAMERA_ANIMATION_MS);
+      cancelSettle();
+      settleTimer.current = setTimeout(() => {
+        settleTimer.current = null;
+        const map = mapRef.current;
+        if (map === null) return;
+        map.getMapBoundaries().then(
+          (bounds) => onSettledRef.current?.(regionFromBounds(bounds)),
+          // The map went away or cannot answer yet; the provider's own rest event still applies.
+          () => undefined,
+        );
+      }, CAMERA_SETTLE_CHECK_MS);
+    },
+    [cancelSettle],
+  );
+
+  const show = useCallback(
+    (region: Region) => {
+      if (ready.current) animate(region);
+      else pending.current = region;
+    },
+    [animate],
+  );
 
   useEffect(() => {
     if (fix === null || !followNextFix.current) return;
@@ -75,12 +139,18 @@ export function useHomeCamera({ fix, pickup }: HomeCameraInput) {
     onMapReady() {
       ready.current = true;
       if (pending.current === null) return;
-      mapRef.current?.animateToRegion(pending.current, CAMERA_ANIMATION_MS);
+      animate(pending.current);
       pending.current = null;
     },
     /** The user touched the map, so automatic moves stop until they recenter. */
     onUserGesture() {
       followNextFix.current = false;
+      cancelSettle();
+    },
+    /** A move the user asked for in the app (a cluster or a list row); it ends automatic moves. */
+    moveTo(region: Region) {
+      followNextFix.current = false;
+      animate(region);
     },
     recenter() {
       if (fix !== null) show(streetRegion(fix.coordinates));

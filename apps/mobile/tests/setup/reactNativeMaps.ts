@@ -6,7 +6,10 @@
  * `animateToRegion` mock (`jest.requireMock('react-native-maps').animateToRegion`), and marker
  * redraws by the shared `redrawMarker` mock, both reset by `clearMocks` before every test. The
  * point under a screen position comes from the shared `coordinateForPoint` mock, which answers
- * Ala-Too Square's point unless a test sets another answer. Nothing here draws or checks real map tiles.
+ * Ala-Too Square's point unless a test sets another answer. The shared `getMapBoundaries` mock
+ * fails, so the stand-in never reports where an app-made camera move ended, unless a test sets
+ * `boundsOfLastMove` as its answer (the bounds of the last `animateToRegion` target, as a map
+ * that finished that move would report). Nothing here draws or checks real map tiles.
  */
 type MockStandInProps = {
   children?: import('react').ReactNode;
@@ -20,9 +23,22 @@ jest.mock('react-native-maps', () => {
   const animateToRegion = jest.fn();
   const redrawMarker = jest.fn();
   const coordinateForPoint = jest.fn(async () => ({ latitude: 42.8765, longitude: 74.6037 }));
+  type MockRegion = { latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number };
+  const getMapBoundaries = jest.fn(async (): Promise<unknown> => {
+    throw new Error('The stand-in map does not report its bounds.');
+  });
+  const boundsOfLastMove = async () => {
+    const last = animateToRegion.mock.calls.at(-1)?.[0] as MockRegion | undefined;
+    if (last === undefined) throw new Error('The stand-in map has not moved.');
+    const [halfLat, halfLng] = [last.latitudeDelta / 2, last.longitudeDelta / 2];
+    return {
+      northEast: { latitude: last.latitude + halfLat, longitude: last.longitude + halfLng },
+      southWest: { latitude: last.latitude - halfLat, longitude: last.longitude - halfLng },
+    };
+  };
 
   function MapView({ ref, onMapReady, ...props }: MockStandInProps) {
-    React.useImperativeHandle(ref, () => ({ animateToRegion, coordinateForPoint }), []);
+    React.useImperativeHandle(ref, () => ({ animateToRegion, coordinateForPoint, getMapBoundaries }), []);
     // Ready once, on mounting, as the native map reports it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     React.useEffect(() => onMapReady?.(), []);
@@ -36,5 +52,15 @@ jest.mock('react-native-maps', () => {
     return React.createElement(View, { testID: 'map-circle', ...props });
   }
 
-  return { __esModule: true, default: MapView, Marker, Circle, animateToRegion, redrawMarker, coordinateForPoint };
+  return {
+    __esModule: true,
+    default: MapView,
+    Marker,
+    Circle,
+    animateToRegion,
+    redrawMarker,
+    coordinateForPoint,
+    getMapBoundaries,
+    boundsOfLastMove,
+  };
 });

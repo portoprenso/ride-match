@@ -1,12 +1,14 @@
 import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
 import {
   AccessibilityInfo,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -89,7 +91,10 @@ export function SheetHost({ open, onDismiss, dismissible = true, returnFocusRef,
           importantForAccessibility="no"
           style={styles.backdrop}
         />
-        <KeyboardAvoidingView behavior="padding" style={[styles.fill, styles.frame, { paddingTop: insets.top + spacing.xl }]}>
+        <KeyboardAvoidingView
+          behavior="padding"
+          style={[styles.fill, styles.frame, { paddingTop: insets.top + spacing.xl }]}
+        >
           <View
             accessibilityViewIsModal
             onAccessibilityEscape={requestDismiss}
@@ -113,22 +118,77 @@ type SheetContentProps = {
  * Inside of a `SheetHost`: content that scrolls once the sheet reaches its maximum height,
  * and optional actions that stay visible below it. The bottom inset goes to whichever of
  * the two is last.
+ *
+ * When the keyboard opens, or the scrolling area shrinks above it, a focused text field in
+ * the content is scrolled into view. The sheet shrinks above the keyboard but the content kept
+ * its scroll position, so a field low in a long form (the report's details) was typed into
+ * while hidden (VERIFY-005, iOS).
  */
 export function SheetContent({ children, footer }: SheetContentProps) {
   const insets = useSafeAreaInsets();
   const bottom = spacing.xl + insets.bottom;
+  const scrollRef = useRef<ScrollView>(null);
+  const offset = useRef(0);
+  const viewport = useRef(0);
+
+  useEffect(() => {
+    const subscription = Keyboard.addListener('keyboardDidShow', () => revealFocusedInput(scrollRef, offset, viewport));
+    return () => subscription.remove();
+  }, []);
 
   return (
     <>
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={[styles.content, { paddingBottom: footer ? 0 : bottom }]}
         keyboardShouldPersistTaps="handled"
+        scrollEventThrottle={16}
+        onScroll={(event) => {
+          offset.current = event.nativeEvent.contentOffset.y;
+        }}
+        onLayout={(event) => {
+          viewport.current = event.nativeEvent.layout.height;
+          revealFocusedInput(scrollRef, offset, viewport);
+        }}
       >
         {children}
       </ScrollView>
       {footer && <View style={[styles.footer, { paddingBottom: bottom }]}>{footer}</View>}
     </>
+  );
+}
+
+/** Space kept visible under a revealed field, enough for its hint and character count. */
+const ROOM_BELOW_FIELD = spacing.xl * 2;
+
+/**
+ * Scrolls `scrollRef` so the focused text field is inside its visible part, with a little room.
+ * Nothing happens without a focused field, or when the field is not in this scroll content
+ * (`measureLayout` then fails, for example for a field in another sheet or screen).
+ */
+function revealFocusedInput(
+  scrollRef: RefObject<ScrollView | null>,
+  offset: RefObject<number>,
+  viewport: RefObject<number>,
+) {
+  const input = TextInput.State.currentlyFocusedInput();
+  // Fabric measures against the scroll view's own layout, which is the content's origin.
+  const inner = scrollRef.current?.getNativeScrollRef();
+  if (!input || (typeof inner !== 'number' && typeof inner !== 'object') || inner === null || viewport.current <= 0)
+    return;
+  input.measureLayout(
+    inner,
+    (_left, top, _width, height) => {
+      const visibleTop = offset.current;
+      const visibleBottom = visibleTop + viewport.current;
+      if (top + height + ROOM_BELOW_FIELD > visibleBottom) {
+        scrollRef.current?.scrollTo({ y: top + height + ROOM_BELOW_FIELD - viewport.current, animated: true });
+      } else if (top - spacing.md < visibleTop) {
+        scrollRef.current?.scrollTo({ y: Math.max(0, top - spacing.md), animated: true });
+      }
+    },
+    () => undefined,
   );
 }
 

@@ -8,13 +8,17 @@ import { createMemorySink } from '../src/analytics/sinks';
 import { DataError } from '../src/data/errors';
 import { DiscoveryPanel, describeActivity } from '../src/features/discovery/DiscoveryPanel';
 import { describeDiscovery, type DiscoveryState } from '../src/features/discovery/useNearbyDiscovery';
-import { toViewport } from '../src/features/discovery/viewport';
-import { DEMO_CITY_REGION } from '../src/features/map/mapCamera';
-import { BLOCKED, device, openHome, press, wait } from './helpers/locationDevice';
+import { discoveryRegion, toViewport } from '../src/features/discovery/viewport';
+import { CAMERA_SETTLE_CHECK_MS, DEMO_CITY_REGION } from '../src/features/map/mapCamera';
+import { BLOCKED, GRANTED, device, openHome, press, wait } from './helpers/locationDevice';
 import { flushTimersAndRestore } from './helpers/renderApp';
 
 /** The stand-in map's camera commands (`tests/setup/reactNativeMaps.ts`). */
-const { animateToRegion } = jest.requireMock<{ animateToRegion: jest.Mock }>('react-native-maps');
+const { animateToRegion, getMapBoundaries, boundsOfLastMove } = jest.requireMock<{
+  animateToRegion: jest.Mock;
+  getMapBoundaries: jest.Mock;
+  boundsOfLastMove: () => Promise<unknown>;
+}>('react-native-maps');
 
 // Longer than the mock source's largest simulated latency.
 const ANSWER_MS = 1000;
@@ -116,6 +120,24 @@ describe('discovery on home', () => {
     await wait(3 * ANSWER_MS);
     expect(screen.getByRole('header', { name: 'No ride plans out here.' })).toBeOnTheScreen();
     expect(screen.queryByText(/ride plans in this view/)).not.toBeOnTheScreen();
+  });
+
+  it('reads the view a recentring move shows even when the map reports no rest (VERIFY-005)', async () => {
+    // iOS MapKit sometimes sends no rest event for the app's own camera move; the stand-in never
+    // does, but here it reports the bounds the move ended on when asked.
+    getMapBoundaries.mockImplementation(boundsOfLastMove);
+    device({ permission: GRANTED });
+    await openHome();
+    await wait(ANSWER_MS);
+    await moveMap(FAR_AWAY);
+    await wait(ANSWER_MS);
+    expect(screen.getByRole('header', { name: 'No ride plans out here.' })).toBeOnTheScreen();
+
+    await press('Show my location');
+    await wait(CAMERA_SETTLE_CHECK_MS + ANSWER_MS);
+
+    expect(screen.queryByRole('header', { name: 'No ride plans out here.' })).not.toBeOnTheScreen();
+    expect(screen.getByRole('header', { name: 'Going the same way?' })).toBeOnTheScreen();
   });
 
   it('asks to zoom in on a view wider than discovery reads', async () => {
@@ -228,6 +250,22 @@ describe('DiscoveryPanel failure', () => {
     expect(screen.getByText('Nearby activity didn’t load. We don’t know whether anyone is nearby.')).toBeOnTheScreen();
     await userEvent.press(screen.getByRole('button', { name: 'Retry discovery' }));
     expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('discoveryRegion (VERIFY-005)', () => {
+  it('reads the whole frame whatever latitude span the map reported under its padding', () => {
+    const frame = { width: 400, height: 800 };
+    const underTallSheet = { latitude: 42.86, longitude: 74.6, latitudeDelta: 0.0888, longitudeDelta: 0.1 };
+    const underShortSheet = { ...underTallSheet, latitudeDelta: 0.0951 };
+    const tall = discoveryRegion(underTallSheet, frame);
+    expect(toViewport(tall)).toEqual(toViewport(discoveryRegion(underShortSheet, frame)));
+    expect(tall.latitudeDelta).toBeCloseTo(0.1 * 2 * Math.cos((42.86 * Math.PI) / 180));
+  });
+
+  it('keeps the reported region before the map is laid out', () => {
+    const region = { latitude: 42.86, longitude: 74.6, latitudeDelta: 0.05, longitudeDelta: 0.1 };
+    expect(discoveryRegion(region, { width: 0, height: 0 })).toBe(region);
   });
 });
 

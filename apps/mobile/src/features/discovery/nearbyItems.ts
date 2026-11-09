@@ -105,6 +105,12 @@ const MIN_ZOOM_DELTA = 0.01;
  * Where a cluster tap takes the camera: a region around its items, or `null` when zooming in
  * cannot separate them (they share one public area, or the map is already that close). The
  * screen then lists the cluster's items instead.
+ *
+ * The region is at most half the visible width across, so each tap is at least one zoom step
+ * and the cluster splits. Its latitude span is a quarter of its longitude span: the map fits a
+ * region into the part the sheet leaves uncovered, which is wider than tall, so a square region
+ * was fitted by its latitude and barely zoomed in (VERIFY-005, `map-density`). The uncovered part
+ * still shows about 0.6 of the longitude span in latitude, more than the cluster's own spread.
  */
 export function clusterZoomRegion(items: readonly NearbyItemDto[], region: Readonly<Region>): Region | null {
   const latitudes = items.map((item) => item.publicOrigin.center.latitude);
@@ -112,14 +118,13 @@ export function clusterZoomRegion(items: readonly NearbyItemDto[], region: Reado
   const latSpan = Math.max(...latitudes) - Math.min(...latitudes);
   const lonSpan = Math.max(...longitudes) - Math.min(...longitudes);
   const delta = Math.max(latSpan, lonSpan) * 2;
-  if (delta < MIN_ZOOM_DELTA / 2 || Math.max(region.latitudeDelta, region.longitudeDelta) <= MIN_ZOOM_DELTA)
-    return null;
-  const next = Math.max(delta, MIN_ZOOM_DELTA);
-  if (next >= Math.max(region.latitudeDelta, region.longitudeDelta)) return null;
+  const width = region.longitudeDelta;
+  if (delta < MIN_ZOOM_DELTA / 2 || width <= MIN_ZOOM_DELTA) return null;
+  const next = Math.max(MIN_ZOOM_DELTA, Math.min(delta, width / 2));
   return {
     latitude: (Math.max(...latitudes) + Math.min(...latitudes)) / 2,
     longitude: (Math.max(...longitudes) + Math.min(...longitudes)) / 2,
-    latitudeDelta: next,
+    latitudeDelta: next / 4,
     longitudeDelta: next,
   };
 }

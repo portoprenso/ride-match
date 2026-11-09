@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { StyleSheet, View } from 'react-native';
 import MapView, { Circle, Marker, type MapMarker, type Region } from 'react-native-maps';
 
@@ -43,6 +43,11 @@ type HomeMapProps = {
  *
  * Pitch and rotation are off, so the map stays flat and north-up. Android's map toolbar, which
  * opens Google Maps, is off too.
+ *
+ * The padding is passed only once the map reports ready: react-native-maps 1.27.2 on Android
+ * throws a NullPointerException (`GoogleMap.setPadding` on a null map) when the padding changes
+ * after the view is laid out but before Google Maps is ready, which a remount showed (VERIFY-005)
+ * and a slow device could hit on any start, since the sheet's coverage arrives after layout.
  */
 export function HomeMap({
   mapRef,
@@ -57,6 +62,7 @@ export function HomeMap({
   pickup,
   children,
 }: HomeMapProps) {
+  const [ready, setReady] = useState(false);
   if (!isMapProviderConfigured()) {
     return (
       <View style={[styles.unavailable, { paddingTop: coverage.top + spacing.lg }]}>
@@ -74,8 +80,11 @@ export function HomeMap({
       testID="home-map"
       style={StyleSheet.absoluteFill}
       initialRegion={initialRegion}
-      mapPadding={coverage}
-      onMapReady={onMapReady}
+      mapPadding={ready ? coverage : undefined}
+      onMapReady={() => {
+        setReady(true);
+        onMapReady();
+      }}
       onMapLoaded={onMapLoaded}
       onRegionChange={onRegionChange}
       onRegionChangeComplete={onRegionChangeComplete}

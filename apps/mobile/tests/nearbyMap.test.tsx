@@ -211,9 +211,19 @@ describe('nearby pieces', () => {
     const zoom = clusterZoomRegion(apart, DEMO_CITY_REGION)!;
     expect(zoom.latitude).toBeCloseTo(42.875);
     expect(zoom.longitude).toBeCloseTo(74.605);
-    expect(zoom.latitudeDelta).toBeLessThan(DEMO_CITY_REGION.latitudeDelta);
+    expect(zoom.longitudeDelta).toBeLessThan(DEMO_CITY_REGION.longitudeDelta);
     const together = [ride('a', 42.87, 74.6), ride('b', 42.87, 74.6)];
     expect(clusterZoomRegion(together, DEMO_CITY_REGION)).toBeNull();
+  });
+
+  it('zooms at least one step even when the cluster spans most of a portrait view (VERIFY-005)', () => {
+    // A phone shows more latitude than longitude; the map fits a region by its width.
+    const portrait = { latitude: 42.87, longitude: 74.6, latitudeDelta: 0.25, longitudeDelta: 0.12 };
+    const wide = [ride('a', 42.85, 74.56), ride('b', 42.89, 74.61)];
+    const zoom = clusterZoomRegion(wide, portrait)!;
+    expect(zoom.longitudeDelta).toBeLessThanOrEqual(0.06);
+    // The width decides the fit, since the sheet leaves a view wider than tall.
+    expect(zoom.latitudeDelta).toBeLessThan(zoom.longitudeDelta);
   });
 
   it('says when the list was cut short or is the last view', async () => {

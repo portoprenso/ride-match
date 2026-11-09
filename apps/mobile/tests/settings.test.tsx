@@ -130,6 +130,8 @@ describe('settings', () => {
   it('says honestly when the source did not confirm the session ended', async () => {
     const app = await signedInSettings();
     await press('Back to map');
+    // Home's own reads finish first, so the queued refusal reaches the sign-out.
+    await wait(ANSWER_MS);
     await press('Demo scenarios');
     await press('Next request is refused');
     await act(async () => router.back());
