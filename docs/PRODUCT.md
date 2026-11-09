@@ -29,6 +29,7 @@ One account occupies one seat. Multi-seat bookings are outside the MVP. Bishkek-
 | `/groups/[groupId]/chat` | Member-only full-screen chat |
 | `/settings` | Minimal session, permission (location; notifications for signed-in riders since NOTIFICATION-001-B), and blocked-user controls |
 | `/blocked-riders` | The signed-in rider's blocked riders, with unblock (SAFETY-001-C) |
+| `/notification-unavailable` | Generic "Plans have changed." for a notification whose target can't be shown (46, NOTIFICATION-001-C); no parameters |
 | `/dev/scenarios` | Development/preview mock builds only |
 
 Current shell (MOBILE-001-D/E): home has a temporary, always-visible “Sign in” button that opens inert `/auth/phone` and `/auth/otp` placeholders in a modal. They collect nothing and never sign anyone in. AUTH-001 replaces that entry with protected-action gating. The group route is real since GROUP-002-B and the group chat route since CHAT-001-B; for anyone who is not a member, either shows only an unavailable message and a “Go to map” action. `/dev/scenarios` holds the demo controls in development and preview builds on the mock data source, reached from home's Demo badge, and an unavailable state in production builds, without redirecting (MOCK-001-C; see [MOCK_SCENARIOS](MOCK_SCENARIOS.md#scenario-controls)). Since AUTH-001-D `/settings` is real, opened from home's Settings button: the session (sign in, or sign out after a confirmation that names what it does not do), the location permission summary and the demo label; see [authentication](api/authentication.md#implemented-settings-and-sign-out-auth-001-d).
@@ -36,6 +37,8 @@ Current shell (MOBILE-001-D/E): home has a temporary, always-visible “Sign in�
 Map-local sheets cover destination search, selected ride/group preview, create confirmation, active request/matches, and meeting-point inspection. Do not make every sheet position a route. Preserve camera state when opening and dismissing sheets.
 
 Notification/deep-link entries carry resource IDs. Validate payload, restore authentication if required, fetch authoritative state, then navigate. Expired, removed, or unauthorized targets show a clear unavailable state rather than stale private content.
+
+Implemented (NOTIFICATION-001-C): a tap on a match notification opens the map with the rider's request card while that request is still searching; a member-joined or ready notification opens the group; a message notification opens the chat above its group. Each opens over the map, so repeated taps don't pile up screens, and the same notification is handled once. An invalid or expired notification, a rider who isn't signed in (a cold start of the demo build begins signed out), or a target the source refuses opens "Notification unavailable" (46): "Plans have changed.", "That match or group is no longer available.", and "See current nearby plans" back to the map. If the source can't be reached, the target screen opens and offers its own retry.
 
 ## Map behavior
 

@@ -110,8 +110,13 @@ export function toPermissionState(status: Notifications.NotificationPermissionsS
 export type PresentOutcome =
   { kind: 'scheduled'; id: string } | { kind: 'invalid' | 'expired' | 'not-permitted' | 'failed' };
 
-/** A tap on a notification's body (not one of its action buttons), read with `readNotificationPayload`. */
-export type NotificationTap = NotificationRead;
+/**
+ * A tap on a notification's body (not one of its action buttons), read with
+ * `readNotificationPayload`. `requestId` is the OS request's identifier (the payload's own ID for
+ * notifications this boundary scheduled), kept for every read so the same tap reported twice
+ * (by the listener and as the launch tap) can be recognized even when its payload is invalid.
+ */
+export type NotificationTap = NotificationRead & { requestId: string };
 
 export type LocalNotifications = {
   /**
@@ -160,7 +165,10 @@ export function createLocalNotifications(
   };
   const readTap = (response: Notifications.NotificationResponse): NotificationTap | null =>
     response.actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER
-      ? readNotificationPayload(response.notification.request.content.data, now())
+      ? {
+          ...readNotificationPayload(response.notification.request.content.data, now()),
+          requestId: response.notification.request.identifier,
+        }
       : null;
 
   return {

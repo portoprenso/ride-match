@@ -28,6 +28,8 @@ const ICONS = {
   ),
   /** Send a chat message. */
   send: <Path d="m3 3 19 9-19 9 4-9Zm4 9h15" />,
+  /** Notifications. */
+  bell: <Path d="M5 17h14l-2-3V9a5 5 0 0 0-10 0v5Zm5 3h4" />,
   /** Settings and demo scenarios. */
   sliders: <Path d="M5 3v4m0 4v10M12 3v10m0 4v4M19 3v4m0 4v10M2 7h6m1 10h6m1-10h6" />,
 };

@@ -13,6 +13,7 @@ import { AuthSessionProvider } from '../src/features/auth/AuthSessionProvider';
 import { PendingIntentProvider } from '../src/features/auth/PendingIntentProvider';
 import { SessionExpiryRedirect } from '../src/features/auth/SessionExpiryRedirect';
 import { LocationChoicesProvider } from '../src/features/location/LocationChoicesProvider';
+import { NotificationTapRouter } from '../src/features/notifications/NotificationTapRouter';
 import { createLocationController } from '../src/platform/location/createLocationController';
 import { LocationProvider } from '../src/platform/location/LocationProvider';
 import { NotificationPermissionProvider } from '../src/platform/notifications/NotificationPermissionProvider';
@@ -69,6 +70,7 @@ export default function RootLayout() {
                             <Stack.Screen name="auth" options={{ presentation: 'modal' }} />
                           </Stack>
                           <SessionExpiryRedirect />
+                          <NotificationTapRouter notifications={composition.notifications} />
                         </LocationChoicesProvider>
                       </NotificationPermissionProvider>
                     </LocationProvider>

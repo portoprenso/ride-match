@@ -37,8 +37,11 @@ const permission = (status: 'granted' | 'denied' | 'undetermined', ios?: number)
     ...(ios === undefined ? {} : { ios: { status: ios } }),
   }) as unknown as NotificationPermissionsStatus;
 
-const response = (data: unknown, actionIdentifier = DEFAULT_ACTION) =>
-  ({ actionIdentifier, notification: { request: { content: { data } } } }) as unknown as NotificationResponse;
+const response = (data: unknown, actionIdentifier = DEFAULT_ACTION, identifier = 'ntf_1') =>
+  ({
+    actionIdentifier,
+    notification: { request: { identifier, content: { data } } },
+  }) as unknown as NotificationResponse;
 
 function fakeModule(allowed: NotificationPermissionsStatus = permission('granted')) {
   let tapListener: ((value: NotificationResponse) => void) | null = null;
@@ -178,18 +181,22 @@ describe('local notifications', () => {
 
     fake.tap(response(payload()));
     fake.tap(response(payload(), 'reply'));
-    fake.tap(response({ kind: 'chat.message_created', text: 'hi' }));
+    fake.tap(response({ kind: 'chat.message_created', text: 'hi' }, DEFAULT_ACTION, 'os_2'));
     fake.tap(response(payload({ expiresAt: '2026-11-08T08:59:30.000Z' })));
     expect(taps).toEqual([
-      { kind: 'valid', payload: payload() },
-      { kind: 'invalid' },
-      { kind: 'expired', id: 'ntf_1' },
+      { kind: 'valid', payload: payload(), requestId: 'ntf_1' },
+      { kind: 'invalid', requestId: 'os_2' },
+      { kind: 'expired', id: 'ntf_1', requestId: 'ntf_1' },
     ]);
     stop();
     expect(fake.listening()).toBe(false);
 
     fake.openedWith(response(payload()));
-    await expect(notifications.takeInitialTap()).resolves.toEqual({ kind: 'valid', payload: payload() });
+    await expect(notifications.takeInitialTap()).resolves.toEqual({
+      kind: 'valid',
+      payload: payload(),
+      requestId: 'ntf_1',
+    });
     await expect(notifications.takeInitialTap()).resolves.toBeNull();
   });
 

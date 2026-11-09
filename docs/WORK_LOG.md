@@ -3020,3 +3020,25 @@ Never record credentials, phone numbers, exact rider locations, private messages
 - **JSDoc:** `startMockPush` and its module rules, `Simulator.observe`, `createNotificationPermissionController` and its members, `NotificationPermissionProvider` hooks, `createInstallationIdSource`, `syncPushRegistration`/`PushRegistration`, `beforeSignOut`, `NotificationPermissionSheet`, `describeNotificationSetting`, `NotificationPermissionState`, `configurePresentation`, `SettingsScreen`.
 - **Remaining/next:** NOTIFICATION-001-C with the user's go-ahead; the native pass (nineteen cards).
 - **Ownership:** Released; no active task.
+
+## 2026-11-09 — NOTIFICATION-001-C: Notification tap routing and unavailable screen
+
+- **Actor/session:** Claude Code / notification-001-c.
+- **Status:** implemented; `Paused` for its warm/cold native check (next native pass). Parent NOTIFICATION-001 `Paused`. Ownership released.
+- **Working copy:** `main` at `14985fa` (NOTIFICATION-001-B); committed on top, with no push. Untracked `.idea/` files were left untouched.
+- **Request/scope:** "NOTIFICATION-001-C": platform tap coordinator and bootstrap routing, design 46. Acceptance: wait for session; deduplicate; fetch authorization; stale/revoked targets reveal nothing; warm/cold native checks.
+- **Changes:**
+  - Boundary (`localNotifications.ts`): `NotificationTap` now carries `requestId` (the OS request identifier) for every read, so a tap reported twice is recognized even when invalid.
+  - New `src/features/notifications/createNotificationTapCoordinator.ts`, `notificationEntry.ts` (`resolveNotification`, `NotificationDestination`), `NotificationTapRouter.tsx`, `NotificationUnavailableScreen.tsx`; route `app/notification-unavailable.tsx`; `NotificationTapRouter` mounted in `app/_layout.tsx`; `bell` icon in `src/ui/Icon.tsx`.
+  - Tests: new `tests/notificationTaps.test.ts` (9) and `tests/notificationEntry.test.tsx` (4); `tests/localNotifications.test.ts` expects `requestId` (and was reformatted with Prettier).
+- **Decisions:**
+  - Destinations: `matches.available` → map, only while the own request is that request and `active`; `group.member_joined`/`group.ready` → group; `chat.message_created` → chat above its group. Each is opened after dismissing to home, so taps never stack screens.
+  - A source refusal gives 46; a retryable failure (network, `SERVICE_UNAVAILABLE`, `RATE_LIMITED`) opens the target screen, which reads with the session and shows nothing it is refused.
+  - Reads use the screens' query keys with `staleTime: 0`, so the opened screen starts from the checked answer.
+  - A cold start of the demo build begins signed out (mock reset), so old notifications show 46.
+  - Scenario K's seed is left to QA-001-A; no analytics event added (none in the catalog).
+- **Checks:** with Node 24.17.0, `pnpm typecheck` and `pnpm lint` passed; Prettier clean on new and changed files; `npx jest` in `apps/mobile` (50 suites, 646 tests) passed. A test `QueryClient` without `gcTime: Infinity` kept Jest from exiting; fixed per DEVELOPMENT's convention. **Not run:** the notification entry check (DEVELOPMENT) on either platform — pending, not passed; the development clients still need A's rebuild. Screen readers waived.
+- **Docs:** ARCHITECTURE, PRODUCT (route, behavior), api/realtime.md (tap handling), MOCK_SCENARIOS (K note), DEVELOPMENT (tests, 646; notification entry check), MOBILE_IMPLEMENTATION_PLAN (row), ROADMAP (entry, status line, NOTIFICATION-001 row), AI_CONTEXT.
+- **JSDoc:** `createNotificationTapCoordinator` and its members, `resolveNotification`, `NotificationDestination`, `NotificationTapRouter`, `NotificationUnavailableScreen`, `NotificationTap.requestId`.
+- **Remaining/next:** the native pass (twenty cards), only with the user's go-ahead.
+- **Ownership:** Released; no active task.
