@@ -39,7 +39,10 @@ type DiscoveryMarkersProps = {
  *
  * With a destination's matches (DESTINATION-001-B, PRODUCT's map behavior), a matched item gets
  * an outline and its level in its accessible name, an excellent one a stronger fill, and the
- * others stay on the map, drawn quieter. A cluster holding matches says how many and is outlined.
+ * others stay on the map, drawn quieter. Clusters show a compact count of plans, with the full
+ * meaning and matched count in their accessible name; an outline marks clusters holding matches.
+ * Numeric, narrow badges leave room between neighbouring city clusters, including with enlarged
+ * text. Full descriptions stay in the list and accessible names rather than widening the badge.
  */
 export function DiscoveryMarkers({
   entries,
@@ -150,7 +153,6 @@ function ClusterMarker({
   onPress: () => void;
 }) {
   const ref = useRef<MapMarker>(null);
-  const text = matched ? `${count} ride plans · ${matched} your way` : `${count} ride plans`;
   useRedraw(ref, `${count}:${matched}:${stale}`);
   return (
     <Marker
@@ -169,8 +171,9 @@ function ClusterMarker({
           stale && styles.stale,
         ]}
       >
-        <Icon name="users" size={16} />
-        <AppText variant="small">{text}</AppText>
+        <AppText variant="small" numberOfLines={1}>
+          {count}
+        </AppText>
       </View>
     </Marker>
   );
@@ -198,6 +201,11 @@ const styles = StyleSheet.create({
   },
   cluster: {
     backgroundColor: colors.lime,
+    minWidth: 32,
+    minHeight: 40,
+    paddingHorizontal: spacing.xs,
+    justifyContent: 'center',
+    borderRadius: radii.xl,
   },
   selected: {
     backgroundColor: colors.ink,

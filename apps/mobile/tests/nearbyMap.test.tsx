@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, within, userEvent } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { NearbyItemDto } from '@ride-match/contracts';
 
@@ -75,9 +75,37 @@ describe('nearby markers and list', () => {
     const onMap = itemMarkers().length + clusters.reduce((sum, node) => sum + clusterCount(node), 0);
     expect(onMap).toBe(100);
     expect(screen.getByText('100 ride plans in this view: 75 riders and 25 groups.')).toBeOnTheScreen();
+    // City-scale badges stay numeric; the marker still names the count's meaning and action.
+    for (const cluster of clusters) {
+      expect(within(cluster).getByText(String(clusterCount(cluster)))).toBeOnTheScreen();
+      expect(within(cluster).queryByText(/ride plans/)).not.toBeOnTheScreen();
+      expect(cluster.props.accessibilityLabel).toMatch(/ride plans here\. Zoom in or list them\.$/);
+    }
 
     await press('View nearby items');
     expect(listRows()).toHaveLength(100);
+  });
+
+  it('keeps dense clusters compact with a destination and restores their counts when cleared', async () => {
+    await openScenario('map-density');
+    const before = clusterMarkers().map(clusterCount);
+    await press('Choose a destination');
+    await userEvent.type(screen.getByLabelText('Destination'), 'Asia');
+    await wait(1300);
+    await press('Asia Mall, Shopping centre');
+    await wait(ANSWER_MS);
+
+    const clusters = screen.getAllByLabelText(/^\d+ ride plans here/);
+    expect(clusters.some((node) => /going your way/.test(node.props.accessibilityLabel))).toBe(true);
+    expect(clusters.map(clusterCount)).toEqual(before);
+    for (const cluster of clusters) {
+      expect(within(cluster).getByText(String(clusterCount(cluster)))).toBeOnTheScreen();
+      expect(within(cluster).queryByText(/your way|ride plans/)).not.toBeOnTheScreen();
+    }
+
+    await press('Clear destination');
+    await wait(ANSWER_MS);
+    expect(clusterMarkers().map(clusterCount)).toEqual(before);
   });
 
   it('zooms into a cluster that can separate, and lists one that cannot', async () => {
