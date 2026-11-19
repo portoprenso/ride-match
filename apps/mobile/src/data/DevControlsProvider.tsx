@@ -1,4 +1,4 @@
-import { createContext, use, type ReactNode } from 'react';
+import { createContext, use, useSyncExternalStore, type ReactNode } from 'react';
 
 import type { DevControls } from './DevControls';
 
@@ -26,4 +26,19 @@ export function useDevControls(): DevControls | null {
   const controls = use(DevControlsContext);
   if (controls === undefined) throw new Error('useDevControls() must be called inside a DevControlsProvider.');
   return controls;
+}
+
+const subscribeToNothing = () => () => undefined;
+
+/**
+ * The mock source's deliberate time shift, for presentation deadlines and departure labels.
+ * Returns zero without demo controls, including standalone UI and production/API builds.
+ * Reads only the controls port; consumers never reach the simulator or alter the device clock.
+ */
+export function useDemoTimeAhead(): number {
+  const controls = use(DevControlsContext);
+  return useSyncExternalStore(
+    controls?.subscribe ?? subscribeToNothing,
+    () => controls?.getSnapshot().timeAheadMs ?? 0,
+  );
 }

@@ -1,4 +1,4 @@
-import { screen, userEvent } from '@testing-library/react-native';
+import { act, screen, userEvent } from '@testing-library/react-native';
 import type { ChatMessageDto, ChatMessagePageDto } from '@ride-match/contracts';
 
 import { CHAT_REPLY_DELAY_MS, SIMULATED_REPLIES, storeMessage } from '../src/data/mock/chat';
@@ -12,6 +12,8 @@ import {
 } from '../src/features/chat/chatTimeline';
 import { appendMessages, newestHeldSequence } from '../src/data/chatHistory';
 import { DataError } from '../src/data/errors';
+import type { DevControls } from '../src/data/DevControls';
+import * as mockDevControls from '../src/data/mock/createMockDevControls';
 import type { Simulator } from '../src/data/mock/simulator';
 import type { MockWorld } from '../src/data/mock/world';
 import {
@@ -269,6 +271,29 @@ describe('the group chat', () => {
     // An hour later the history is no longer kept, and the chat leaves the screen (37).
     for (let minute = 0; minute < 61; minute += 1) await wait(60 * 1000);
     expect(screen.getByText(/^You no longer have access\./)).toBeOnTheScreen();
+  });
+
+  it('expires closed chat when Demo advances without advancing the device clock', async () => {
+    const captured: { controls: DevControls | null } = { controls: null };
+    const original = mockDevControls.createMockDevControls;
+    jest.spyOn(mockDevControls, 'createMockDevControls').mockImplementation((...args) => {
+      const controls = original(...args);
+      captured.controls = controls;
+      return controls;
+    });
+    await openChatWithAida();
+    expect(captured.controls).not.toBeNull();
+
+    await act(async () => captured.controls!.advanceTime(31 * 60_000));
+    await wait(2 * ANSWER_MS);
+    expect(screen.getByText('Read-only · group closed')).toBeOnTheScreen();
+
+    const deviceTime = Date.now();
+    await act(async () => captured.controls!.advanceTime(61 * 60_000));
+    await wait(ANSWER_MS);
+    expect(Date.now() - deviceTime).toBe(ANSWER_MS);
+    expect(screen.getByText(/^You no longer have access\./)).toBeOnTheScreen();
+    expect(screen.queryByText('Read-only · group closed')).not.toBeOnTheScreen();
   });
 
   it('shows exactly one message in scenario H: a lost answer, a retry, a duplicate event', async () => {
