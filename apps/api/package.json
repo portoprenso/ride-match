@@ -1,0 +1,42 @@
+{
+  "name": "@ride-match/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^24.17.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "dev": "node --env-file=.env.local --watch dist/main.js",
+    "start": "node --env-file=.env.local dist/main.js",
+    "start:env": "node dist/main.js",
+    "db:up": "docker compose --env-file .env.local up -d --wait postgres",
+    "db:down": "docker compose --env-file .env.local down",
+    "migrate": "node --env-file=.env.local dist/database/migrate.js",
+    "migrate:env": "node dist/database/migrate.js",
+    "test": "node --test tests/foundation.test.mjs",
+    "test:integration": "node --env-file=.env.local --test tests/database.integration.mjs",
+    "watch": "tsc -p tsconfig.json --watch --preserveWatchOutput"
+  },
+  "dependencies": {
+    "@nestjs/common": "12.5.1",
+    "@nestjs/core": "12.5.1",
+    "@nestjs/platform-express": "12.5.1",
+    "@ride-match/contracts": "workspace:*",
+    "express": "5.3.0",
+    "pg": "8.23.1",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/express": "5.0.6",
+    "@types/node": "24.19.2",
+    "@types/pg": "8.23.1",
+    "eslint": "9.39.5",
+    "typescript": "6.0.3"
+  }
+}

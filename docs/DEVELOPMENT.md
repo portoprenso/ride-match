@@ -4,7 +4,63 @@ Status: partly implemented. Last updated: 2026-11-20. **Only commands marked imp
 
 ## Backend transition (2026-11-20)
 
-[BACKEND_HANDOFF.md](BACKEND_HANDOFF.md) maps actual operations/contracts and defines BE-001–006. The next implementation slice is **BE-001: backend foundation**; completing UI/native QA is not a prerequisite. There are no backend scripts, DB migrations or API environment variables implemented yet. The first slice must document actual commands/env names when it adds them. Verify each backend slice through targeted domain/database/API checks; use a bounded mobile smoke when integrating its adapter. Do not restart frontend-wide QA as part of backend preparation.
+**BE-001 is completed.** [BACKEND_HANDOFF.md](BACKEND_HANDOFF.md) maps the later operations/contracts and BE-002–006. Frontend QA remains deferred and unchanged. No business endpoints or mobile HTTP adapter are implemented.
+
+## Local backend (BE-001)
+
+Use Node 24.17.0 / pnpm 11.28.2 and start Docker Desktop (Docker Engine with Compose v2 also works). From the repository root:
+
+```bash
+nvm use
+pnpm install --frozen-lockfile
+cp apps/api/.env.example apps/api/.env.local
+pnpm db:up
+pnpm db:migrate
+pnpm start:api
+```
+
+Copy the example only for initial setup; preserve any existing local configuration. The example contains synthetic local-only credentials. PostgreSQL 18.1 runs at `127.0.0.1:55432`; API listens at `127.0.0.1:3000` (or `API_PORT`). Nothing is exposed on an external interface. Local Docker uses no paid account or external database. API and migration scripts use Node's built-in `--env-file=.env.local`; inherited shell variables take precedence. For an already-provisioned environment without a file, use package scripts `start:env` and `migrate:env` instead.
+
+`pnpm build:api` builds contracts then API. `pnpm start:api` runs that compiled output. `pnpm dev:api` builds once, then Turbo runs the API's Node watcher and TypeScript watcher together; source edits compile into `dist/` and restart the API. Restart development after changing env values. Neither backend command starts Metro. `Ctrl+C` stops the server and watchers; Nest's SIGINT/SIGTERM hooks close HTTP and drain the DB pool. Then stop local PostgreSQL:
+
+```bash
+pnpm db:down
+```
+
+This removes the Compose project's container/network and preserves its named `postgres_data` volume. Shut down Docker Desktop too if you started it solely for this session. Do not stop unrelated containers. Local defaults are for development, not external rollout.
+
+| Required server variable | Accepted value / role |
+| --- | --- |
+| `API_APP_ENV` | `development`, `test`, `production` |
+| `API_PORT` | Integer string, 1–65535 |
+| `DATABASE_URL` | PostgreSQL URL with host/database; server-only, never a public Expo variable or log field |
+| `API_ALLOWED_ORIGINS` | Comma-separated exact HTTP(S) origins, no whitespace/path/wildcard; empty string denies browser cross-origin access. Native clients without Origin still work |
+| `API_LOG_LEVEL` | `error`, `warn`, `info`, `debug`; cumulative Nest log threshold |
+
+`POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` are Compose-only values in the same example. Keep them aligned with `DATABASE_URL`. Changing these values does not rewrite credentials in an existing initialized data volume. Startup validates all five server variables before creating Nest/pools; configuration errors never print values.
+
+Probes use `GET /v1/health/live` and `GET /v1/health/ready`. Both return `{ data: { status: "ok" }, meta: { serverTime } }` on success. Liveness never queries DB; readiness runs `SELECT 1` each time and returns raw `ApiErrorDto` / `SERVICE_UNAVAILABLE` with 503 on an outage. The lazy pool allows startup without DB. Readiness currently checks connectivity, not schema version or future downstream providers. Connection timeout is 1 s; HTTP statement/client query timeouts are 2/3 s, pool maximum five connections.
+
+Each request gets a new server UUID in `X-Request-Id`; incoming IDs are ignored to avoid propagating private caller text. Parser errors have IDs too. Domain/Zod errors use raw contract bodies, never an error wrapper; malformed JSON/schema errors are 422, unknown exceptions are safe 503. Unsupported routes remain transport 404, oversized JSON is transport 413 (16 KiB limit). Zod messages, dynamic paths/keys, body/header/query content, driver errors and connection URLs are not logged/echoed. The reusable Zod pipe requires an explicit schema per boundary; it does not invent business routes, coercion, auth or idempotency. Future dotted-query decoding remains assigned to consuming endpoints. Successful JSON uses the common server-time envelope, while 204 stays bodyless.
+
+### SQL migrations
+
+`pg` provides the pool and parameterized queries; no ORM, extra persistence layer or migration dependency. `apps/api/migrations/NNNN_snake_case.sql` contains immutable, ordered transactional SQL. The runner obtains transaction advisory lock `724001`, creates/checks `schema_migrations` (`name`, SHA-256 `checksum`, `applied_at`) and commits pending files plus journal atomically. The first migration reserves schema `ride_match`; no business tables exist. Repetition applies zero files; concurrent runners serialize; edited/deleted/reordered applied history fails and errors roll back. Add new numbered files instead of editing applied files. No automatic migration on API startup, down/reset command or production migration rollout is implemented. Migrations allow 10 s statements / 11 s client query timeout and 5 s lock timeout; large future data migrations need their own reviewed strategy. Ship the `migrations/` directory alongside `dist/`.
+
+### Backend checks (implemented)
+
+```bash
+pnpm build:api
+pnpm --filter @ride-match/api typecheck
+pnpm --filter @ride-match/api lint
+pnpm test:api
+# Requires the local PostgreSQL above:
+pnpm test:api:integration
+```
+
+Root `typecheck`, `lint` and `test` discover API automatically. The API test task depends on its own build; unit/HTTP tests use Node's built-in runner against compiled JS and do not require PostgreSQL. Integration is explicit and uncached: it refuses production/non-loopback configuration, creates a randomly named `be001_*` database using the local role's CREATEDB privilege, then drops only that database and closes all owned pools. It verifies empty/repeated/concurrent migrations, reconnect durability, rollback, altered/deleted history, healthy probes and lifecycle cleanup. Test-only controllers are never registered in the production server.
+
+**BE-001 evidence (2026-11-20):** build/typecheck/lint pass; 10 foundation assertions and one real PostgreSQL lifecycle test pass. CLI migration on the initially empty Compose database applied 1, repeat applied 0. Runtime `start:api` probes with PostgreSQL available / stopped / restored were respectively live 200/200/200 and ready 200/503/200; `dev:api --ui=stream` started API + zero-error compiler watcher. Offline frozen backend installation passes. Owned API/watch processes, Compose container/network and Docker Desktop were stopped; ports 3000/55432 had no listeners. Mobile/native/contract test suites were not run for this backend slice.
 
 ## Latest verification result
 
@@ -21,9 +77,9 @@ Codex and Claude Code follow the same [shared AI workflow](AI_WORKFLOW.md). Begi
 | `pnpm dev` | Build contracts once, then run contracts watch and Expo development server | Implemented: `turbo run dev --filter=@ride-match/mobile` (MOBILE-001-B) |
 | `pnpm dev:mobile` | Start mobile with contracts prepared | Implemented (MOBILE-001-B) |
 | `pnpm build:contracts` | Emit shared JavaScript and declarations | Implemented: `turbo run build --filter=@ride-match/contracts` (MONO-001-E) |
-| `pnpm typecheck` | Type-check all workspace packages | Implemented: `turbo run typecheck` (MONO-001-E); covers mobile from MOBILE-001-A and the contracts tests from CONTRACT-001-A |
+| `pnpm typecheck` | Type-check all workspace packages | Implemented: `turbo run typecheck` (MONO-001-E); covers mobile from MOBILE-001-A, contracts tests from CONTRACT-001-A, and API from BE-001 |
 | `pnpm lint` | Lint application/contracts and enforce import boundaries | Implemented: `turbo run lint` (MONO-001-E); covers mobile from MOBILE-001-A. The simulator import restriction is implemented (DATA-001-B) |
-| `pnpm test` | Run contract and mobile tests once | Implemented: `turbo run test` after dependency builds (MOBILE-001-F); runs the contracts tests too since CONTRACT-001-A |
+| `pnpm test` | Run contract, mobile and API foundation tests once | Implemented: `turbo run test` after dependency builds (MOBILE-001-F); runs the contracts tests too since CONTRACT-001-A |
 | `pnpm test:contracts` | Vitest contracts; forward file filters | Implemented (CONTRACT-001-A): `vitest run --dir tests` in `packages/contracts`, against the source, with no build first. `pnpm test:contracts errors` runs only matching files |
 | `pnpm test:mobile` | Jest mobile; forward `--runTestsByPath` and other test arguments | Implemented (MOBILE-001-F): builds contracts, then runs `jest` in `apps/mobile`; paths are relative to `apps/mobile` |
 | `pnpm test:e2e` | Selected Maestro flows against an installed development build | Planned (QA-001) |

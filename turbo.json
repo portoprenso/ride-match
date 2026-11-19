@@ -37,6 +37,19 @@
       ],
       "cache": false,
       "persistent": true
+    },
+    "@ride-match/api#test": {
+      "dependsOn": ["build"]
+    },
+    "@ride-match/api#dev": {
+      "with": ["@ride-match/api#watch"],
+      "passThroughEnv": ["API_*", "DATABASE_URL"],
+      "cache": false,
+      "persistent": true
+    },
+    "@ride-match/api#watch": {
+      "cache": false,
+      "persistent": true
     }
   }
 }

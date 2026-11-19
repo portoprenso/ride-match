@@ -18,7 +18,15 @@
     "export:android": "pnpm build:contracts && pnpm --filter @ride-match/mobile export:android",
     "export:ios": "pnpm build:contracts && pnpm --filter @ride-match/mobile export:ios",
     "mobile:android": "pnpm build:contracts && pnpm --filter @ride-match/mobile android",
-    "mobile:ios": "pnpm build:contracts && pnpm --filter @ride-match/mobile ios"
+    "mobile:ios": "pnpm build:contracts && pnpm --filter @ride-match/mobile ios",
+    "build:api": "turbo run build --filter=@ride-match/api",
+    "dev:api": "pnpm build:api && turbo run dev --filter=@ride-match/api",
+    "start:api": "pnpm --filter @ride-match/api start",
+    "db:up": "pnpm --filter @ride-match/api db:up",
+    "db:down": "pnpm --filter @ride-match/api db:down",
+    "db:migrate": "pnpm build:api && pnpm --filter @ride-match/api migrate",
+    "test:api": "pnpm build:api && pnpm --filter @ride-match/api test",
+    "test:api:integration": "pnpm build:api && pnpm --filter @ride-match/api test:integration"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",

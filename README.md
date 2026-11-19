@@ -1,8 +1,8 @@
 # Ride Match
 
-Ride Match helps nearby people heading in compatible directions form a small group and share a taxi. The first milestone is a React Native (Expo) mobile MVP backed by realistic mocks; there is no backend in this milestone.
+Ride Match helps nearby people heading in compatible directions form a small group and share a taxi. The mobile MVP uses realistic mocks; the separate backend foundation is now implemented.
 
-**Current priority (2026-11-20):** backend preparation is complete; the next implementation slice is **BE-001: NestJS/TypeScript backend foundation with PostgreSQL**. The existing mock-backed mobile client and shared contracts are the integration baseline. Remaining frontend QA is recorded separately and does not gate starting the backend. [Backend start package](docs/BACKEND_HANDOFF.md) contains the reviewed 25 REST operations, event facade, initial transport decisions and bounded implementation order. `apps/api/` is still empty, no backend commands exist yet, and mobile API mode fails explicitly until its adapter is implemented. See [AI context](docs/AI_CONTEXT.md) for ownership and [verification report](docs/VERIFY_005_REPORT.md) for unfinished frontend work.
+**Current state (2026-11-20): BE-001 is completed** — NestJS/TypeScript backend foundation with local PostgreSQL, migrations and health probes. The existing mock-backed mobile client and shared contracts are the integration baseline. Remaining frontend QA is recorded separately and does not gate starting the backend. [Backend start package](docs/BACKEND_HANDOFF.md) contains the reviewed 25 REST operations, event facade, initial transport decisions and bounded implementation order. `apps/api/` implements infrastructure only; mobile API mode still fails explicitly until its adapter is implemented. [Local backend setup](docs/DEVELOPMENT.md#local-backend-be-001) documents start/stop and configuration. BE-002 is planned, not started. See [AI context](docs/AI_CONTEXT.md) for ownership and [verification report](docs/VERIFY_005_REPORT.md) for unfinished frontend work.
 
 ## Requirements
 
@@ -28,8 +28,13 @@ pnpm install --frozen-lockfile
 | Command | Behavior |
 | --- | --- |
 | `pnpm install --frozen-lockfile` | Install the workspace exactly as locked |
+| `pnpm build:api` | Build contracts and API into their `dist/` directories |
+| `pnpm db:up` / `pnpm db:down` | Start/stop local PostgreSQL through Docker Compose; stopping preserves the data volume |
+| `pnpm db:migrate` | Build API and apply pending checked SQL migrations |
+| `pnpm start:api` / `pnpm dev:api` | Run compiled API / build then run API and TypeScript watcher; requires `apps/api/.env.local` |
+| `pnpm test:api` / `pnpm test:api:integration` | Build and run API foundation tests / explicit local PostgreSQL integration test |
 | `pnpm build:contracts` | `turbo run build` for contracts: compile `packages/contracts/src` into `packages/contracts/dist` (JavaScript and declarations) |
-| `pnpm typecheck` | `turbo run typecheck`: strict TypeScript in contracts and mobile, no emit |
+| `pnpm typecheck` | `turbo run typecheck`: strict TypeScript in contracts, mobile and API, no emit |
 | `pnpm lint` | `turbo run lint`: contracts use the root [`eslint.config.mjs`](eslint.config.mjs) with type-aware TypeScript rules; mobile uses [`apps/mobile/eslint.config.js`](apps/mobile/eslint.config.js) (Expo's config) |
 | `pnpm dev` | Build contracts, then run the contracts compiler watch and `expo start --dev-client` together in Turbo's terminal UI. To type Expo keys, select the mobile task (`j`/`k`), press `i`, and press `Ctrl+z` to stop interacting. `Ctrl+C` stops both processes |
 | `pnpm dev:mobile` | Build contracts once, then start Expo without Turbo or a watcher. Use it, plus `pnpm --filter @ride-match/contracts dev` in a second terminal, if the terminal UI gets in the way |
@@ -38,7 +43,7 @@ pnpm install --frozen-lockfile
 | `pnpm mobile:android` / `pnpm mobile:ios` | Build contracts, then `expo run:android` / `expo run:ios` (local development build into the untracked `apps/mobile/android/` / `ios/`). Both are verified (MOBILE-001-G/H). Set the variables in the [native prerequisites](docs/TOOLCHAIN.md#native-prerequisites) |
 | `pnpm test:mobile` | Build contracts, then run the mobile Jest suites once. Extra arguments reach Jest, with paths relative to `apps/mobile`, for example `pnpm test:mobile --runTestsByPath tests/navigation.test.tsx` |
 | `pnpm test:contracts` | Run the contracts Vitest suites once against the source (no build needed). Extra arguments filter files, for example `pnpm test:contracts errors` |
-| `pnpm test` | `turbo run test`: every package's tests once (contracts and mobile), after dependency builds |
+| `pnpm test` | `turbo run test`: every package's tests once (contracts, mobile and API foundation; real-DB integration is explicit), after dependency builds |
 
 [`turbo.json`](turbo.json) orders tasks after their dependencies' builds and caches results locally in `.turbo/`. A cache hit replays the earlier logs and restores `dist/` without recompiling. Failed tasks are never cached. Turbo sends anonymous usage telemetry unless you opt out with `pnpm exec turbo telemetry disable` or `TURBO_TELEMETRY_DISABLED=1`; Expo CLI does the same unless `EXPO_NO_TELEMETRY=1` is set.
 
@@ -49,7 +54,7 @@ pnpm install --frozen-lockfile
 | Path | Contents |
 | --- | --- |
 | `apps/mobile/` | `@ride-match/mobile`: Expo SDK 57 app with Expo Router. Run Expo commands from this directory (`pnpm exec expo …`), never from the repository root |
-| `apps/api/` | Empty; BE-001 will create the backend workspace package when implementation is requested |
+| `apps/api/` | `@ride-match/api`: ESM NestJS foundation, validated config, PostgreSQL/SQL migrations and operational health routes |
 | `packages/contracts/` | `@ride-match/contracts`: implemented Zod transport schemas/types (ESM, `exports` to `dist/`); no database models or services |
 | `docs/` | Product, architecture, roadmap, toolchain, and handoff documentation |
 

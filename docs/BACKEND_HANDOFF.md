@@ -1,12 +1,12 @@
 # Backend start package
 
-Updated: 2026-11-20. BACKEND-PREP-001, Codex / backend-preparation.
+Updated: 2026-11-20. BE-001 completed, Codex / be-001-foundation; BACKEND-PREP-001 retained as the reviewed baseline.
 
 ## Decision and readiness
 
 The user explicitly reprioritized backend preparation before completion of frontend QA. **The existing mobile contracts and data-source boundary are sufficient to start the backend foundation.** Frontend completeness, the remaining VERIFY-005 cases, the typography backlog and the full QA-001 audit are not prerequisites for that first slice. They remain unfinished; they are not waived or reported as passing.
 
-This package is preparation, not an implemented or production-ready backend. `apps/api/` is empty; API mode on mobile still fails explicitly. No server, database, dependency installation, account provisioning or mobile transport change was performed. Original HANDOFF-001 remains the final reconciliation/audit; it no longer gates starting backend development.
+**BE-001 is implemented and verified:** `apps/api` contains the local NestJS foundation, validated configuration, SQL migrations, safe HTTP boundaries and liveness/readiness. This is not a production-ready application server: all 25 business operations and the mobile adapter remain unimplemented. Mobile API mode still fails explicitly. Original HANDOFF-001 remains the final reconciliation/audit; frontend QA no longer gates assigned backend slices. No external deployment/accounts were provisioned.
 
 ## Source of truth reviewed
 
@@ -73,9 +73,9 @@ Seven events: `nearby.upserted`, `nearby.removed`, `ride.changed`, `matches.chan
 
 ## Backend shape and persistence
 
-Planned BE-001 server configuration (not implemented): `API_APP_ENV`, `API_PORT`, `DATABASE_URL`, `API_ALLOWED_ORIGINS`, `API_LOG_LEVEL`. Validate required values on startup; keep the database URL server-only and out of public Expo variables/logs. Add an example with synthetic placeholders when the package exists. SMS/token/push secret names are introduced by their actual integrations, not invented credentials in this preparation.
+Implemented BE-001 server configuration: `API_APP_ENV`, `API_PORT`, `DATABASE_URL`, `API_ALLOWED_ORIGINS`, `API_LOG_LEVEL`, required and validated on startup. `apps/api/.env.example` contains synthetic local values; `.env.local` is ignored. The database URL remains server-only and is never logged. [Development setup](DEVELOPMENT.md#local-backend-be-001) records accepted values and Compose-only settings. SMS/token/push secret names are introduced by their actual integrations, not invented credentials in this preparation.
 
-Start with the already proposed **NestJS/TypeScript modular monolith**, a PostgreSQL database and explicit migrations. Select compatible pinned server/driver/migration versions at BE-001 implementation, using Node/pnpm workspace requirements; no versions were installed or guessed in this preparation. Keep controllers thin and domain rules in services/operations with injected clock and persistence boundaries. One deployable backend initially; Redis, microservices, extra providers and a routing engine are not prerequisites for the foundation.
+Implemented **NestJS/TypeScript modular monolith foundation**: NestJS 12.5.1, Express 5.3.0, TypeScript 6.0.3, `pg` 8.23.1, Zod 4.6.7, PostgreSQL 18.1 Compose image. Exact manifests/lockfile follow existing Node 24.17.0 / pnpm 11.28.2 conventions. ESM/NodeNext and `tsc` preserve decorator metadata without a CLI/transpiler layer. Direct `pg` plus a small transactional SQL runner avoids an ORM before domain models exist; journal checksums and advisory lock protect retries/concurrent runs. Keep controllers thin and domain rules in services/operations with injected clock and persistence boundaries. One deployable backend initially; Redis, microservices, extra providers and a routing engine are not prerequisites for the foundation.
 
 | Internal storage concept | Required invariant |
 | --- | --- |
@@ -96,7 +96,7 @@ Carry current observable defaults into local backend development: request lifeti
 
 | Decision / gap | Resolve in | Effect on starting |
 | --- | --- | --- |
-| PostgreSQL driver/ORM, migration tooling, exact pins, local DB configuration | BE-001 | Part of the first slice; no mobile QA prerequisite |
+| PostgreSQL driver/ORM, migration tooling, exact pins, local DB configuration | BE-001 — resolved | Direct `pg`, checked SQL runner, pinned local Compose; see DEVELOPMENT |
 | SMS provider/credentials, OTP abuse limits and refresh-reuse policy | BE-002 | A dev-only injected provider may support local integration. Never expose a demo/master OTP in production or log codes; real SMS provisioning is needed before external users, not before scaffolding. |
 | Public-origin obfuscation | BE-003 | Mock fixtures are already sanitized and `PublicLocationSchema` does not obfuscate arbitrary coordinates. Define server projection + privacy properties before exposing real locations. A coarse grid/radius is a candidate, not a proven anonymity guarantee. |
 | Matching/coverage/meeting-point policy | BE-003 | Existing matches are scripted, not an algorithm. Specify one initial server policy using current DTOs; do not claim route overlap/detour from straight-line distance. If road data is absent, return unknown additional/walking minutes as null where allowed. No full routing product is needed to start BE-001/002. |
@@ -109,19 +109,26 @@ These are implementation decisions for their slices, not a demand to finish ever
 
 ## Bounded implementation order
 
-All BE-001–006 tasks are **Planned**; preparation does not start them. API mode must never fall back per-operation to mocks: unfinished API operations fail explicitly, while the separately selected mock mode remains usable.
+BE-001 is **Completed**; BE-002–006 remain **Planned**. Completion does not authorize starting the next slice. API mode must never fall back per-operation to mocks: unfinished API operations fail explicitly, while the separately selected mock mode remains usable.
 
 | Task | Scope | Exit check |
 | --- | --- | --- |
-| **BE-001 — Foundation (next)** | Create `apps/api` workspace package, Nest bootstrap/config, safe request IDs/errors, Zod boundary support, local PostgreSQL/migrations and liveness/readiness. Pin actual dependencies and document real commands/env names. No application-wide endpoint stubs returning fake success. | Package builds/typechecks; health works, readiness reflects DB availability; migration runs from an empty local DB and repeats safely. Only targeted checks; stop the server/DB started for verification. |
+| **BE-001 — Foundation (Completed)** | Create `apps/api` workspace package, Nest bootstrap/config, safe request IDs/errors, Zod boundary support, local PostgreSQL/migrations and liveness/readiness. Pin actual dependencies and document real commands/env names. No application-wide endpoint stubs returning fake success. | Package builds/typechecks; health works, readiness reflects DB availability; migration runs from an empty local DB and repeats safely. Only targeted checks; stop the server/DB started for verification. |
 | BE-002 — Auth + place search vertical slice | OTP/session/logout/me plus curated places, private identity/session persistence, rate limits; first real mobile HTTP adapter behind the existing boundary. Unsupported operations fail explicitly; mock remains available for unfinished features. | Real DB-backed sign-in → me → places; refresh/logout behavior and public projections. No full UI audit. |
 | BE-003 — Rides + discovery + groups + meeting points | Define the listed policies, then requests, matching, transactional membership/lifecycle and expiry. Wire those adapter namespaces. | Two-client last-seat/solo-target race, stable-key lost-response retry, restart-safe expiry and public/private projections. |
 | BE-004 — Chat + safety | Ordered persisted chat, paged catch-up, access/retention, report/block/unblock and atomic block-and-leave. | Retry stores one message, no sequence gaps, leave/block race denies private access, retention enforced even on retries. |
 | BE-005 — Realtime + devices + push | Authorized Socket.IO scopes/acks, outbox delivery, connection/refresh resync and real push boundary; complete adapter composition. | Reconnect/catch-up, duplicate/out-of-order handling, revoked delivery, installation/account reassignment and generic notifications. |
 | BE-006 — Integration and operational readiness | One representative multi-user journey, remaining important failures, deployment configuration and documented production limits. Revisit frontend QA where real behavior requires it. | Focused backend/integration checks plus bounded cross-platform smoke, not repeated full native audits per endpoint. |
 
-**Ready next action:** BE-001. No additional frontend QA pass or A–N fixture completion is required to start it. This preparation does not execute BE-001, provision services, select a paid provider or deploy anything.
+**Next suggested action: BE-002**, only when assigned. No additional frontend QA pass or A–N fixture completion gates it. No business endpoint stubs, auth, matching, chat, Socket.IO or push were added in BE-001.
 
 ## Preparation checks
 
 Reviewed operation signatures, mock wiring, schema exports, lifecycle/event specifications and actual manifests. A static inventory check reconciles all 25 REST methods, the two event methods and their contract types; local documentation links/status references are checked. No mobile tests, native apps, Metro, database or backend server were started; no latest dependency/version or production-service claim is made. Existing 656 mobile / 860 contract passes remain historical evidence, not new backend verification.
+
+## BE-001 implementation evidence
+
+- `apps/api/src/config`, `database`, `http`, `health`: required config, lazy/drained pool, safe raw errors, fresh server request IDs, explicit reusable Zod pipe and success envelope. `/v1/health/live` and `/v1/health/ready` are the only production routes; readiness queries DB on every call. It checks connectivity, not schema readiness.
+- SQL files and `schema_migrations` commit atomically under transaction advisory lock; migration 0001 creates only schema `ride_match`. New numbered files are required for changes; no automatic reset/down migration. Explicit root build/dev/start/DB/test scripts exist and workspace typecheck/lint/test include API.
+- Build/typecheck/lint pass; 10 foundation tests and one real PostgreSQL test pass. Fresh migration: 1; repeat: 0. Concurrent runs, rollback, restart journal and changed/deleted history tested. Live/ready during available → stopped → restored DB: 200/200 → 200/503 → 200/200. Start/dev commands and offline frozen install verified. All owned runtime processes/container/network and Docker Desktop stopped; local volume retained.
+- Commands, configuration, shutdown and limitations: [DEVELOPMENT](DEVELOPMENT.md#local-backend-be-001). No mobile/contract source edits, mobile/native suites, Git commands or external services. BE-002–006 policies remain assigned to those slices; health alone does not indicate production readiness.

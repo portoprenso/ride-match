@@ -99,7 +99,7 @@ savePrefix: ''
 engineStrict: true
 ```
 
-`savePrefix: ''` saves exact versions for every `pnpm add`. `engineStrict: true` is the Node guard described above. `apps/api/` has no manifest, so it is not a workspace package.
+`savePrefix: ''` saves exact versions for every `pnpm add`. `engineStrict: true` is the Node guard described above. Since BE-001, `apps/api/` is workspace package `@ride-match/api`; the original empty directory was populated only by the explicitly requested backend slice.
 
 ## Build-script policy
 
@@ -117,6 +117,14 @@ engineStrict: true
 ## Direct dependencies
 
 All versions are exact. "Expo range" means `bundledNativeModules.json` in `expo@57.0.26` or the SDK 57 `relatedPackages` from the Expo versions API, as checked in MOBILE-001-A. Rows marked MOBILE-001-H were realigned to online `expo-doctor`'s expectations on 2026-10-30.
+
+### Backend (`@ride-match/api`, BE-001, 2026-11-20)
+
+Exact runtime pins: `@nestjs/common`, `@nestjs/core`, `@nestjs/platform-express` **12.5.1**, `express` **5.3.0** (matches the platform adapter), `pg` **8.23.1**, `reflect-metadata` **0.2.2**, `rxjs` **7.8.2**, `zod` **4.6.7** (same as contracts), `@ride-match/contracts: workspace:*`. Exact dev pins: TypeScript **6.0.3**, ESLint **9.39.5**, `@types/node` **24.19.2**, `@types/express` **5.0.6**, `@types/pg` **8.23.1**. Local Compose uses **postgres:18.1-bookworm** on loopback. No migration/test/ORM dependency: SQL runner uses `pg`, SHA-256 and Node's built-in test runner.
+
+Registry engines/peers were checked before install: Nest 12 requires supported Node 20.19+/22.12+; Node 24.17.0 meets this and supports its ESM packages. Nest peers accept RxJS 7 / reflect-metadata 0.2; pg requires Node >=16. Build/typecheck/lint/runtime checks verify the actual TypeScript 6 integration. [Nest migration/ESM guide](https://docs.nestjs.com/migration-guide), [pg pooling](https://node-postgres.com/features/pooling), [PostgreSQL advisory transaction locks](https://www.postgresql.org/docs/18/explicit-locking.html#ADVISORY-LOCKS).
+
+`pnpm install --frozen-lockfile --filter @ride-match/api... --offline` passes with the existing build-script policy; no new install-script permission was needed. Commands and configuration are in [DEVELOPMENT](DEVELOPMENT.md#local-backend-be-001). `dist/` and local env are ignored; ship SQL files alongside compiled output if packaging later.
 
 ### Root (`devDependencies`, MONO-001-B)
 
