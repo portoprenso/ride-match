@@ -1,8 +1,12 @@
 # Ride Match documentation
 
-Last updated: 2026-11-01
+Last updated: 2026-11-20
 
 Ride Match helps nearby people travelling in compatible directions form a small group and share a taxi. The first milestone is a complete React Native mobile MVP using realistic mocks. Taxi booking and payment happen outside the application.
+
+## Current priority — backend start
+
+The user reprioritized backend preparation before frontend QA completion (2026-11-20). [BACKEND_HANDOFF.md](BACKEND_HANDOFF.md) is the reviewed start package; **BE-001** is the next implementation slice. The existing shared contracts/data-source operations are sufficient for that start. Remaining frontend QA stays in [VERIFY_005_REPORT.md](VERIFY_005_REPORT.md); it is not a gate for backend scaffolding. No backend is implemented yet. The historical milestone summaries below do not override this priority.
 
 ## Current state
 
@@ -58,10 +62,10 @@ These are specifications for mocked operations now and a future backend later. T
 ## Development sequence
 
 ```text
-Mobile MVP using mocks
-  -> Review and stabilize contracts
-  -> Implement the real backend against the reviewed specification
-  -> Replace mobile mock transport with HTTP and Socket.IO
+Implemented mock mobile baseline + reviewed contracts
+  -> Backend foundation (BE-001), without waiting for frontend QA
+  -> Backend domain slices + HTTP/Socket.IO integration
+  -> Integrated QA and final contract handoff
 ```
 
 The roadmap contains only mobile MVP tasks and its contract-review handoff. Do not begin a subsequent milestone automatically.

@@ -2,7 +2,7 @@
 
 Ride Match helps nearby people heading in compatible directions form a small group and share a taxi. The first milestone is a React Native (Expo) mobile MVP backed by realistic mocks; there is no backend in this milestone.
 
-**Status:** workspace foundation (MONO-001) and Expo shell (MOBILE-001) complete. The root pnpm workspace uses Turbo to build the `@ride-match/contracts` package (so far the Zod schemas for common values, errors, locations, users, authentication, place search, ride requests, nearby discovery, matches, groups, chat, safety, realtime events and notifications) and to type-check and lint it together with `@ride-match/mobile`. The mobile app is a minimal Expo Router shell that imports the shared package, validates its build configuration from `apps/mobile/.env`, and composes one data source with a TanStack Query cache: the in-memory simulator running the configured mock scenario (DATA-001, MOCK-001-B), which home's place search reads. Home is a native map (MAP-001-A: Apple Maps on iOS, Google Maps on Android once a key is configured; not yet checked on devices) with a location introduction, a card for each location state and a named pickup point (LOCATION-001), and a temporary “Sign in” entry to inert phone and code placeholders. The group, chat, and settings routes open inert “not available yet” pages; development and preview builds have demo controls for the mock scenarios (MOCK-001-C), opened from home's Demo badge. Development, doctor, export, and native commands exist. Contract tests run with `pnpm test:contracts` and mobile behavior tests with `pnpm test:mobile`. The development builds are verified on an Android 16 emulator and an iOS 26.5 simulator (MOBILE-001-G/H). See [docs/AI_CONTEXT.md](docs/AI_CONTEXT.md) for the current state.
+**Current priority (2026-11-20):** backend preparation is complete; the next implementation slice is **BE-001: NestJS/TypeScript backend foundation with PostgreSQL**. The existing mock-backed mobile client and shared contracts are the integration baseline. Remaining frontend QA is recorded separately and does not gate starting the backend. [Backend start package](docs/BACKEND_HANDOFF.md) contains the reviewed 25 REST operations, event facade, initial transport decisions and bounded implementation order. `apps/api/` is still empty, no backend commands exist yet, and mobile API mode fails explicitly until its adapter is implemented. See [AI context](docs/AI_CONTEXT.md) for ownership and [verification report](docs/VERIFY_005_REPORT.md) for unfinished frontend work.
 
 ## Requirements
 
@@ -49,8 +49,8 @@ pnpm install --frozen-lockfile
 | Path | Contents |
 | --- | --- |
 | `apps/mobile/` | `@ride-match/mobile`: Expo SDK 57 app with Expo Router. Run Expo commands from this directory (`pnpm exec expo …`), never from the repository root |
-| `apps/api/` | Intentionally empty; not a workspace package and not populated during the mobile milestone |
-| `packages/contracts/` | `@ride-match/contracts`: shared transport contracts (ESM, `exports` to `dist/`); currently empty until CONTRACT-001 |
+| `apps/api/` | Empty; BE-001 will create the backend workspace package when implementation is requested |
+| `packages/contracts/` | `@ride-match/contracts`: implemented Zod transport schemas/types (ESM, `exports` to `dist/`); no database models or services |
 | `docs/` | Product, architecture, roadmap, toolchain, and handoff documentation |
 
 ## Documentation and contributing

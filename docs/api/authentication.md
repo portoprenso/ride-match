@@ -1,6 +1,6 @@
 # Future API: authentication and users
 
-Status: planned API; all MVP authentication is simulated. The mock operations ([AUTH-001-A](#implemented-mock-auth-001-a)), the app's session controller ([AUTH-001-B](#implemented-session-auth-001-b)) and the sign-in screens with the pending-intent gate ([AUTH-001-C](#implemented-sign-in-and-gate-auth-001-c)) exist. Last updated: 2026-11-07.
+Status: planned API; all MVP authentication is simulated. The mock operations ([AUTH-001-A](#implemented-mock-auth-001-a)), the app's session controller ([AUTH-001-B](#implemented-session-auth-001-b)) and the sign-in screens with the pending-intent gate ([AUTH-001-C](#implemented-sign-in-and-gate-auth-001-c)) exist. Last updated: 2026-11-20.
 
 Paths are relative to `/v1`; response conventions and common failures are in [overview](overview.md).
 
@@ -13,7 +13,8 @@ Paths are relative to `/v1`; response conventions and common failures are in [ov
 | `POST /auth/refresh` | Refresh credential | Refresh token | Rotated session credentials | `REFRESH_TOKEN_INVALID` |
 | `POST /auth/logout` | Session credential | Refresh token | `204` | Already-revoked credential is idempotent |
 | `GET /me` | User | None | `CurrentUserDto` | `UNAUTHENTICATED`, `SESSION_EXPIRED` |
-| `PATCH /me` | User | Display name | `UserDto` | `VALIDATION_FAILED` |
+
+Profile editing (`PATCH /me`) is deferred: no input schema, data-source operation or consuming mobile feature exists. It is not part of the initial backend inventory. The [backend handoff](../BACKEND_HANDOFF.md) maps the five actual auth operations and records the initial raw-error, optional-auth and credential-transport decisions. Production OTP delivery/abuse controls are assigned to BE-002, not supplied by the static demo code.
 
 ## OTP semantics
 

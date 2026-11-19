@@ -1,12 +1,16 @@
 # Architecture plan
 
-Status: proposed; partly implemented (see [AI context](AI_CONTEXT.md)). Last updated: 2026-11-01.
+Status: proposed; partly implemented (see [AI context](AI_CONTEXT.md)). Last updated: 2026-11-20.
 
 ## Objective and scope
 
-Build a complete mobile MVP with realistic asynchronous mock data, then review its contracts before implementing any backend. Product UI should retain its data-facing interface when HTTP and Socket.IO replace mocks.
+The original sequence built a mock mobile MVP before reviewing backend contracts. On 2026-11-20 the user reprioritized backend preparation and development before frontend QA completion. [BACKEND_HANDOFF.md](BACKEND_HANDOFF.md) is the reviewed start package: NestJS/TypeScript modular monolith, PostgreSQL persistence and incremental HTTP/Socket.IO integration behind the existing data-source boundary. UI QA remains a separate unfinished backlog. Exact backend tool versions are selected when implementing BE-001; no backend dependencies or server exist yet.
 
 The mobile data milestone does not require offline basemap tiles. Application data/authentication are mocked; the map SDK, foreground location, local notifications, and opening an external application remain native integrations.
+
+## Demo presentation time (VERIFY-005, 2026-11-20)
+
+`DevControlsProvider.useDemoTimeAhead` exposes only the public controls port's read-only time offset; `features/discovery/useClock` adds it to its device-time ticks. Presentation deadlines and departure wording therefore follow deliberate Demo clock advances, including removal of cached chat history after retention. Without controls (production/API builds or standalone UI), the offset is zero. Features do not import simulator internals, the device clock is not changed, and canonical source operations still authorize access. The native/automated verification limits are in [VERIFY_005_REPORT.md](VERIFY_005_REPORT.md).
 
 ## Technology decisions
 
@@ -128,6 +132,8 @@ Routes / feature components
 **Implemented (MAP-002-A):** discovery is its own feature, `src/features/discovery/` (`viewport.ts`, `useNearbyDiscovery.ts` with the pure `describeDiscovery`, `DiscoveryPanel.tsx`), read through `nearbyQuery` and kept current through `useEventSubscription`; `MapHomeScreen` owns the rested region and renders the panel. `src/data/useConnectionState.ts` exposes the data source's connection to screens. The composition root now creates the analytics client (`selectAnalyticsSink` by environment) and the root layout starts and provides it.
 
 **Implemented (MAP-002-B):** discovery's map pieces stay in `src/features/discovery/` (`nearbyItems.ts` pure wording and clustering, `DiscoveryMarkers.tsx` rendered as `HomeMap` children, `NearbyListSheet.tsx`, `useClock.ts`); `MapHomeScreen` owns the selection, the list's content and the user-requested camera moves (cluster zoom, row selection), which end any automatic follow. Screen 26 reuses `useMapTileStatus`. No clustering library: an absolute power-of-two grid.
+
+**Compact discovery clusters (VERIFY-007):** `DiscoveryMarkers` renders a numeric count instead of an icon plus sentence, reducing label collisions without changing the absolute grid or cluster membership. Badges have a 32-point minimum width, 40-point minimum height and 4-point horizontal padding, growing for scaled text. Native density checks passed on iOS with normal/XXXL text and Android with normal/150%/200% text. Matched clusters keep their outline; the full number of plans, matched count and zoom/list action remain in the accessible name. Item labels and the full nearby list are unchanged. This is compact presentation, not a general collision solver for arbitrary data or text scales.
 
 **Native-pass fixes (VERIFY-005):** the home map's region handling does not trust the providers' events alone. `useHomeCamera` reads the visible region back (`getMapBoundaries`) after each camera move the app makes, since iOS MapKit sometimes reports no rest for one. Discovery reads `discoveryRegion(region, frame)`, the whole map frame worked out from the width, because Google Maps reports only the part inside the padding, and a sheet whose height followed the read made the reads loop. `HomeMap` passes `mapPadding` only after `onMapReady` (react-native-maps 1.27.2 on Android throws when the padding changes earlier). `SheetContent` scrolls a focused text field into view when the keyboard opens. On Android a padding change moves the camera to where it is (react-native-maps), cancelling a move in progress, so `onPaddingChanged` repeats an app-made move from the last 1.5 seconds. Open: Android leaves ghost default pins after discovery markers are removed; react-native-maps' `safeAddFeature` replaces where Fabric inserts, but fixing that alone did not remove them.
 

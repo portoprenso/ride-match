@@ -42,6 +42,8 @@ Public previews expose public location/destination, occupancy, expected departur
 
 Two last-seat joins produce one success and one `GROUP_FULL`. Two first joins of one solo target produce one canonical group. Repeated identical operation IDs return the prior result; a new operation from an already-grouped user is an explicit conflict.
 
+**Backend review (2026-11-20):** the replay rule below describes the current mock. Its generic receipt can return a stored private group result before checking current membership/retention. Production replay must not extend private-data authorization. BE-003/004 must specify and verify the authorized replay/error precedence, and record any deliberate mock/conformance change; see [BACKEND_HANDOFF.md](../BACKEND_HANDOFF.md#domain-baseline-and-decisions-assigned-to-slices). This gap does not block backend scaffolding.
+
 The source checks in this order and answers the first failure:
 
 | Check | Answer |

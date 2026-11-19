@@ -28,7 +28,7 @@ Explicit user instructions take precedence over project guidance. For conflictin
 
 ## Product and architecture constraints
 
-- The first milestone is a complete mobile MVP using realistic mocks. Do not populate `apps/api/` or implement a backend during this milestone.
+- The original mock-mobile milestone kept `apps/api/` empty. On 2026-11-20 the user explicitly prioritized backend preparation before frontend QA completion; follow [docs/BACKEND_HANDOFF.md](docs/BACKEND_HANDOFF.md). Unfinished frontend QA is not a backend-start gate. The preparation request does not itself authorize implementing/deploying the server; implement the assigned backend slice when requested.
 - Keep the main experience map-first and anonymous browsing available.
 - One data-source boundary separates feature logic from mocks now and HTTP/Socket.IO later. Screens/components must not import fixtures or simulator internals.
 - Shared contracts contain communication schemas/types, not UI state, database models, services, or backend-only algorithms.
@@ -46,6 +46,8 @@ Explicit user instructions take precedence over project guidance. For conflictin
 ## Verification and code documentation
 
 - Check actual manifests and [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) before running commands. Planned commands are not installed tooling.
+- For large verification scopes, group overlapping cases into shared journeys/screens and run independent checks in parallel where safe. Preserve accepted evidence; do not restart completed paths for each small addition.
+- After a fix, rerun affected behavior and reserve broad regression for the final state, unless a specific unresolved risk requires more. Record gaps separately from confirmed defects.
 - Run checks appropriate to the change and required task criteria. Record exact commands, results, and checks not run with reasons.
 - For documentation-only work, check links, references, and consistency; do not claim application tests/builds passed.
 - Add useful JSDoc/TSDoc to public/reusable functions, hooks, components, complex transformations, lifecycle rules, and integration boundaries.

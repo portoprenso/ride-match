@@ -1,8 +1,8 @@
 # Future API: conventions, boundaries, and handoff
 
-Status: proposed specification, not an implemented API. Last updated: 2026-11-01. The shared schemas for [common values and errors](#common-values-and-errors-contract-001-a), for [locations and users](#locations-and-users-contract-001-b), for [authentication](authentication.md#implemented-contracts-contract-001-c), for [place search](rides.md#places-and-discovery), for [ride requests, nearby discovery, matches and the public group preview](rides.md#implemented-contracts-contract-002-b), for [groups](groups.md#implemented-contracts-contract-003-a), for [chat](groups.md#implemented-chat-contracts-contract-003-b) for [block and report](groups.md#implemented-safety-contracts-contract-003-c), for [realtime events and subscriptions](realtime.md#implemented-contracts-contract-004-a) and for [notifications and push devices](realtime.md#implemented-notification-contracts-contract-004-b) exist in `packages/contracts`.
+Status: proposed specification, not an implemented API. Last updated: 2026-11-20. The shared schemas for [common values and errors](#common-values-and-errors-contract-001-a), for [locations and users](#locations-and-users-contract-001-b), for [authentication](authentication.md#implemented-contracts-contract-001-c), for [place search](rides.md#places-and-discovery), for [ride requests, nearby discovery, matches and the public group preview](rides.md#implemented-contracts-contract-002-b), for [groups](groups.md#implemented-contracts-contract-003-a), for [chat](groups.md#implemented-chat-contracts-contract-003-b) for [block and report](groups.md#implemented-safety-contracts-contract-003-c), for [realtime events and subscriptions](realtime.md#implemented-contracts-contract-004-a) and for [notifications and push devices](realtime.md#implemented-notification-contracts-contract-004-b) exist in `packages/contracts`.
 
-The mobile mock data source must reproduce these observable operations and rules. A future NestJS backend will implement the reviewed contracts after the mock mobile MVP. No backend implementation belongs to the current milestone.
+The mobile mock data source reproduces these observable operations and rules. The user-directed transition of 2026-11-20 allows starting the NestJS backend foundation before the frontend QA backlog is complete. [BACKEND_HANDOFF.md](../BACKEND_HANDOFF.md) contains the reviewed operation inventory, initial HTTP decisions, production gaps and bounded implementation order. No backend is implemented yet.
 
 ## Authority and conventions
 
@@ -81,7 +81,7 @@ Implemented in `packages/contracts/src/{common,errors}.ts` and covered by `pnpm 
 | `singleLineTextSchema(max)` | Builds a short text schema (added by CONTRACT-001-B): 1–`max` characters, no leading or trailing whitespace, no control characters such as line breaks. Nothing is trimmed; unclean text fails |
 | `multilineTextSchema(max)` | Builds a longer text schema (added by CONTRACT-003-C for report details; chat text uses it too): as above, but line breaks (`\n`) are allowed inside. `\r`, tabs and other control characters fail |
 
-The error body has no envelope of its own in these contracts; how the future HTTP adapter wraps it is decided with that adapter. Transport failures (offline, timeout, aborted request, schema mismatch) have no `ApiErrorCode`; mobile models them separately.
+The initial backend HTTP decision is a raw `ApiErrorDto` as the non-2xx domain-error body, with no success or `{ error: ... }` wrapper; see [HTTP decisions](../BACKEND_HANDOFF.md#http-decisions-for-the-first-implementation). Transport failures (offline, timeout, aborted request, schema mismatch) have no `ApiErrorCode`; mobile models them separately. No adapter is implemented yet.
 
 ## Locations and users (CONTRACT-001-B)
 
@@ -133,7 +133,7 @@ Do not log exact inputs, phone numbers, OTPs, session tokens, messages, report t
 
 - Caller creates a stable operation ID for one user intent; retries reuse it.
 - The future HTTP adapter carries it as `Idempotency-Key`. Where a DTO also carries that ID, both values must agree.
-- Scope receipts to authenticated actor, operation, and key. Same key and input return the same canonical result; changed input returns `IDEMPOTENCY_CONFLICT`.
+- Scope receipt identity to authenticated actor and key, matching the actual mock receipt store. Operation name, path target and canonical validated input are the fingerprint: reuse across operations or changed input returns `IDEMPOTENCY_CONFLICT`. Replays of private results must not extend authorization/retention; the backend handoff identifies this production gap for the group/chat slices.
 - Proposed receipt retention: at least 24 hours for mutation retries; simulator retention lasts until reset. Validate this production policy during handoff.
 - Join checks request state, expiry, target membership, block relationships, and capacity in one atomic operation.
 - Coordinator lifecycle changes use expected resource versions; stale commands return `VERSION_CONFLICT`.
@@ -161,7 +161,7 @@ OTP-specific code failures are specified in [authentication](authentication.md).
 
 ## Backend handoff readiness
 
-Required artifacts before creating the future backend package:
+The reviewed start package is [BACKEND_HANDOFF.md](../BACKEND_HANDOFF.md). It is sufficient for BE-001 without completing the frontend QA backlog; unresolved production decisions are assigned to the slice that needs them. The table below remains the complete integration/final-handoff inventory, not a requirement to finish all mobile QA before scaffolding:
 
 | Artifact | Required content |
 | --- | --- |
@@ -177,6 +177,6 @@ Required artifacts before creating the future backend package:
 | Operation inventory | Each data-source method mapped to an endpoint/event |
 | Reviewed limitations | Decisions/gaps needing production validation |
 
-HANDOFF-001 reconciles all artifacts against actual mobile usage. Later backend internals may differ from the mock implementation; observable contracts and invariants must agree. After backend conformance, a separate milestone implements HTTP/Socket.IO behind `AppDataSource` and verifies features with the same interface.
+HANDOFF-001 remains the final reconciliation of all artifacts against actual mobile/backend usage. BACKEND-PREP-001 performs the early review needed to start now; it does not mark QA-001 or HANDOFF-001 complete. Backend internals may differ from mocks; observable contracts/invariants must agree or an intentional revision must be documented. The HTTP/Socket.IO adapter is integrated by backend slice behind `AppDataSource` rather than waiting for another full frontend-polish milestone.
 
 No automatic transition to backend work is authorized by completing documentation or the mobile MVP.

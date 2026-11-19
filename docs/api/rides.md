@@ -1,6 +1,6 @@
 # Future API: places, rides, and matching
 
-Status: planned; the place, ride request, nearby and match contracts exist in `packages/contracts`. The mock source implements creating, reading and cancelling the caller's own request (RIDE-001-A) and reading its matches (RIDE-001-D; [mock rules](../MOCK_SCENARIOS.md#own-ride-request-ride-001-a)). Last updated: 2026-11-07.
+Status: planned; the place, ride request, nearby and match contracts exist in `packages/contracts`. The mock source implements creating, reading and cancelling the caller's own request (RIDE-001-A) and reading its matches (RIDE-001-D; [mock rules](../MOCK_SCENARIOS.md#own-ride-request-ride-001-a)). Last updated: 2026-11-20.
 
 All paths use `/v1`; tables show unwrapped response data. See [overview](overview.md) for common errors and idempotency.
 
@@ -29,7 +29,7 @@ The place contracts exist since CONTRACT-002-A (`packages/contracts/src/places.t
 | `PlaceSearchAreaSchema` | `center` as coarse coordinates (at most 2 decimal places, about 1 km) and `radiusMeters` (whole number, 1,000–50,000), derived from the map region, never the exact device position |
 | `PlaceSearchResultsSchema` | At most 20 places, each once, never more than the requested `limit`. Empty means nothing matched in a supported area |
 
-An area outside the curated coverage (the demo city) fails with `UNSUPPORTED_AREA` (422); an invalid query fails with `VALIDATION_FAILED`. These limits are mock values (`PLACE_SEARCH_POLICY`). How the future HTTP adapter encodes the input as query parameters is decided with that adapter.
+An area outside the curated coverage (the demo city) fails with `UNSUPPORTED_AREA` (422); an invalid query fails with `VALIDATION_FAILED`. These limits are mock values (`PLACE_SEARCH_POLICY`). The initial HTTP encoding uses whitelisted dotted query keys reconstructed into the DTO before validation; the exact keys and parsing rules are in [BACKEND_HANDOFF.md](../BACKEND_HANDOFF.md#http-decisions-for-the-first-implementation). No adapter is implemented yet.
 
 Discovery accepts a coarse bounded viewport, not an exact continuously uploaded device track: the app rounds its visible region outward to 2 decimal places, and each span is at most 0.5°. The source caps the items at the requested limit (at most 100), keeps those nearest the viewport's center, and sets `truncated` when it left some out. The UI must not imply an exhaustive count when truncated. A viewport entirely outside the covered area fails with `UNSUPPORTED_AREA`.
 
