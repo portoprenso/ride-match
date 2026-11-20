@@ -5,6 +5,7 @@ import { AppState, Platform } from 'react-native';
 
 import { AppConfigError, readAppConfig, type AppConfig } from '../config/appConfig';
 import type { AppDataSource } from '../data/AppDataSource';
+import { createHttpDataSource } from '../data/api/createHttpDataSource';
 import { createDataSource, type DataSourceFactories } from '../data/createDataSource';
 import { createSyncCoordinator, type SyncCoordinator } from '../data/createSyncCoordinator';
 import { DataSourceUnavailableError } from '../data/errors';
@@ -68,6 +69,7 @@ export type AppComposition =
  * to `deliverPush` (NOTIFICATION-001-B).
  */
 const createFactories = (deliverPush: PushDelivery): DataSourceFactories => ({
+  api: (options) => createHttpDataSource(options),
   mock({ scenario, devControls, accessToken }) {
     // The configuration checks only the key's format; the simulator knows which scenarios exist.
     if (!isMockScenarioKey(scenario)) {
@@ -135,7 +137,7 @@ export type CompositionOptions = {
  * Demo controls exist only in development and preview builds on the mock data source; a
  * production build never creates them, so nothing in it can reach the simulator's controls.
  *
- * An invalid configuration, an unknown scenario or the unavailable API data source becomes a
+ * An invalid configuration, an unknown scenario or a missing data-source builder becomes a
  * `failed` composition, which the root layout shows instead of the app; any other error is a bug
  * and is rethrown. A `ready` composition must be disposed when the app's root unmounts.
  */
@@ -169,7 +171,7 @@ export function composeAppDataSource({
     // Features get the data source whose signed-in calls renew an expired access token once.
     const dataSource = withSessionRenewal(composed.dataSource, () => session);
     const pendingIntents = createPendingIntentGate(built);
-    const queryClient = createQueryClient();
+    const queryClient = createQueryClient({ httpOnly: config.dataSource.kind === 'api' });
     const sync = createSyncCoordinator({
       queryClient,
       events: composed.dataSource.events,
@@ -179,15 +181,15 @@ export function composeAppDataSource({
     // Local notifications belong to the rider signed in when they were made (NOTIFICATION-001-A).
     const stopClearingNotifications = clearNotificationsOnSignOut(built, notifications);
     const notificationPermission = createNotificationPermissionController(notifications, appState);
-    // Only the mock source exists, so the token is synthetic: no real push token is requested.
-    const registration: PushRegistration = syncPushRegistration({
+    // Synthetic push belongs only to mock mode. API push remains unavailable until BE-005.
+    const registration: PushRegistration | null = config.dataSource.kind === 'mock' ? syncPushRegistration({
       session: built,
       permission: notificationPermission,
       devices: dataSource.devices,
       installationId,
       pushToken: (id) => `ExponentPushToken[demo-${id}]`,
       platform: Platform.OS === 'ios' ? 'ios' : 'android',
-    });
+    }) : null;
     const analytics = createAnalytics({
       sink: selectAnalyticsSink(config.appEnv),
       environment: config.appEnv,
@@ -208,7 +210,7 @@ export function composeAppDataSource({
       notifications,
       notificationPermission,
       dispose: () => {
-        registration.dispose();
+        registration?.dispose();
         notificationPermission.dispose();
         stopClearingNotifications();
         analytics.dispose();

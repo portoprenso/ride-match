@@ -11,7 +11,8 @@ import type { SessionController } from '../features/auth/createSessionController
  * operation or client-message ID in their unchanged input, so the source returns the original
  * result; unblocking and device removal succeed whether or not they already happened. Sign-in,
  * refresh and logout are left as they are (the session controller calls them itself), and so are
- * the public reads and event subscriptions, whose resubscription the sync coordinator owns.
+ * the unimplemented public ride/group reads and event subscriptions. Optional-auth
+ * place search also renews an explicitly expired bearer instead of falling back to anonymous.
  *
  * @param session Read at each call: the composition builds the session after the data source.
  */
@@ -22,10 +23,11 @@ export function withSessionRenewal(dataSource: AppDataSource, session: () => Ses
       const controller = session();
       return controller === null ? operation(...args) : controller.runAuthenticated(() => operation(...args));
     };
-  const { auth, rides, groups, chat, safety, devices } = dataSource;
+  const { auth, places, rides, groups, chat, safety, devices } = dataSource;
   return {
     ...dataSource,
     auth: { ...auth, getCurrentUser: renew(auth.getCurrentUser) },
+    places: { search: renew(places.search) },
     rides: {
       ...rides,
       getOwnRequest: renew(rides.getOwnRequest),

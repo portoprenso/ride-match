@@ -4,7 +4,7 @@ Status: partly implemented. Last updated: 2026-11-20. **Only commands marked imp
 
 ## Backend transition (2026-11-20)
 
-**BE-001 is completed.** [BACKEND_HANDOFF.md](BACKEND_HANDOFF.md) maps the later operations/contracts and BE-002–006. Frontend QA remains deferred and unchanged. No business endpoints or mobile HTTP adapter are implemented.
+**BE-001 and BE-002 are completed locally.** [BACKEND_HANDOFF.md](BACKEND_HANDOFF.md) maps implemented auth/places and future BE-003–006. Frontend QA remains deferred and unchanged; no broad/native QA is authorized by the backend sequence.
 
 ## Local backend (BE-001)
 
@@ -36,8 +36,10 @@ This removes the Compose project's container/network and preserves its named `po
 | `DATABASE_URL` | PostgreSQL URL with host/database; server-only, never a public Expo variable or log field |
 | `API_ALLOWED_ORIGINS` | Comma-separated exact HTTP(S) origins, no whitespace/path/wildcard; empty string denies browser cross-origin access. Native clients without Origin still work |
 | `API_LOG_LEVEL` | `error`, `warn`, `info`, `debug`; cumulative Nest log threshold |
+| `API_AUTH_SECRET` | Server-only HMAC key, 32–256 characters, stable across restarts; synthetic local example must never be reused externally |
+| `API_SMS_PROVIDER` | `development` (synthetic-only, forbidden in production) or `disabled` (OTP creation fails 503) |
 
-`POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` are Compose-only values in the same example. Keep them aligned with `DATABASE_URL`. Changing these values does not rewrite credentials in an existing initialized data volume. Startup validates all five server variables before creating Nest/pools; configuration errors never print values.
+`POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` are Compose-only values in the same example. Keep them aligned with `DATABASE_URL`. Changing these values does not rewrite credentials in an existing initialized data volume. Startup validates all seven server variables before creating Nest/pools; configuration errors never print values.
 
 Probes use `GET /v1/health/live` and `GET /v1/health/ready`. Both return `{ data: { status: "ok" }, meta: { serverTime } }` on success. Liveness never queries DB; readiness runs `SELECT 1` each time and returns raw `ApiErrorDto` / `SERVICE_UNAVAILABLE` with 503 on an outage. The lazy pool allows startup without DB. Readiness currently checks connectivity, not schema version or future downstream providers. Connection timeout is 1 s; HTTP statement/client query timeouts are 2/3 s, pool maximum five connections.
 
@@ -45,7 +47,7 @@ Each request gets a new server UUID in `X-Request-Id`; incoming IDs are ignored 
 
 ### SQL migrations
 
-`pg` provides the pool and parameterized queries; no ORM, extra persistence layer or migration dependency. `apps/api/migrations/NNNN_snake_case.sql` contains immutable, ordered transactional SQL. The runner obtains transaction advisory lock `724001`, creates/checks `schema_migrations` (`name`, SHA-256 `checksum`, `applied_at`) and commits pending files plus journal atomically. The first migration reserves schema `ride_match`; no business tables exist. Repetition applies zero files; concurrent runners serialize; edited/deleted/reordered applied history fails and errors roll back. Add new numbered files instead of editing applied files. No automatic migration on API startup, down/reset command or production migration rollout is implemented. Migrations allow 10 s statements / 11 s client query timeout and 5 s lock timeout; large future data migrations need their own reviewed strategy. Ship the `migrations/` directory alongside `dist/`.
+`pg` provides the pool and parameterized queries; no ORM, extra persistence layer or migration dependency. `apps/api/migrations/NNNN_snake_case.sql` contains immutable, ordered transactional SQL. The runner obtains transaction advisory lock `724001`, creates/checks `schema_migrations` (`name`, SHA-256 `checksum`, `applied_at`) and commits pending files plus journal atomically. Migration 0001 reserves schema `ride_match`; migration 0002 adds auth/places tables and the server-owned synthetic catalogue. Existing migration 0001 is unchanged. Repetition applies zero files; concurrent runners serialize; edited/deleted/reordered applied history fails and errors roll back. Add new numbered files instead of editing applied files. No automatic migration on API startup, down/reset command or production migration rollout is implemented. Migrations allow 10 s statements / 11 s client query timeout and 5 s lock timeout; large future data migrations need their own reviewed strategy. Ship the `migrations/` directory alongside `dist/`.
 
 ### Backend checks (implemented)
 
@@ -61,6 +63,32 @@ pnpm test:api:integration
 Root `typecheck`, `lint` and `test` discover API automatically. The API test task depends on its own build; unit/HTTP tests use Node's built-in runner against compiled JS and do not require PostgreSQL. Integration is explicit and uncached: it refuses production/non-loopback configuration, creates a randomly named `be001_*` database using the local role's CREATEDB privilege, then drops only that database and closes all owned pools. It verifies empty/repeated/concurrent migrations, reconnect durability, rollback, altered/deleted history, healthy probes and lifecycle cleanup. Test-only controllers are never registered in the production server.
 
 **BE-001 evidence (2026-11-20):** build/typecheck/lint pass; 10 foundation assertions and one real PostgreSQL lifecycle test pass. CLI migration on the initially empty Compose database applied 1, repeat applied 0. Runtime `start:api` probes with PostgreSQL available / stopped / restored were respectively live 200/200/200 and ready 200/503/200; `dev:api --ui=stream` started API + zero-error compiler watcher. Offline frozen backend installation passes. Owned API/watch processes, Compose container/network and Docker Desktop were stopped; ports 3000/55432 had no listeners. Mobile/native/contract test suites were not run for this backend slice.
+
+## Local auth and places (BE-002)
+
+The start/stop commands above are unchanged. On an existing BE-001 checkout, merge `API_AUTH_SECRET` and `API_SMS_PROVIDER` from `apps/api/.env.example` into ignored `.env.local`, then run `pnpm db:up`, `pnpm db:migrate` and `pnpm start:api`. Do not overwrite other local env values. This session prepared only synthetic local defaults. Existing DB upgrades apply one new migration; a fresh DB applies both, repeats apply zero.
+
+Five auth endpoints (`/auth/otp/challenges`, `/auth/otp/verify`, `/auth/refresh`, `/auth/logout`, `/me`) and `/places/search` now use PostgreSQL. The development OTP provider accepts only Ofcom fiction numbers `+447700900000`–`+447700900999`; use synthetic code **123456**. **No SMS is sent.** Other numbers fail safely; production cannot enable this provider. `disabled` fails OTP creation explicitly; no real provider or account was provisioned. Never put the server HMAC key in Expo variables, logs or committed env files.
+
+The key protects domain-separated phone, OTP, token and rate-limit verifiers. Only those digests are persisted; plaintext phone/code/tokens are not stored. Keep the key stable across restarts: changing it invalidates existing digests and is not a transparent rotation mechanism. Public users store a generated UUID, “Development rider” and null avatar. Auth identities, OTP challenges, sessions and credentials are separate tables. Old credentials/challenges/rate rows are not yet physically purged; retention/rotation before external use remains future operational work.
+
+Policies: OTP 5 min / resend 30 s / five failed attempts; access 15 min; refresh 30 days, rotating both credentials. Known unexpired rotated-refresh replay revokes its family, including the winner of a simultaneous refresh. A lost refresh response therefore requires signing in again, not blind retry. A known rotated refresh can still revoke its family on logout (stricter than mock behavior); unknown/repeated logout is 204. Rate limits persist across process restarts: 60 requests/min per handler/TCP peer and five challenge requests/hour per phone. Proxy headers are ignored; trusted-proxy and distributed ingress protection are not implemented. Malformed JSON is body-limited but parsed before the DB rate guard. Responses are `no-store`, 429 also carries `Retry-After`.
+
+Place search uses the documented dotted query keys, rejects unknown/duplicate/non-numeric keys and validates the reconstructed DTO. Anonymous access works; a supplied invalid or expired bearer fails. The catalogue has three clearly synthetic stable-ID landmarks and one coverage rectangle (42.80–42.95 N, 74.50–74.70 E). Search-center coverage is required; radius filters use straight-line distance. Query matches label/detail, prioritizing label prefixes then distance and ID. No match returns a real empty array; outside coverage returns `UNSUPPORTED_AREA`. This is not a real places provider or route algorithm.
+
+For a future local mobile run, merge [apps/mobile/.env.api.example](../apps/mobile/.env.api.example) into the existing ignored mobile `.env.local`:
+
+```dotenv
+EXPO_PUBLIC_APP_ENV=development
+EXPO_PUBLIC_DATA_SOURCE=api
+EXPO_PUBLIC_API_BASE_URL=http://127.0.0.1:3000/v1
+```
+
+Committed `.env` stays mock. API mode requires the URL; production requires HTTPS. Embedded credentials/query/fragment are rejected without echoing values. Backend currently binds loopback; physical-device network access, platform cleartext/TLS and native smoke were not configured or verified in this slice. No mobile env override, map key or native project was overwritten. Existing sign-in UI gets no mock `DemoSignIn`; the synthetic local number/code above are developer setup instructions, not real SMS credentials.
+
+The first adapter implements only auth and places. Other namespaces and realtime subscriptions fail as unavailable; there is no mock fallback. Device registration/local synthetic pushes remain mock-only. SecureStore keeps refresh credentials under the existing `api` namespace; access stays in memory. Shared session renewal covers `/me` and optional-auth place search. HTTP queries use `networkMode: always` so absence of Socket.IO does not indefinitely pause them; reads still have bounded retry policy and mutations never queue/retry automatically. HTTP availability is observed per response/failure, not a fabricated realtime session. Transport samples `meta.serverTime` at the request midpoint; exact-device-location timestamp translation will be wired when BE-003 implements that input.
+
+Backend verification: `pnpm test:api` (11 unit/HTTP checks) and `pnpm test:api:integration` (14 PostgreSQL checks). Integration creates/drops only new random local databases and closes owned pools/servers; one test transpiles the pure mobile HTTP/session modules into a temporary directory using the existing TypeScript dependency, then exercises them against the real API. No Expo/native runtime is loaded. New schema and persistent attempts/limits, concurrent verify/refresh, failed delivery, expired/replaced OTP, schema/error/query projection, restore/logout and migration rollback/history are covered. Focused mobile commands/results are recorded in the BE-002 work log; full mobile/native/contract suites were not run.
 
 ## Latest verification result
 
@@ -133,7 +161,7 @@ Online `pnpm doctor:mobile` depends on Expo's current patch list, so it can star
 | `EXPO_PUBLIC_MOCK_SCENARIO=active-neighborhood` | Initial deterministic scenario. Implemented: required with `mock`, a lowercase hyphenated key; the composition root rejects a key the simulator does not know (MOCK-001-B): `active-neighborhood` or `empty-neighborhood` so far |
 | `EXPO_PUBLIC_APP_ENV=development` | Environment/demo labeling and analytics segregation. Implemented: `development`, `preview` or `production`; only `production` builds go without the demo controls (MOCK-001-C) |
 | `GOOGLE_MAPS_ANDROID_API_KEY` (not `EXPO_PUBLIC_`) | Android map provider. Implemented (MAP-001-A): the Google Maps key, restricted to this app; set it only in `apps/mobile/.env.local` or the shell. Without it Android shows a notice instead of the map. Not configured yet |
-| Future `EXPO_PUBLIC_API_BASE_URL` | Future adapter only; no API transport implemented now |
+| `EXPO_PUBLIC_API_BASE_URL` | Implemented BE-002: required /v1 URL in API mode; HTTPS in production; auth/places only |
 
 **Configuration files (DATA-001-A):** `apps/mobile/.env` (committed) sets the three public variables to the development values above. Override them in `apps/mobile/.env.local` (ignored) or the shell, then restart Metro: Expo reads `.env` when Metro starts and inlines `EXPO_PUBLIC_` values into the bundle. `src/config/appConfig.ts` validates them, with no defaults. A missing or invalid value, or `api`, replaces every route with a "This build can’t start" screen that names the variable; it never falls back to another data source. Jest loads no `.env`: `tests/setup/publicEnvironment.ts` sets the same development values. No credentials exist.
 

@@ -6,7 +6,7 @@ Ride Match helps nearby people travelling in compatible directions form a small 
 
 ## Current priority — backend start
 
-The user reprioritized backend preparation before frontend QA completion (2026-11-20). [BACKEND_HANDOFF.md](BACKEND_HANDOFF.md) is the reviewed start package; **BE-001 is completed** (local foundation); BE-002 remains planned. The existing shared contracts/data-source operations are sufficient for that start. Remaining frontend QA stays in [VERIFY_005_REPORT.md](VERIFY_005_REPORT.md); it is not a gate for backend scaffolding. NestJS/PostgreSQL infrastructure and probes now exist; business endpoints/mobile adapter do not. See [local backend setup](DEVELOPMENT.md#local-backend-be-001). The historical milestone summaries below do not override this priority.
+The user reprioritized backend preparation before frontend QA completion (2026-11-20). [BACKEND_HANDOFF.md](BACKEND_HANDOFF.md) is the reviewed start package; **BE-001/002 are completed locally** (foundation plus persisted auth/places and HTTP adapter); BE-003 remains planned. The existing shared contracts/data-source operations are sufficient for that start. Remaining frontend QA stays in [VERIFY_005_REPORT.md](VERIFY_005_REPORT.md); it is not a gate for backend scaffolding. NestJS/PostgreSQL health, five auth endpoints and place search now exist, with a partial HTTP adapter; other operations are explicitly unavailable in API mode. See [local backend setup](DEVELOPMENT.md#local-backend-be-001). The historical milestone summaries below do not override this priority.
 
 ## Current state
 
@@ -57,7 +57,7 @@ Read applicable root instructions first, then use this map (the workflow and rel
 | [Groups](api/groups.md) | Atomic joining, membership, lifecycle, meeting points, chat, block/report |
 | [Realtime](api/realtime.md) | Events, subscriptions, recovery, notifications, device registration |
 
-These are specifications for mocked operations now and a future backend later. Business operations remain specifications; only BE-001 operational health routes are implemented.
+These are specifications for mocked operations now and a future backend later. Business operations remain specifications; BE-001/002 health/auth/places are implemented locally; later business operations remain specifications.
 
 ## Development sequence
 

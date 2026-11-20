@@ -2,7 +2,7 @@
 export const APP_ENVIRONMENTS = ['development', 'preview', 'production'] as const;
 export type AppEnvironment = (typeof APP_ENVIRONMENTS)[number];
 
-/** Data-source kinds a build can name. Only `mock` exists in the mobile MVP. */
+/** Data-source kinds a build can name. `api` implements the BE-002 auth/places slice. */
 export const DATA_SOURCE_KINDS = ['mock', 'api'] as const;
 export type DataSourceKind = (typeof DATA_SOURCE_KINDS)[number];
 
@@ -13,7 +13,7 @@ export type DataSourceConfig =
       /** Key of the initial mock scenario, such as `active-neighborhood`. */
       scenario: string;
     }
-  | { kind: 'api' };
+  | { kind: 'api'; baseUrl: string };
 
 /** The validated build configuration. */
 export type AppConfig = {
@@ -26,6 +26,7 @@ export type PublicEnvironment = {
   EXPO_PUBLIC_APP_ENV?: string;
   EXPO_PUBLIC_DATA_SOURCE?: string;
   EXPO_PUBLIC_MOCK_SCENARIO?: string;
+  EXPO_PUBLIC_API_BASE_URL?: string;
 };
 
 /** A scenario key is lowercase words joined by hyphens, like the keys in MOCK_SCENARIOS.md. */
@@ -53,10 +54,9 @@ function isOneOf<Value extends string>(values: readonly Value[], value: string):
  * Every variable is required: there are no defaults, so a missing value fails instead of
  * silently choosing a data source. An empty value counts as unset. `EXPO_PUBLIC_MOCK_SCENARIO`
  * is required with the mock data source and ignored with `api`; only its format is checked
- * here, and the mock data source rejects a key it does not know. Accepting `api` here does not
- * make it usable: composition then fails clearly (see `createDataSource`).
+ * here, and the mock data source rejects a key it does not know. `api` requires EXPO_PUBLIC_API_BASE_URL; unfinished API operations fail explicitly.
  *
- * The values are public and echoed in error messages.
+ * The variables are public; invalid API URLs are never echoed (they might contain credentials).
  *
  * @throws {AppConfigError} When any variable is missing or invalid, listing all problems.
  */
@@ -84,11 +84,23 @@ export function parseAppConfig(env: PublicEnvironment): AppConfig {
     }
   }
 
+  let apiBaseUrl: string | undefined;
+  if (dataSource === 'api') {
+    try {
+      const url = new URL(env.EXPO_PUBLIC_API_BASE_URL ?? '');
+      const protocolAllowed = url.protocol === 'https:' || (appEnv !== 'production' && url.protocol === 'http:');
+      if (!protocolAllowed || url.username || url.password || url.search || url.hash || url.pathname.replace(/\/$/, '') !== '/v1') throw new Error('Invalid API URL');
+      apiBaseUrl = url.toString().replace(/\/$/, '');
+    } catch {
+      problems.push('EXPO_PUBLIC_API_BASE_URL must be an HTTP(S) /v1 URL without credentials, query or fragment; production requires HTTPS.');
+    }
+  }
+
   if (problems.length > 0) throw new AppConfigError(problems);
 
   return {
     appEnv: appEnv as AppEnvironment,
-    dataSource: dataSource === 'mock' ? { kind: 'mock', scenario: scenario as string } : { kind: 'api' },
+    dataSource: dataSource === 'mock' ? { kind: 'mock', scenario: scenario as string } : { kind: 'api', baseUrl: apiBaseUrl as string },
   };
 }
 
@@ -107,5 +119,6 @@ export function readAppConfig(): AppConfig {
     EXPO_PUBLIC_APP_ENV: process.env.EXPO_PUBLIC_APP_ENV,
     EXPO_PUBLIC_DATA_SOURCE: process.env.EXPO_PUBLIC_DATA_SOURCE,
     EXPO_PUBLIC_MOCK_SCENARIO: process.env.EXPO_PUBLIC_MOCK_SCENARIO,
+    EXPO_PUBLIC_API_BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL,
   });
 }

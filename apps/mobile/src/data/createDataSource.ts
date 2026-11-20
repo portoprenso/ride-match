@@ -25,6 +25,7 @@ export type DataSourceFactories = {
    * know. `devControls` says whether the build may offer the demo controls, and `accessToken`
    * supplies the session's access token to every authenticated call.
    */
+  api?: (options: { baseUrl: string; accessToken: AccessTokenSource }) => ComposedDataSource;
   mock: (options: { scenario: string; devControls: boolean; accessToken: AccessTokenSource }) => ComposedDataSource;
 };
 
@@ -34,11 +35,10 @@ export type DataSourceFactories = {
  *
  * `mock` builds the simulator with the configured scenario, and its demo controls when
  * `options.devControls` allows them; it reads `options.accessToken` when each call starts. `api`
- * fails, because no HTTP or Socket.IO implementation exists in the mobile MVP, and it never falls
- * back to the simulator:
+ * builds the HTTP implementation when supplied, and never falls back to the simulator:
  * a build meant for real riders must not show synthetic ones.
  *
- * @throws {DataSourceUnavailableError} For `api`.
+ * @throws {DataSourceUnavailableError} When an API builder was not supplied.
  */
 export function createDataSource(
   config: DataSourceConfig,
@@ -49,8 +49,9 @@ export function createDataSource(
     case 'mock':
       return factories.mock({ scenario: config.scenario, ...options });
     case 'api':
+      if (factories.api) return factories.api({ baseUrl: config.baseUrl, accessToken: options.accessToken });
       throw new DataSourceUnavailableError(
-        'EXPO_PUBLIC_DATA_SOURCE is "api", but the API data source is not available in this build. Use "mock".',
+        'EXPO_PUBLIC_DATA_SOURCE is "api", but no API builder was supplied.',
       );
   }
 }

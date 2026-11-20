@@ -18,7 +18,7 @@
     "migrate": "node --env-file=.env.local dist/database/migrate.js",
     "migrate:env": "node dist/database/migrate.js",
     "test": "node --test tests/foundation.test.mjs",
-    "test:integration": "node --env-file=.env.local --test tests/database.integration.mjs",
+    "test:integration": "node --env-file=.env.local --test tests/*.integration.mjs",
     "watch": "tsc -p tsconfig.json --watch --preserveWatchOutput"
   },
   "dependencies": {

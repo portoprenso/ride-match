@@ -17,6 +17,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
     const response = host.switchToHttp().getResponse<Response>();
     const requestId = String(response.locals.requestId);
     if (error instanceof ApiException) {
+      if (error.failure.retryAfterSeconds) response.setHeader('Retry-After', error.failure.retryAfterSeconds);
       response.status(error.getStatus()).json(ApiErrorSchema.parse({ ...error.failure, requestId }));
       return;
     }

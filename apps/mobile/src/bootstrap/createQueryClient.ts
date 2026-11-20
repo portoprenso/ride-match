@@ -15,12 +15,15 @@ export const MAX_READ_RETRIES = 2;
  *   purpose, with the same operation ID, and nothing is queued while offline.
  *
  * The sync coordinator (SYNC-001-B) connects Query's focus to `AppState` and its online state to
- * the data source's connection: reads wait while disconnected and resume on reconnect.
+ * the data source's connection. HTTP-only mode attempts reads directly because a
+ * missing Socket.IO connection must not pause available auth/place operations.
  */
-export function createQueryClient(): QueryClient {
+export function createQueryClient({ httpOnly = false }: { httpOnly?: boolean } = {}): QueryClient {
   return new QueryClient({
     defaultOptions: {
       queries: {
+        // HTTP-only mode has no socket reconnect signal to release paused reads.
+        networkMode: httpOnly ? 'always' : 'online',
         retry: (failureCount, error) => failureCount < MAX_READ_RETRIES && isRetryableRead(toDataError(error)),
       },
       // A mutation never waits for the connection: Query would otherwise hold it while offline

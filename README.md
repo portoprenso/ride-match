@@ -2,7 +2,7 @@
 
 Ride Match helps nearby people heading in compatible directions form a small group and share a taxi. The mobile MVP uses realistic mocks; the separate backend foundation is now implemented.
 
-**Current state (2026-11-20): BE-001 is completed** — NestJS/TypeScript backend foundation with local PostgreSQL, migrations and health probes. The existing mock-backed mobile client and shared contracts are the integration baseline. Remaining frontend QA is recorded separately and does not gate starting the backend. [Backend start package](docs/BACKEND_HANDOFF.md) contains the reviewed 25 REST operations, event facade, initial transport decisions and bounded implementation order. `apps/api/` implements infrastructure only; mobile API mode still fails explicitly until its adapter is implemented. [Local backend setup](docs/DEVELOPMENT.md#local-backend-be-001) documents start/stop and configuration. BE-002 is planned, not started. See [AI context](docs/AI_CONTEXT.md) for ownership and [verification report](docs/VERIFY_005_REPORT.md) for unfinished frontend work.
+**Current state (2026-11-20): BE-001 and BE-002 are completed locally** — NestJS/PostgreSQL foundation plus persisted OTP/sessions, `/me`, curated place search and the first mobile HTTP adapter. The existing mock-backed mobile client and shared contracts are the integration baseline. Remaining frontend QA is recorded separately and does not gate starting the backend. [Backend start package](docs/BACKEND_HANDOFF.md) contains the reviewed 25 REST operations, event facade, initial transport decisions and bounded implementation order. `apps/api/` implements health plus five auth operations and place search. Mobile API mode supports that slice; other operations fail explicitly, with no mock fallback. Default mobile configuration remains mock. [Local backend setup](docs/DEVELOPMENT.md#local-backend-be-001) documents start/stop and configuration. BE-003 is planned, not started; real SMS and external deployment are not configured. See [AI context](docs/AI_CONTEXT.md) for ownership and [verification report](docs/VERIFY_005_REPORT.md) for unfinished frontend work.
 
 ## Requirements
 
@@ -54,7 +54,7 @@ pnpm install --frozen-lockfile
 | Path | Contents |
 | --- | --- |
 | `apps/mobile/` | `@ride-match/mobile`: Expo SDK 57 app with Expo Router. Run Expo commands from this directory (`pnpm exec expo …`), never from the repository root |
-| `apps/api/` | `@ride-match/api`: ESM NestJS foundation, validated config, PostgreSQL/SQL migrations and operational health routes |
+| `apps/api/` | `@ride-match/api`: ESM NestJS, PostgreSQL/migrations, health, persisted auth and synthetic curated place search |
 | `packages/contracts/` | `@ride-match/contracts`: implemented Zod transport schemas/types (ESM, `exports` to `dist/`); no database models or services |
 | `docs/` | Product, architecture, roadmap, toolchain, and handoff documentation |
 

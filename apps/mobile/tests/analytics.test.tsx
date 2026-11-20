@@ -308,8 +308,8 @@ describe('marker dwell', () => {
 describe('synthetic traffic and sinks', () => {
   it('marks mock-source events synthetic, so real-user metrics exclude them', () => {
     const mock = setup({ environment: 'production' });
-    const real = setup({ environment: 'production', dataSource: { kind: 'api' } });
-    const preview = setup({ environment: 'preview', dataSource: { kind: 'api' } });
+    const real = setup({ environment: 'production', dataSource: { kind: 'api', baseUrl: 'https://api.example.invalid/v1' } });
+    const preview = setup({ environment: 'preview', dataSource: { kind: 'api', baseUrl: 'https://api.example.invalid/v1' } });
     for (const { analytics } of [mock, real, preview]) analytics.start();
 
     expect(mock.sink.events()[0]?.context).toMatchObject({ synthetic: true, mockScenario: 'active-neighborhood' });

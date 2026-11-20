@@ -11,11 +11,13 @@ import { z } from 'zod';
 import { AppModule } from '../dist/app.module.js';
 import { configureHttp } from '../dist/application.js';
 import { readEnvironment } from '../dist/config/environment.js';
+import { createOtpProvider } from '../dist/auth/runtime.js';
 import { ZodValidationPipe } from '../dist/http/zod-validation.pipe.js';
 
 const environment = {
   API_APP_ENV: 'test', API_PORT: '3000',
   DATABASE_URL: 'postgresql://synthetic:synthetic@127.0.0.1:1/synthetic',
+  API_AUTH_SECRET: 'synthetic-be002-test-key-for-local-checks', API_SMS_PROVIDER: 'development',
   API_ALLOWED_ORIGINS: 'http://localhost:3001', API_LOG_LEVEL: 'error',
 };
 
@@ -26,7 +28,7 @@ test('configuration rejects missing/unsafe values without disclosing them', () =
     { API_PORT: '' }, { API_PORT: '65536' }, { API_APP_ENV: 'preview' },
     { DATABASE_URL: 'https://synthetic-secret.invalid' },
     { API_ALLOWED_ORIGINS: '*' }, { API_ALLOWED_ORIGINS: 'https://example.invalid/path' },
-    { API_LOG_LEVEL: 'everything' }, { API_PORT: undefined },
+    { API_LOG_LEVEL: 'everything' }, { API_PORT: undefined }, { API_AUTH_SECRET: 'too-short' }, { API_APP_ENV: 'production', API_SMS_PROVIDER: 'development' },
   ]) {
     assert.throws(() => readEnvironment({ ...environment, ...patch }), (error) => {
       assert.match(error.message, /^Invalid API environment: [A-Z_, ]+$/);
@@ -34,6 +36,12 @@ test('configuration rejects missing/unsafe values without disclosing them', () =
       return true;
     });
   }
+});
+
+test('development OTP cannot be enabled in production; disabled delivery fails explicitly', () => {
+  const production = readEnvironment({ ...environment, API_APP_ENV: 'production', API_SMS_PROVIDER: 'disabled' });
+  assert.throws(() => createOtpProvider(production).createCode('+447700900123'), (error) => error.getStatus() === 503);
+  assert.throws(() => createOtpProvider({ ...production, API_SMS_PROVIDER: 'development' }).createCode('+447700900123'), (error) => error.getStatus() === 503);
 });
 
 test('Zod boundary rejects unknown keys and never echoes values or record paths', () => {

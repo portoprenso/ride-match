@@ -1,6 +1,6 @@
 # Future API: authentication and users
 
-Status: planned API; all MVP authentication is simulated. The mock operations ([AUTH-001-A](#implemented-mock-auth-001-a)), the app's session controller ([AUTH-001-B](#implemented-session-auth-001-b)) and the sign-in screens with the pending-intent gate ([AUTH-001-C](#implemented-sign-in-and-gate-auth-001-c)) exist. Last updated: 2026-11-20.
+Status: BE-002 implements local PostgreSQL-backed authentication and the mobile HTTP adapter; default mock mode remains available. Real SMS/production rollout is unconfigured. The mock operations ([AUTH-001-A](#implemented-mock-auth-001-a)), the app's session controller ([AUTH-001-B](#implemented-session-auth-001-b)) and the sign-in screens with the pending-intent gate ([AUTH-001-C](#implemented-sign-in-and-gate-auth-001-c)) exist. Last updated: 2026-11-20.
 
 Paths are relative to `/v1`; response conventions and common failures are in [overview](overview.md).
 
@@ -14,7 +14,17 @@ Paths are relative to `/v1`; response conventions and common failures are in [ov
 | `POST /auth/logout` | Session credential | Refresh token | `204` | Already-revoked credential is idempotent |
 | `GET /me` | User | None | `CurrentUserDto` | `UNAUTHENTICATED`, `SESSION_EXPIRED` |
 
-Profile editing (`PATCH /me`) is deferred: no input schema, data-source operation or consuming mobile feature exists. It is not part of the initial backend inventory. The [backend handoff](../BACKEND_HANDOFF.md) maps the five actual auth operations and records the initial raw-error, optional-auth and credential-transport decisions. Production OTP delivery/abuse controls are assigned to BE-002, not supplied by the static demo code.
+Profile editing (`PATCH /me`) is deferred: no input schema, data-source operation or consuming mobile feature exists. It is not part of the initial backend inventory. The [backend handoff](../BACKEND_HANDOFF.md) maps the five actual auth operations and records the initial raw-error, optional-auth and credential-transport decisions. BE-002 supplies a synthetic-only local provider and durable limits/refresh-replay policy; real SMS and production rollout remain unconfigured. See the local implementation below.
+
+## Local backend and HTTP adapter (BE-002)
+
+Five endpoints above now persist in PostgreSQL; `/me` projects the persisted user with null request/group references until those domains exist. Inputs/results use unchanged strict schemas. Requests are `no-store`; raw error bodies and request IDs follow the overview. HTTP adapter/session/SecureStore restoration is implemented behind `AppDataSource`; sign-in/refresh/logout never auto-retry. Optional-auth places also use shared session renewal.
+
+Local provider: `API_SMS_PROVIDER=development`, non-production only, fiction numbers `+447700900000`–`+447700900999`, code `123456`, no SMS. Disabled delivery returns 503. `API_AUTH_SECRET` keys phone/code/credential/rate digests; no plaintext credentials/phone are persisted. OTPs expire after 5 min, resend after 30 s, fifth wrong attempt locks the challenge; malformed input does not consume an attempt. Phone row locks serialize replacement/verification; failures preserve attempt writes and confirmed delivery is required before use.
+
+Opaque 256-bit access/refresh tokens last 15 min / 30 days. Rotation keeps previous unexpired access tokens usable unless the family is revoked. Session locks plus a fresh credential read prevent double rotation. **Reuse of an unexpired rotated refresh revokes its entire family**, including a concurrent winner. The mobile session shares one refresh; an unknown refresh outcome is reconciled by fresh sign-in. Known old refresh tokens also revoke their family on logout, an intentional stricter divergence from the mock; unknown/repeated logout remains 204. State survives API restart.
+
+Limits: 60 attempts/minute per handler/TCP peer, five OTP challenge requests/hour per phone, plus challenge attempts/cooldown. Keys are HMAC digests; forwarded headers are not trusted. Physical retention cleanup, ingress/proxy/TLS, secret rotation and a real provider remain deployment requirements. [Development instructions](../DEVELOPMENT.md#local-auth-and-places-be-002) and [backend handoff](../BACKEND_HANDOFF.md#be-002-local-implementation-and-deliberate-policies) document scope and checks. Existing mock behavior below is retained as its own mode, not proof of backend race safety.
 
 ## OTP semantics
 

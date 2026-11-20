@@ -126,6 +126,8 @@ Registry engines/peers were checked before install: Nest 12 requires supported N
 
 `pnpm install --frozen-lockfile --filter @ride-match/api... --offline` passes with the existing build-script policy; no new install-script permission was needed. Commands and configuration are in [DEVELOPMENT](DEVELOPMENT.md#local-backend-be-001). `dist/` and local env are ignored; ship SQL files alongside compiled output if packaging later.
 
+BE-002 adds no dependencies or version changes. It uses Node crypto HMAC/random bytes/timing-safe comparison, the existing pg/Zod/TypeScript and built-in test runner. After an earlier filtered installation left a mobile ESLint dependency unlinked, `pnpm install --frozen-lockfile --offline` restored all workspace links without changing pins. Native/network mobile setup is not inferred from this install.
+
 ### Root (`devDependencies`, MONO-001-B)
 
 | Package | Version | Purpose | Compatibility evidence |

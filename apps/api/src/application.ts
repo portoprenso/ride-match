@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import type { INestApplication } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import express from 'express';
+import type { BackendDependencies } from './auth/runtime.js';
 import { AppModule } from './app.module.js';
 import { nestLogLevels } from './config/environment.js';
 import type { ApiConfig } from './config/environment.js';
@@ -17,6 +18,11 @@ import { requestIdMiddleware } from './http/request-id.js';
  */
 export function configureHttp(app: NestExpressApplication, config: ApiConfig): void {
   app.disable('x-powered-by');
+  // Auth responses and private reads must not enter browser/proxy caches.
+  app.use((_request: unknown, response: express.Response, next: express.NextFunction) => {
+    response.setHeader('Cache-Control', 'no-store');
+    next();
+  });
   app.set('query parser', 'simple');
   app.use(requestIdMiddleware);
   app.use(express.json({ limit: '16kb' }));
@@ -27,8 +33,8 @@ export function configureHttp(app: NestExpressApplication, config: ApiConfig): v
 }
 
 /** Creates an unbound server; caller listens and closes it or installs signal hooks. */
-export async function createApplication(config: ApiConfig): Promise<INestApplication> {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule.register(config), {
+export async function createApplication(config: ApiConfig, dependencies: BackendDependencies = {}): Promise<INestApplication> {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule.register(config, dependencies), {
     bodyParser: false,
     logger: nestLogLevels(config.API_LOG_LEVEL),
     abortOnError: false,

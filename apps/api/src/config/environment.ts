@@ -16,7 +16,9 @@ const environmentSchema = z.object({
   API_ALLOWED_ORIGINS: z.string().transform((value) => value === '' ? [] : value.split(','))
     .pipe(z.array(originSchema)),
   API_LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']),
-});
+  API_AUTH_SECRET: z.string().min(32).max(256),
+  API_SMS_PROVIDER: z.enum(['development', 'disabled']),
+}).refine((config) => config.API_APP_ENV !== 'production' || config.API_SMS_PROVIDER !== 'development', { path: ['API_SMS_PROVIDER'] });
 
 export type ApiConfig = z.infer<typeof environmentSchema>;
 export const API_CONFIG = Symbol('API_CONFIG');

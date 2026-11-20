@@ -39,10 +39,10 @@ describe('parseAppConfig', () => {
     expect(parseAppConfig({ ...mockEnvironment, EXPO_PUBLIC_APP_ENV: appEnv }).appEnv).toBe(appEnv);
   });
 
-  it('accepts the API kind, ignoring the scenario, so composition can refuse it by name', () => {
-    expect(parseAppConfig({ ...mockEnvironment, EXPO_PUBLIC_DATA_SOURCE: 'api' })).toEqual({
+  it('accepts an explicit API URL while ignoring the mock scenario', () => {
+    expect(parseAppConfig({ ...mockEnvironment, EXPO_PUBLIC_DATA_SOURCE: 'api', EXPO_PUBLIC_API_BASE_URL: 'http://127.0.0.1:3000/v1' })).toEqual({
       appEnv: 'development',
-      dataSource: { kind: 'api' },
+      dataSource: { kind: 'api', baseUrl: 'http://127.0.0.1:3000/v1' },
     });
   });
 
@@ -86,9 +86,9 @@ describe('createDataSource', () => {
   it('refuses the API kind clearly and never falls back to the simulator', () => {
     const mock = jest.fn(() => ({ dataSource: createUnavailableDataSource('test simulator'), dispose: jest.fn(), devControls: null, demoSignIn: null }));
 
-    expect(() => createDataSource({ kind: 'api' }, { mock }, { devControls: true, accessToken: () => null })).toThrow(DataSourceUnavailableError);
-    expect(() => createDataSource({ kind: 'api' }, { mock }, { devControls: true, accessToken: () => null })).toThrow(
-      'EXPO_PUBLIC_DATA_SOURCE is "api", but the API data source is not available in this build. Use "mock".',
+    expect(() => createDataSource({ kind: 'api', baseUrl: 'http://127.0.0.1:3000/v1' }, { mock }, { devControls: true, accessToken: () => null })).toThrow(DataSourceUnavailableError);
+    expect(() => createDataSource({ kind: 'api', baseUrl: 'http://127.0.0.1:3000/v1' }, { mock }, { devControls: true, accessToken: () => null })).toThrow(
+      'EXPO_PUBLIC_DATA_SOURCE is "api", but no API builder was supplied.',
     );
     expect(mock).not.toHaveBeenCalled();
   });
@@ -170,11 +170,14 @@ describe('composeAppDataSource', () => {
     ]);
   });
 
-  it('fails the composition for the API kind', () => {
-    const composition = composeAppDataSource({ readConfig: config({ kind: 'api' }) });
+  it('composes the HTTP slice without demo controls or fallback', () => {
+    const composition = composeAppDataSource({ readConfig: config({ kind: 'api', baseUrl: 'http://127.0.0.1:3000/v1' }) });
 
-    expect(composition.status).toBe('failed');
-    expect(composition.status === 'failed' && composition.error).toBeInstanceOf(DataSourceUnavailableError);
+    expect(composition.status).toBe('ready');
+    if (composition.status !== 'ready') return;
+    expect(composition.devControls).toBeNull();
+    expect(composition.demoSignIn).toBeNull();
+    composition.dispose();
   });
 
   it('fails the composition for an invalid configuration', () => {
@@ -227,13 +230,13 @@ describe('root layout', () => {
     expect(screen.getByTestId('home-map')).toBeOnTheScreen();
   });
 
-  it('shows why the API data source cannot run, instead of any route', async () => {
+  it('shows a missing API URL as configuration failure, instead of any route', async () => {
     process.env.EXPO_PUBLIC_DATA_SOURCE = 'api';
     await renderApp('/groups/group_1');
 
     expect(screen.getByRole('header', { name: 'This build can’t start' })).toBeOnTheScreen();
     expect(
-      screen.getByText('EXPO_PUBLIC_DATA_SOURCE is "api", but the API data source is not available in this build. Use "mock".'),
+      screen.getByText('EXPO_PUBLIC_API_BASE_URL must be an HTTP(S) /v1 URL without credentials, query or fragment; production requires HTTPS.'),
     ).toBeOnTheScreen();
     expect(screen.queryByTestId('home-map')).not.toBeOnTheScreen();
     expect(screen.queryByRole('button')).not.toBeOnTheScreen();
