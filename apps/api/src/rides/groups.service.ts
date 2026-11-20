@@ -8,6 +8,7 @@ import { RideDomain } from './domain.js';
 import { RideStore, domainError, live } from './store.js';
 import type { GroupRow, RideRow } from './store.js';
 import { mutation } from './receipts.js';
+import { leaveLiveGroup } from './leave.js';
 import { closeGroup, reconcilePoint } from './lifecycle.js';
 
 /** Membership/state operations commit requests, seats, receipts and event intents in one transaction. */
@@ -15,10 +16,10 @@ import { closeGroup, reconcilePoint } from './lifecycle.js';
 export class RideGroupsService {
   constructor(@Inject(RideDomain) private readonly domain: RideDomain, @Inject(API_CONFIG) private readonly config: ApiConfig) {}
 
-  async preview(id: string) {
+  async preview(id: string, actor: string | null = null) {
     return this.domain.run(async (store) => {
       const row = await store.group(id);
-      if (!row || !live(row)) throw domainError('TARGET_UNAVAILABLE', 404, 'Group unavailable.');
+      if (!row || !live(row) || (actor && await store.relationship(actor, (await store.members(id)).map((m) => m.user_id)))) throw domainError('TARGET_UNAVAILABLE', 404, 'Group unavailable.');
       return store.preview(row);
     });
   }
@@ -42,6 +43,10 @@ export class RideGroupsService {
           else if (targetRide?.status !== 'active') targetRide = undefined;
         } else group = await store.group(input.target.id);
         if ((!group && !targetRide) || (group && !live(group))) throw domainError('TARGET_UNAVAILABLE', 404, 'Join target unavailable.');
+        const participants = group ? (await store.members(group.id)).map((m) => m.user_id) : [targetRide!.user_id];
+        const relation = await store.relationship(actor, participants);
+        if (relation === 'incoming') throw domainError('TARGET_UNAVAILABLE', 404, 'Join target unavailable.');
+        if (relation === 'outgoing') throw domainError('BLOCKED_RELATIONSHIP', 409, 'Pairing is unavailable.');
         if (group?.status === 'ready') throw domainError('GROUP_CLOSED', 409, 'Group is not accepting joins.');
         if (group && (await store.members(group.id)).length >= 4) throw domainError('GROUP_FULL', 409, 'Group is full.');
         if (!group) {
@@ -73,25 +78,7 @@ export class RideGroupsService {
     return this.domain.run((store, now) => mutation({ store, now, actor, operationId: input.operationId,
       operation: 'groups.leave', target: id, input, secret: this.config.API_AUTH_SECRET, schema: LeaveGroupResultSchema,
       perform: async () => {
-        const member = (await store.members(id)).find((entry) => entry.user_id === actor);
-        const group = await store.group(id);
-        if (!member || !group) throw domainError('MEMBERSHIP_REQUIRED', 403, 'Group membership required.');
-        if (!live(group)) throw domainError('GROUP_CLOSED', 409, 'Group is closed.');
-        await store.client.query('UPDATE ride_match.group_memberships SET left_at=$2,live=false WHERE id=$1', [member.id, now]);
-        await store.client.query('UPDATE ride_match.operation_receipts SET result=NULL WHERE access_membership_id=$1', [member.id]);
-        const own = (await store.client.query<RideRow>("UPDATE ride_match.ride_requests SET status='cancelled',version=version+1 WHERE id=$1 RETURNING *", [member.request_id])).rows[0]!;
-        await store.intent('ride.changed', own.id, own.version, now);
-        await store.intent('access.revoked', member.id, own.version, now);
-        const remaining = await store.members(id);
-        await store.client.query('UPDATE ride_match.ride_groups SET coordinator_id=$2 WHERE id=$1', [id,
-          group.coordinator_id === actor ? remaining[0]!.user_id : group.coordinator_id]);
-        if (remaining.length < 2) await closeGroup(store, (await store.group(id))!, 'cancelled', 'members_left', now);
-        else {
-          const updated = (await store.client.query<GroupRow>("UPDATE ride_match.ride_groups SET status='forming',version=version+1 WHERE id=$1 RETURNING *", [id])).rows[0]!;
-          await store.intent('group.changed', id, updated.version, now);
-          await store.intent('nearby.upserted.group', id, updated.version, now);
-        }
-        return { result: LeaveGroupResultSchema.parse({ groupId: id, rideRequest: await store.ownRide(own) }) };
+        return { result: await leaveLiveGroup(store, actor, id, now) };
       } }));
   }
   async update(actor: string, id: string, input: UpdateGroupStatusInput) {

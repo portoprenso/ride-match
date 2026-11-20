@@ -55,7 +55,7 @@ describe('BE-002 HTTP adapter', () => {
 
   it('rejects unsupported operations locally, without a request or mock fallback', async () => {
     const { adapter, source, send } = setup();
-    await expect(source.chat.getHistory('unknown-group', { limit: 10 })).rejects.toMatchObject({ kind: 'unavailable' });
+    await expect(source.devices.remove('00000000-0000-4000-8000-000000000001')).rejects.toMatchObject({ kind: 'unavailable' });
     await expect(source.events.subscribe({ kind: 'user' }, () => {})).rejects.toMatchObject({ kind: 'unavailable' });
     expect(send).not.toHaveBeenCalled();
     expect(adapter.devControls).toBeNull(); expect(adapter.demoSignIn).toBeNull();
@@ -128,5 +128,40 @@ describe('API configuration', () => {
   it('requires HTTPS in production and accepts explicit local development URL', () => {
     expect(() => parseAppConfig({ EXPO_PUBLIC_APP_ENV: 'production', EXPO_PUBLIC_DATA_SOURCE: 'api', EXPO_PUBLIC_API_BASE_URL: baseUrl })).toThrow();
     expect(parseAppConfig({ EXPO_PUBLIC_APP_ENV: 'development', EXPO_PUBLIC_DATA_SOURCE: 'api', EXPO_PUBLIC_API_BASE_URL: baseUrl }).dataSource).toEqual({ kind: 'api', baseUrl });
+  });
+});
+
+describe('BE-004 chat and safety transport', () => {
+  it('encodes paged reads without bodies and sends a bodyless idempotent unblock', async () => {
+    const send = jest.fn()
+      .mockResolvedValueOnce(response({ data: { messages: [], olderCursor: null, latestSequence: 0 }, meta: { serverTime } }))
+      .mockResolvedValueOnce(response({ data: { blockedUsers: [], nextCursor: null }, meta: { serverTime } }))
+      .mockResolvedValueOnce(response(null, 204));
+    const { adapter, source } = setup(send);
+    await source.chat.getHistory('synthetic-group', { afterSequence: 0, limit: 5 });
+    await source.safety.listBlocks({ cursor: 'opaque_cursor', limit: 2 });
+    await source.safety.unblock('synthetic-user');
+    const calls = send.mock.calls as unknown as [string, RequestInit][];
+    expect(new URL(calls[0][0]).searchParams.get('afterSequence')).toBe('0');
+    expect(new URL(calls[1][0]).searchParams.get('cursor')).toBe('opaque_cursor');
+    for (const [, options] of calls) expect(options.body).toBeUndefined();
+    expect(calls[2][1].method).toBe('DELETE');
+    expect(calls[2][1].headers).not.toHaveProperty('Idempotency-Key');
+    adapter.dispose();
+  });
+
+  it('uses the stable message/report/block intent as the header and never retries mutations', async () => {
+    const send = jest.fn(async () => response({ code: 'MEMBERSHIP_REQUIRED', message: 'Group membership required.', requestId: 'synthetic-request' }, 403));
+    const { adapter, source } = setup(send);
+    const operationId = '00000000-0000-4000-8000-000000000001';
+    await expect(source.chat.send('synthetic-group', { clientMessageId: operationId, text: 'Synthetic text' })).rejects.toMatchObject({ code: 'MEMBERSHIP_REQUIRED' });
+    await expect(source.safety.block('synthetic-target', { operationId })).rejects.toMatchObject({ code: 'MEMBERSHIP_REQUIRED' });
+    await expect(source.safety.report({ operationId, targetUserId: 'synthetic-target', reason: 'other' })).rejects.toMatchObject({ code: 'MEMBERSHIP_REQUIRED' });
+    expect(send).toHaveBeenCalledTimes(3);
+    const calls = send.mock.calls as unknown as [string, RequestInit][];
+    expect(calls.map(([, options]) => options.method)).toEqual(['POST', 'PUT', 'POST']);
+    for (const [, options] of calls) expect(options.headers).toHaveProperty('Idempotency-Key', operationId);
+    expect(JSON.parse(String(calls[0][1].body))).toEqual({ clientMessageId: operationId, text: 'Synthetic text' });
+    adapter.dispose();
   });
 });

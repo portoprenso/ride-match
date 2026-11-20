@@ -1,3 +1,4 @@
+import { purgePrivateContent } from '../chat/retention.js';
 import { randomUUID } from 'node:crypto';
 import { distanceMeters } from './policy.js';
 import { RideStore } from './store.js';
@@ -54,6 +55,7 @@ export async function sweep(store: RideStore, now: Date): Promise<void> {
   await store.client.query(`UPDATE ride_match.operation_receipts r SET result=NULL
     FROM ride_match.group_memberships m JOIN ride_match.ride_groups g ON g.id=m.group_id
     WHERE r.access_membership_id=m.id AND r.result IS NOT NULL AND (m.left_at IS NOT NULL OR g.history_expires_at <= $1)`, [now]);
+  await purgePrivateContent(store, now);
   // Retain key/fingerprint tombstones so an old key can never execute again.
   await store.client.query('UPDATE ride_match.operation_receipts SET result=NULL WHERE replay_until <= $1 AND result IS NOT NULL', [now]);
 }

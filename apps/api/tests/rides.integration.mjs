@@ -70,7 +70,7 @@ test('BE-003 two-instance PostgreSQL + real mobile adapter journeys', async (t) 
     url.pathname = `/${name}`;
     isolated = { ...config, DATABASE_URL: url.href, API_LOG_LEVEL: 'error' };
     database = createPool(url.href, 'migration');
-    assert.equal(await runMigrations(database), 3);
+    assert.equal(await runMigrations(database), 4);
     assert.equal(await runMigrations(database), 0);
     first = await createApplication(isolated, { clock }); await first.listen(0, '127.0.0.1'); base = await first.getUrl();
     second = await createApplication(isolated, { clock }); await second.listen(0, '127.0.0.1');

@@ -133,3 +133,5 @@ Mock values, to revisit before a backend exists:
 ## Verification
 
 Contract/public-projection checks, anonymous browse, destination preview, authenticated creation, existing-request conflict, idempotent retries, supplied match arrival, cancellation, foreground/background expiry, grouped request lifetime, stale selected target, and privacy-safe realtime events.
+
+BE-004 now enforces persisted bidirectional blocks in authenticated discovery, match candidates, direct ride/group-preview reads and joins, including every current group participant. Anonymous public projections remain public. Block-and-leave uses the same serialized transaction as membership changes; unblock does not restore membership. See [chat/safety policies](groups.md#local-ordered-chat-and-safety-be-004).

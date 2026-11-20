@@ -25,6 +25,14 @@ export const domainError = (code: ConstructorParameters<typeof ApiException>[0][
 export class RideStore {
   constructor(readonly client: pg.PoolClient) {}
 
+  /** Incoming blocks remain indistinguishable from vanished public targets. */
+  async relationship(actor: string, participants: readonly string[]): Promise<'incoming' | 'outgoing' | null> {
+    const rows = (await this.client.query<{ actor_id: string; target_id: string }>(
+      `SELECT actor_id,target_id FROM ride_match.user_blocks WHERE
+        (target_id=$1 AND actor_id=ANY($2::uuid[])) OR (actor_id=$1 AND target_id=ANY($2::uuid[]))`, [actor, participants])).rows;
+    return rows.some((r) => r.target_id === actor) ? 'incoming' : rows.length ? 'outgoing' : null;
+  }
+
   async ride(id: string): Promise<RideRow | undefined> {
     return (await this.client.query<RideRow>('SELECT * FROM ride_match.ride_requests WHERE id=$1', [id])).rows[0];
   }

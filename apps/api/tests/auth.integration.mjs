@@ -65,7 +65,7 @@ test('BE-002 PostgreSQL auth, concurrency, retention of credentials and public p
     url.pathname = `/${name}`;
     const isolated = { ...config, DATABASE_URL: url.href, API_LOG_LEVEL: 'error' };
     database = createPool(url.href, 'migration');
-    assert.equal(await runMigrations(database), 3);
+    assert.equal(await runMigrations(database), 4);
     assert.equal(await runMigrations(database), 0);
     app = await createApplication(isolated, dependencies);
     await app.listen(0, '127.0.0.1'); base = await app.getUrl();

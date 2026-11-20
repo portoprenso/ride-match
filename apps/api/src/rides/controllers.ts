@@ -20,8 +20,7 @@ export class RidesController {
   }
   @Get(':id')
   async read(@Param('id', new ZodValidationPipe(IdSchema)) id: string, @Headers('authorization') authorization?: string) {
-    await this.auth.authenticate(authorization, true);
-    return this.rides.publicRead(id);
+    return this.rides.publicRead(id, await this.auth.authenticate(authorization, true));
   }
   @Post() @HttpCode(200)
   async create(@Body(new ZodValidationPipe(CreateRideRequestInputSchema)) input: CreateRideRequestInput, @Headers('idempotency-key') key?: string, @Headers('authorization') authorization?: string) {
@@ -52,7 +51,7 @@ export class GroupsController {
   constructor(@Inject(AuthService) private readonly auth: AuthService, @Inject(RideGroupsService) private readonly groups: RideGroupsService) {}
   @Get(':id/preview')
   async preview(@Param('id', new ZodValidationPipe(IdSchema)) id: string, @Headers('authorization') authorization?: string) {
-    await this.auth.authenticate(authorization, true); return this.groups.preview(id);
+    return this.groups.preview(id, await this.auth.authenticate(authorization, true));
   }
   @Get(':id')
   async read(@Param('id', new ZodValidationPipe(IdSchema)) id: string, @Headers('authorization') authorization?: string) {

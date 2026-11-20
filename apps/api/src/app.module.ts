@@ -1,3 +1,7 @@
+import { ChatService } from './chat/chat.service.js';
+import { ChatController } from './chat/chat.controller.js';
+import { SafetyService } from './safety/safety.service.js';
+import { BlocksController, ReportsController } from './safety/safety.controller.js';
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 import { API_CONFIG } from './config/environment.js';
@@ -23,10 +27,10 @@ export class AppModule {
   static register(config: ApiConfig, dependencies: BackendDependencies = {}): DynamicModule {
     return {
       module: AppModule,
-      providers: [{ provide: API_CONFIG, useValue: config }, DatabaseService, AuthService, PlacesService, RequestRateGuard, RideDomain, RideRequestsService, RideGroupsService, DiscoveryService,
+      providers: [{ provide: API_CONFIG, useValue: config }, DatabaseService, AuthService, PlacesService, RequestRateGuard, RideDomain, RideRequestsService, RideGroupsService, DiscoveryService, ChatService, SafetyService,
         { provide: CLOCK, useValue: dependencies.clock ?? systemClock },
         { provide: OTP_PROVIDER, useValue: dependencies.otpProvider ?? createOtpProvider(config) }],
-      controllers: [HealthController, AuthController, CurrentUserController, PlacesController, RidesController, OwnRideController, GroupsController],
+      controllers: [HealthController, AuthController, CurrentUserController, PlacesController, RidesController, OwnRideController, GroupsController, ChatController, BlocksController, ReportsController],
     };
   }
 }

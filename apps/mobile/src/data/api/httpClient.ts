@@ -2,7 +2,7 @@ import { DataError } from '../errors';
 import type { AccessTokenSource, ConnectionState } from '../AppDataSource';
 
 type EnvelopeSchema<T> = { parse(value: unknown): { data: T; meta: { serverTime: string } } };
-type RequestOptions = { method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'; body?: unknown; signal?: AbortSignal; authenticated?: boolean; noContent?: boolean; operationId?: string };
+type RequestOptions = { method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'; body?: unknown; signal?: AbortSignal; authenticated?: boolean; noContent?: boolean; operationId?: string };
 
 /** HTTP transport owns cancellation, safe failures and midpoint server-time samples; never retries mutations. */
 export function createHttpClient(options: {

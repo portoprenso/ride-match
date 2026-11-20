@@ -30,10 +30,10 @@ export class RideRequestsService {
       return row ? store.ownRide(row) : null;
     });
   }
-  async publicRead(id: string) {
+  async publicRead(id: string, actor: string | null = null) {
     return this.domain.run(async (store) => {
       const row = await store.ride(id);
-      if (!row || row.status !== 'active') throw domainError('TARGET_UNAVAILABLE', 404, 'Ride unavailable.');
+      if (!row || row.status !== 'active' || (actor && await store.relationship(actor, [row.user_id]))) throw domainError('TARGET_UNAVAILABLE', 404, 'Ride unavailable.');
       return store.publicRide(row);
     });
   }

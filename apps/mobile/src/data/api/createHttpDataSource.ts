@@ -1,4 +1,6 @@
 import {
+  ChatHistoryQueryInputSchema, ChatMessagePageSchema, SendChatMessageInputSchema, ChatMessageSchema,
+  ReportUserInputSchema, ReportReceiptSchema, BlockUserInputSchema, BlockUserResultSchema, BlockListQueryInputSchema, BlockListPageSchema,
   apiResponseSchema, AuthSessionSchema, CurrentUserSchema, OtpChallengeSchema, SessionCredentialsSchema,
   CreateOtpChallengeInputSchema, VerifyOtpInputSchema, RefreshSessionInputSchema, LogoutInputSchema,
   SearchPlacesInputSchema, PlaceSearchResultsSchema,
@@ -20,7 +22,7 @@ function input<T>(schema: { parse(value: unknown): T }, value: unknown): T {
 }
 
 /**
- * BE-003 adapter: auth, places, rides and groups use HTTP; unfinished namespaces explicitly fail.
+ * BE-004 adapter: auth, places, rides, groups, chat and safety use HTTP; unfinished namespaces explicitly fail.
  * Never imports mocks. Caller token is read at request time; refresh/logout tokens
  * appear only in their JSON body. HTTP availability is separate from realtime,
  * whose subscribe operation remains unavailable until BE-005.
@@ -126,6 +128,40 @@ export function createHttpDataSource(options: {
         updateStatus: async (id, value) => {
           const validated = input(UpdateGroupStatusInputSchema, value);
           return http.request(`groups/${pathId(id)}/status`, apiResponseSchema(RideGroupSchema), { method: 'PATCH', authenticated: true, body: validated, operationId: validated.operationId });
+        },
+      },
+      chat: {
+        getHistory: async (id, value, read) => {
+          const validated = input(ChatHistoryQueryInputSchema, value);
+          const query = new URLSearchParams({ limit: String(validated.limit) });
+          if (validated.beforeCursor !== undefined) query.set('beforeCursor', validated.beforeCursor);
+          if (validated.afterSequence !== undefined) query.set('afterSequence', String(validated.afterSequence));
+          const page = await http.request(`groups/${pathId(id)}/messages?${query}`, apiResponseSchema(ChatMessagePageSchema), { authenticated: true, signal: read?.signal });
+          if (page.messages.length > validated.limit) throw new DataError('unexpected', 'The API exceeded the requested result limit.');
+          return page;
+        },
+        send: async (id, value) => {
+          const validated = input(SendChatMessageInputSchema, value);
+          return http.request(`groups/${pathId(id)}/messages`, apiResponseSchema(ChatMessageSchema), { method: 'POST', authenticated: true, body: validated, operationId: validated.clientMessageId });
+        },
+      },
+      safety: {
+        report: async (value) => {
+          const validated = input(ReportUserInputSchema, value);
+          return http.request('reports', apiResponseSchema(ReportReceiptSchema), { method: 'POST', authenticated: true, body: validated, operationId: validated.operationId });
+        },
+        block: async (id, value) => {
+          const validated = input(BlockUserInputSchema, value);
+          return http.request(`me/blocks/${pathId(id)}`, apiResponseSchema(BlockUserResultSchema), { method: 'PUT', authenticated: true, body: validated, operationId: validated.operationId });
+        },
+        unblock: (id) => http.request<void>(`me/blocks/${pathId(id)}`, null, { method: 'DELETE', authenticated: true, noContent: true }),
+        listBlocks: async (value, read) => {
+          const validated = input(BlockListQueryInputSchema, value);
+          const query = new URLSearchParams({ limit: String(validated.limit) });
+          if (validated.cursor !== undefined) query.set('cursor', validated.cursor);
+          const page = await http.request(`me/blocks?${query}`, apiResponseSchema(BlockListPageSchema), { authenticated: true, signal: read?.signal });
+          if (page.blockedUsers.length > validated.limit) throw new DataError('unexpected', 'The API exceeded the requested result limit.');
+          return page;
         },
       },
       events: { ...unavailable.events, watchConnection: http.watchConnection },
