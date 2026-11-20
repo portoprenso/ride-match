@@ -55,7 +55,7 @@ describe('BE-002 HTTP adapter', () => {
 
   it('rejects unsupported operations locally, without a request or mock fallback', async () => {
     const { adapter, source, send } = setup();
-    await expect(source.rides.getNearby({ viewport: { southWest: area.center, northEast: { latitude: 42.9, longitude: 74.7 } }, limit: 5 })).rejects.toMatchObject({ kind: 'unavailable' });
+    await expect(source.chat.getHistory('unknown-group', { limit: 10 })).rejects.toMatchObject({ kind: 'unavailable' });
     await expect(source.events.subscribe({ kind: 'user' }, () => {})).rejects.toMatchObject({ kind: 'unavailable' });
     expect(send).not.toHaveBeenCalled();
     expect(adapter.devControls).toBeNull(); expect(adapter.demoSignIn).toBeNull();

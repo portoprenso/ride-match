@@ -65,7 +65,7 @@ test('BE-002 PostgreSQL auth, concurrency, retention of credentials and public p
     url.pathname = `/${name}`;
     const isolated = { ...config, DATABASE_URL: url.href, API_LOG_LEVEL: 'error' };
     database = createPool(url.href, 'migration');
-    assert.equal(await runMigrations(database), 2);
+    assert.equal(await runMigrations(database), 3);
     assert.equal(await runMigrations(database), 0);
     app = await createApplication(isolated, dependencies);
     await app.listen(0, '127.0.0.1'); base = await app.getUrl();
@@ -217,7 +217,7 @@ test('BE-002 PostgreSQL auth, concurrency, retention of credentials and public p
         assert.equal(controller.getState().status, 'signed-in');
         assert.equal(refreshRequests, 3);
         assert.equal((await source.auth.getCurrentUser()).user.id, original.user.id);
-        await assert.rejects(source.rides.getOwnRequest(), (error) => error.kind === 'unavailable');
+        assert.equal(await source.rides.getOwnRequest(), null);
         const outcome = await controller.signOut();
         assert.equal(outcome.revoked, true); assert.equal(persisted, null);
         await assert.rejects(adapter.dataSource.auth.getCurrentUser(), (error) => error.code === 'UNAUTHENTICATED');

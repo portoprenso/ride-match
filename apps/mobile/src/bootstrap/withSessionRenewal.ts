@@ -11,8 +11,8 @@ import type { SessionController } from '../features/auth/createSessionController
  * operation or client-message ID in their unchanged input, so the source returns the original
  * result; unblocking and device removal succeed whether or not they already happened. Sign-in,
  * refresh and logout are left as they are (the session controller calls them itself), and so are
- * the unimplemented public ride/group reads and event subscriptions. Optional-auth
- * place search also renews an explicitly expired bearer instead of falling back to anonymous.
+ * event subscriptions. Optional-auth place/discovery/preview reads also renew an
+ * explicitly expired bearer instead of falling back to anonymous.
  *
  * @param session Read at each call: the composition builds the session after the data source.
  */
@@ -30,6 +30,8 @@ export function withSessionRenewal(dataSource: AppDataSource, session: () => Ses
     places: { search: renew(places.search) },
     rides: {
       ...rides,
+      getNearby: renew(rides.getNearby),
+      getRide: renew(rides.getRide),
       getOwnRequest: renew(rides.getOwnRequest),
       create: renew(rides.create),
       cancel: renew(rides.cancel),
@@ -37,6 +39,7 @@ export function withSessionRenewal(dataSource: AppDataSource, session: () => Ses
     },
     groups: {
       ...groups,
+      getPreview: renew(groups.getPreview),
       join: renew(groups.join),
       getGroup: renew(groups.getGroup),
       leave: renew(groups.leave),

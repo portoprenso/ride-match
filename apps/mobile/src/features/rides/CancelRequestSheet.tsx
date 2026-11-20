@@ -107,9 +107,9 @@ function CancelFlow({
   const pending = cancel.isPending;
   useEffect(() => {
     if (pending) return undefined;
-    const timer = setTimeout(onClose, Math.max(0, Date.parse(request.expiresAt) - Date.now()));
+    const timer = setTimeout(onClose, Math.max(0, Date.parse(request.expiresAt) - now));
     return () => clearTimeout(timer);
-  }, [pending, request.expiresAt, onClose]);
+  }, [pending, request.expiresAt, onClose, now]);
 
   return (
     <ConfirmAction

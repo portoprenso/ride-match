@@ -10,6 +10,7 @@ import type { ApiConfig } from '../config/environment.js';
 import { DatabaseService } from '../database/database.service.js';
 import { transaction } from '../database/transaction.js';
 import { ApiException } from '../http/api-exception.js';
+import { RideRequestsService } from '../rides/requests.service.js';
 import { CLOCK, OTP_PROVIDER } from './runtime.js';
 import type { Clock, OtpProvider } from './runtime.js';
 
@@ -35,6 +36,7 @@ export class AuthService {
     @Inject(API_CONFIG) private readonly config: ApiConfig,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(OTP_PROVIDER) private readonly otp: OtpProvider,
+    @Inject(RideRequestsService) private readonly rides: RideRequestsService,
   ) {}
 
   private digest(scope: string, value: string): string {
@@ -194,11 +196,12 @@ export class AuthService {
     return row.user_id;
   }
 
-  /** No ride/group tables exist in BE-002; absent references are real nulls, not invented successes. */
+  /** Reads current canonical domain references after catching up delayed expiry. */
   async currentUser(authorization: string | undefined): Promise<CurrentUserDto> {
     const id = await this.authenticate(authorization);
+    const references = await this.rides.references(id!);
     return transaction(this.database.pool, async (client) => CurrentUserSchema.parse({
-      user: await this.user(client, id!), rideRequestId: null, groupId: null,
+      user: await this.user(client, id!), ...references,
     }));
   }
 }

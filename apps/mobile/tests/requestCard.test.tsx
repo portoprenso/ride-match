@@ -171,7 +171,7 @@ describe('request card pieces', () => {
     expect(describeCancelError(new DataError('network', 'no answer'))).toMatchObject({ retry: true });
   });
 
-  it('runs signed-in calls through the session’s renewal, and public reads as they are', async () => {
+  it('renews signed-in calls and explicitly authenticated public reads', async () => {
     const base = createUnavailableDataSource('stand-in');
     const getOwnRequest = jest.fn().mockResolvedValue(null);
     const getNearby = jest.fn().mockResolvedValue({ items: [], truncated: false, previews: [] });
@@ -183,7 +183,7 @@ describe('request card pieces', () => {
     await renewed.rides.getOwnRequest();
     expect(runAuthenticated).toHaveBeenCalledTimes(1);
     await renewed.rides.getNearby({} as never);
-    expect(runAuthenticated).toHaveBeenCalledTimes(1);
+    expect(runAuthenticated).toHaveBeenCalledTimes(2);
     expect(getNearby).toHaveBeenCalledTimes(1);
   });
 });

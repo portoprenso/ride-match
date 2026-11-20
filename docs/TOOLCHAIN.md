@@ -128,6 +128,8 @@ Registry engines/peers were checked before install: Nest 12 requires supported N
 
 BE-002 adds no dependencies or version changes. It uses Node crypto HMAC/random bytes/timing-safe comparison, the existing pg/Zod/TypeScript and built-in test runner. After an earlier filtered installation left a mobile ESLint dependency unlinked, `pnpm install --frozen-lockfile --offline` restored all workspace links without changing pins. Native/network mobile setup is not inferred from this install.
 
+BE-003 adds no dependency/version/env changes. PostgreSQL 18 partial unique indexes, bounded seats, deferred group/member validation and transaction advisory lock 724003 implement the local domain constraints; no Redis/ORM/locking package. [PostgreSQL constraints](https://www.postgresql.org/docs/18/ddl-constraints.html), [deferred constraints](https://www.postgresql.org/docs/18/sql-set-constraints.html). Existing TypeScript test helper exercises the actual mobile adapter against two local API instances.
+
 ### Root (`devDependencies`, MONO-001-B)
 
 | Package | Version | Purpose | Compatibility evidence |

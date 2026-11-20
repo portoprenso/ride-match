@@ -12,6 +12,8 @@ import { DataSourceUnavailableError } from './errors';
 export type ComposedDataSource = {
   dataSource: AppDataSource;
   dispose: () => void;
+  /** Clears sensitive transport intent snapshots when the app signs out. */
+  clearPrivateState?: () => void;
   /** The mock source's demo controls in development and preview builds; otherwise `null`. */
   devControls: DevControls | null;
   /** How to sign in to a synthetic source, shown by the sign-in screens; `null` for a real one. */

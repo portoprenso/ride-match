@@ -33,7 +33,7 @@ export type DraftOrigin = {
  * guessed or improved, and an approximate one never qualifies.
  *
  * The fix's time is sent as the device took it. The source checks its age on its own clock
- * (`LOCATION_STALE`); shifting by a measured clock offset waits for the HTTP adapter.
+ * (`LOCATION_STALE`); the HTTP adapter translates capture time once per stable create intent.
  */
 export function resolveOrigin(pickup: ConfirmedPickup | null, location: LocationStatus): DraftOrigin | null {
   if (pickup !== null) return { input: pickup.location, description: describePickup(pickup) };

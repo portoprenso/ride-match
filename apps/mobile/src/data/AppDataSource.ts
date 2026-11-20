@@ -197,6 +197,8 @@ export type EventOperations = {
  * `useDataSource()` and never import an implementation, fixtures or simulator internals.
  */
 export type AppDataSource = {
+  /** Latest measured API minus device clock offset; absent for mocks and unknown before a response. */
+  serverTimeOffset?: () => number | null;
   auth: AuthOperations;
   places: PlaceOperations;
   rides: RideOperations;

@@ -168,6 +168,9 @@ export function composeAppDataSource({
       beforeSignOut: () => registration?.removeBeforeSignOut() ?? Promise.resolve(),
     });
     session = built;
+    const stopTransportCleanup = built.subscribe(() => {
+      if (built.getState().status === 'signed-out') composed.clearPrivateState?.();
+    });
     // Features get the data source whose signed-in calls renew an expired access token once.
     const dataSource = withSessionRenewal(composed.dataSource, () => session);
     const pendingIntents = createPendingIntentGate(built);
@@ -218,6 +221,7 @@ export function composeAppDataSource({
         queryClient.clear();
         pendingIntents.dispose();
         built.dispose();
+        stopTransportCleanup();
         composed.dispose();
       },
     };

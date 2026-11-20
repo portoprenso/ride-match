@@ -18,7 +18,7 @@ Profile editing (`PATCH /me`) is deferred: no input schema, data-source operatio
 
 ## Local backend and HTTP adapter (BE-002)
 
-Five endpoints above now persist in PostgreSQL; `/me` projects the persisted user with null request/group references until those domains exist. Inputs/results use unchanged strict schemas. Requests are `no-store`; raw error bodies and request IDs follow the overview. HTTP adapter/session/SecureStore restoration is implemented behind `AppDataSource`; sign-in/refresh/logout never auto-retry. Optional-auth places also use shared session renewal.
+Five endpoints above persist in PostgreSQL; since BE-003 `/me` projects the persisted user with the actual latest request/live-group references after catching up deadlines. Inputs/results use unchanged strict schemas. Requests are `no-store`; raw error bodies and request IDs follow the overview. HTTP adapter/session/SecureStore restoration is implemented behind `AppDataSource`; sign-in/refresh/logout never auto-retry. Optional-auth places also use shared session renewal.
 
 Local provider: `API_SMS_PROVIDER=development`, non-production only, fiction numbers `+447700900000`–`+447700900999`, code `123456`, no SMS. Disabled delivery returns 503. `API_AUTH_SECRET` keys phone/code/credential/rate digests; no plaintext credentials/phone are persisted. OTPs expire after 5 min, resend after 30 s, fifth wrong attempt locks the challenge; malformed input does not consume an attempt. Phone row locks serialize replacement/verification; failures preserve attempt writes and confirmed delivery is required before use.
 

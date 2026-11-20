@@ -33,7 +33,7 @@ test('real PostgreSQL migration lifecycle and readiness', async () => {
     url.pathname = `/${databaseName}`;
     pool = createPool(url.href, 'migration');
     const results = await Promise.all([runMigrations(pool), runMigrations(pool)]);
-    assert.deepEqual(results.sort(), [0, 2], 'concurrent runners apply initial migration exactly once');
+    assert.deepEqual(results.sort(), [0, 3], 'concurrent runners apply initial migration exactly once');
     assert.equal(await runMigrations(pool), 0);
     assert.equal((await pool.query('SELECT name FROM schema_migrations')).rows[0].name, '0001_backend_foundation.sql');
     assert.equal((await pool.query("SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'ride_match'")).rowCount, 1);
@@ -42,11 +42,11 @@ test('real PostgreSQL migration lifecycle and readiness', async () => {
     pool = createPool(url.href, 'migration');
     assert.equal(await runMigrations(pool), 0, 'journal survives reconnect/restart');
     for (const name of await readdir(new URL('../migrations/', import.meta.url))) await copyFile(new URL(`../migrations/${name}`, import.meta.url), join(directory, name));
-    await writeFile(join(directory, '0003_probe.sql'), 'CREATE TABLE ride_match.rollback_probe (id integer); SELECT missing_column;');
+    await writeFile(join(directory, '0004_probe.sql'), 'CREATE TABLE ride_match.rollback_probe (id integer); SELECT missing_column;');
     await assert.rejects(runMigrations(pool, migrationDirectory));
     assert.equal((await pool.query("SELECT to_regclass('ride_match.rollback_probe') AS name")).rows[0].name, null);
-    assert.equal((await pool.query('SELECT count(*)::int AS count FROM schema_migrations')).rows[0].count, 2);
-    await writeFile(join(directory, '0003_probe.sql'), 'CREATE TABLE ride_match.rollback_probe (id integer);');
+    assert.equal((await pool.query('SELECT count(*)::int AS count FROM schema_migrations')).rows[0].count, 3);
+    await writeFile(join(directory, '0004_probe.sql'), 'CREATE TABLE ride_match.rollback_probe (id integer);');
     assert.equal(await runMigrations(pool, migrationDirectory), 1);
     await writeFile(join(directory, '0001_backend_foundation.sql'), '-- changed applied file');
     await assert.rejects(runMigrations(pool, migrationDirectory), /history differs/);

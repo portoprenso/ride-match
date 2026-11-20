@@ -26,3 +26,8 @@ export function useDataSource(): AppDataSource {
   if (dataSource === null) throw new Error('useDataSource() must be called inside a DataSourceProvider.');
   return dataSource;
 }
+
+/** Optional presentation offset; standalone UI/mocks retain device time without requiring a provider. */
+export function useSourceTimeOffset(): number {
+  return use(DataSourceContext)?.serverTimeOffset?.() ?? 0;
+}
