@@ -183,17 +183,26 @@ export class AuthService {
     });
   }
 
-  /** Missing optional auth is anonymous; an explicitly invalid/expired bearer never falls back. */
+  /** Missing optional auth is anonymous; explicit invalid credentials never fall back. */
   async authenticate(authorization: string | undefined, optional = false): Promise<string | null> {
+    return (await this.authenticateSession(authorization, optional))?.userId ?? null;
+  }
+
+  /**
+   * Server-only identity/session boundary for devices and socket delivery. With a client,
+   * takes a session SHARE lock until the caller commits, serializing delivery/registration
+   * with logout and refresh-family revocation. Never acquire the domain lock after this lock.
+   */
+  async authenticateSession(authorization: string | undefined, optional = false, client?: pg.PoolClient) {
     if (authorization === undefined && optional) return null;
     const match = authorization?.match(/^Bearer ([A-Za-z0-9._~+/-]+=*)$/i);
     if (!match || !SessionTokenSchema.safeParse(match[1]).success) throw fail('UNAUTHENTICATED', 401, 'Authentication required.');
-    const row = (await this.database.pool.query<Credential>(`SELECT s.*,c.expires_at,c.consumed FROM ride_match.credentials c
-      JOIN ride_match.sessions s ON s.id=c.session_id WHERE c.verifier=$1 AND c.kind='access'`, [this.digest('access', match[1]!)] )).rows[0];
+    const row = (await (client ?? this.database.pool).query<Credential>(`SELECT s.*,c.expires_at,c.consumed FROM ride_match.credentials c
+      JOIN ride_match.sessions s ON s.id=c.session_id WHERE c.verifier=$1 AND c.kind='access' ${client ? 'FOR SHARE OF s' : ''}`, [this.digest('access', match[1]!)] )).rows[0];
     const now = this.clock.now().getTime();
     if (!row || row.revoked || row.refresh_expires_at.getTime() <= now) throw fail('UNAUTHENTICATED', 401, 'Authentication required.');
     if (row.expires_at.getTime() <= now) throw fail('SESSION_EXPIRED', 401, 'Session expired.');
-    return row.user_id;
+    return { userId: row.user_id, sessionId: row.id, expiresAt: row.expires_at };
   }
 
   /** Reads current canonical domain references after catching up delayed expiry. */

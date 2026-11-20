@@ -14,7 +14,7 @@ export async function closeGroup(store: RideStore, group: GroupRow, status: 'com
     closed_at=$4,history_expires_at=$5,version=version+1 WHERE id=$1 RETURNING *`,
   [group.id, status, reason, closedAt, new Date(closedAt.getTime() + 3600000)])).rows[0]!;
   for (const row of rows) await store.intent('ride.changed', row.id, row.version, now);
-  await store.intent('group.changed', group.id, updated.version, now);
+  await store.intent('group.changed', group.id, updated.version, now, { reason: status });
   await store.intent('nearby.removed.group', group.id, updated.version, now);
   return updated;
 }
@@ -35,7 +35,7 @@ export async function reconcilePoint(store: RideStore, group: GroupRow, now: Dat
   await store.client.query('DELETE FROM ride_match.group_meeting_points WHERE group_id=$1', [group.id]);
   if (chosen) await store.client.query('INSERT INTO ride_match.group_meeting_points VALUES ($1,$2,$3,$4,$5,$6)', [group.id, randomUUID(), chosen.id, chosen.latitude, chosen.longitude, chosen.label]);
   const updated = (await store.client.query<GroupRow>(`UPDATE ride_match.ride_groups SET status='forming',version=version+1 WHERE id=$1 RETURNING *`, [group.id])).rows[0]!;
-  await store.intent('group.changed', group.id, updated.version, now);
+  await store.intent('group.changed', group.id, updated.version, now, { reason: 'meeting_point_changed' });
   await store.intent('nearby.upserted.group', group.id, updated.version, now);
 }
 
@@ -51,6 +51,11 @@ export async function sweep(store: RideStore, now: Date): Promise<void> {
   for (const group of groups) {
     if (group.expires_at <= now) await closeGroup(store, group, 'cancelled', 'expired', now, group.expires_at);
     else await reconcilePoint(store, group, now);
+  }
+  const historyExpired = (await store.client.query<{ id: string; version: number }>(`UPDATE ride_match.ride_groups SET history_revoked=true
+    WHERE history_expires_at <= $1 AND NOT history_revoked RETURNING id,version`, [now])).rows;
+  for (const group of historyExpired) for (const member of await store.members(group.id)) {
+    await store.intent('access.revoked', member.id, group.version, now, { reason: 'history_expired' });
   }
   await store.client.query(`UPDATE ride_match.operation_receipts r SET result=NULL
     FROM ride_match.group_memberships m JOIN ride_match.ride_groups g ON g.id=m.group_id

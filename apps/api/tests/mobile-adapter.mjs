@@ -10,7 +10,7 @@ export async function loadMobileAdapter() {
   try {
     await writeFile(join(directory, 'package.json'), '{"type":"module"}');
     await symlink(fileURLToPath(new URL('../node_modules/', import.meta.url)), join(directory, 'node_modules'), 'dir');
-    for (const file of ['data/api/createHttpDataSource', 'data/api/httpClient', 'data/errors', 'data/createUnavailableDataSource', 'features/auth/createSessionController', 'bootstrap/withSessionRenewal']) {
+    for (const file of ['data/api/createHttpDataSource', 'data/api/realtime', 'data/api/httpClient', 'data/errors', 'data/createUnavailableDataSource', 'features/auth/createSessionController', 'bootstrap/withSessionRenewal']) {
       const source = await readFile(new URL(`../../mobile/src/${file}.ts`, import.meta.url), 'utf8');
       const output = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2023, module: ts.ModuleKind.ESNext, verbatimModuleSyntax: true } }).outputText
         .replace(/(from\s+['"])(\.[^'"]+)(['"])/g, '$1$2.js$3');

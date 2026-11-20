@@ -1,6 +1,7 @@
 import {
   ChatHistoryQueryInputSchema, ChatMessagePageSchema, SendChatMessageInputSchema, ChatMessageSchema,
   ReportUserInputSchema, ReportReceiptSchema, BlockUserInputSchema, BlockUserResultSchema, BlockListQueryInputSchema, BlockListPageSchema,
+  InstallationIdSchema, RegisterPushDeviceInputSchema, PushDeviceReceiptSchema,
   apiResponseSchema, AuthSessionSchema, CurrentUserSchema, OtpChallengeSchema, SessionCredentialsSchema,
   CreateOtpChallengeInputSchema, VerifyOtpInputSchema, RefreshSessionInputSchema, LogoutInputSchema,
   SearchPlacesInputSchema, PlaceSearchResultsSchema,
@@ -13,6 +14,7 @@ import type { AccessTokenSource } from '../AppDataSource';
 import type { ComposedDataSource } from '../createDataSource';
 import { createUnavailableDataSource } from '../createUnavailableDataSource';
 import { DataError } from '../errors';
+import { createRealtime } from './realtime';
 import { createHttpClient } from './httpClient';
 
 /** Validates before transport without retaining Zod messages/inputs in an error. */
@@ -22,10 +24,10 @@ function input<T>(schema: { parse(value: unknown): T }, value: unknown): T {
 }
 
 /**
- * BE-004 adapter: auth, places, rides, groups, chat and safety use HTTP; unfinished namespaces explicitly fail.
+ * BE-005 adapter: all reviewed REST operations use HTTP, with authorized Socket.IO events.
  * Never imports mocks. Caller token is read at request time; refresh/logout tokens
  * appear only in their JSON body. HTTP availability is separate from realtime,
- * whose subscribe operation remains unavailable until BE-005.
+ * whose connection generations are owned by the realtime port.
  */
 export function createHttpDataSource(options: {
   baseUrl: string;
@@ -33,16 +35,21 @@ export function createHttpDataSource(options: {
   fetch?: typeof fetch;
   now?: () => number;
   timeoutMs?: number;
+  /** HTTP-only test harnesses may disable realtime; application composition always enables it. */
+  realtime?: boolean;
 }): ComposedDataSource & { serverNow(): number | null } {
   const http = createHttpClient(options);
+  const realtime = options.realtime === false ? null : createRealtime(options);
   const unavailable = createUnavailableDataSource('This API operation is not implemented yet.');
   // Preserve the translated capture time for a stable create intent even after a new
   // clock sample or a lost response. Never log these sensitive in-memory snapshots.
   const createIntents = new Map<string, { fingerprint: string; wire: CreateRideRequestInput }>();
   const pathId = (id: string) => encodeURIComponent(input(IdSchema, id));
   return {
-    clearPrivateState: () => createIntents.clear(),
-    dispose: () => { createIntents.clear(); http.dispose(); }, devControls: null, demoSignIn: null, serverNow: http.serverNow,
+    clearPrivateState: () => { createIntents.clear(); realtime?.identityChanged(); },
+    identityChanged: () => realtime?.identityChanged(),
+    setSessionRenewal: (callback) => realtime?.setSessionRenewal(callback),
+    dispose: () => { createIntents.clear(); realtime?.dispose(); http.dispose(); }, devControls: null, demoSignIn: null, serverNow: http.serverNow,
     dataSource: {
       ...unavailable,
       serverTimeOffset: http.serverTimeOffset,
@@ -164,7 +171,11 @@ export function createHttpDataSource(options: {
           return page;
         },
       },
-      events: { ...unavailable.events, watchConnection: http.watchConnection },
+      devices: {
+        register: (id,value) => http.request(`me/push-devices/${input(InstallationIdSchema,id)}`,apiResponseSchema(PushDeviceReceiptSchema),{method:'PUT',authenticated:true,body:input(RegisterPushDeviceInputSchema,value)}),
+        remove: (id) => http.request<void>(`me/push-devices/${input(InstallationIdSchema,id)}`,null,{method:'DELETE',authenticated:true,noContent:true}),
+      },
+      events: realtime?.events ?? { ...unavailable.events, watchConnection: http.watchConnection },
     },
   };
 }

@@ -1,3 +1,8 @@
+import { DevicesService } from './devices/devices.service.js';
+import { DevicesController } from './devices/devices.controller.js';
+import { PushService } from './push/push.service.js';
+import { PUSH_PROVIDER,createPushProvider } from './push/provider.js';
+import { RealtimeService } from './realtime/realtime.service.js';
 import { ChatService } from './chat/chat.service.js';
 import { ChatController } from './chat/chat.controller.js';
 import { SafetyService } from './safety/safety.service.js';
@@ -27,10 +32,11 @@ export class AppModule {
   static register(config: ApiConfig, dependencies: BackendDependencies = {}): DynamicModule {
     return {
       module: AppModule,
-      providers: [{ provide: API_CONFIG, useValue: config }, DatabaseService, AuthService, PlacesService, RequestRateGuard, RideDomain, RideRequestsService, RideGroupsService, DiscoveryService, ChatService, SafetyService,
+      providers: [{ provide: API_CONFIG, useValue: config }, DatabaseService, AuthService, PlacesService, RequestRateGuard, RideDomain, RideRequestsService, RideGroupsService, DiscoveryService, ChatService, SafetyService, DevicesService, PushService, RealtimeService,
+        {provide:PUSH_PROVIDER,useValue:dependencies.pushProvider ?? createPushProvider(config)},
         { provide: CLOCK, useValue: dependencies.clock ?? systemClock },
         { provide: OTP_PROVIDER, useValue: dependencies.otpProvider ?? createOtpProvider(config) }],
-      controllers: [HealthController, AuthController, CurrentUserController, PlacesController, RidesController, OwnRideController, GroupsController, ChatController, BlocksController, ReportsController],
+      controllers: [HealthController, AuthController, CurrentUserController, PlacesController, RidesController, OwnRideController, GroupsController, ChatController, BlocksController, ReportsController, DevicesController],
     };
   }
 }

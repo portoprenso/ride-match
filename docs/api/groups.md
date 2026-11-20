@@ -253,3 +253,5 @@ Mock values, to revisit before a backend exists: `SAFETY_POLICY` holds the 500-c
 ## Verification
 
 Test atomic solo formation, canonical group resolution under simultaneous joins, capacity/idempotency, coordinator transfer, ready/reopen, leave-to-forming/cancelled, expiry, history retention, unauthorized reads/sends, chat pagination/retry/deduplication, block-and-leave, and report failure/receipt. Verify public group previews never contain member-only fields.
+
+BE-005 now also projects authorized group/chat/access events through Socket.IO. Delivery checks the current session and original membership epoch; history expiry ends group scopes. Private message bodies never enter outbox records. Reconnect resubscribes then catches up over HTTP; see [realtime protocol](realtime.md#implemented-local-transport-be-005).

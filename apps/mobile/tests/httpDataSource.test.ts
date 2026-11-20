@@ -9,7 +9,7 @@ const response = (body: unknown, status = 200) => ({ status, ok: status >= 200 &
 const baseUrl = 'http://127.0.0.1:3000/v1';
 
 function setup(send: jest.Mock = jest.fn()) {
-  const adapter = createHttpDataSource({ baseUrl, accessToken: () => null, fetch: send });
+  const adapter = createHttpDataSource({ realtime:false, baseUrl, accessToken: () => null, fetch: send });
   return { adapter, source: adapter.dataSource, send };
 }
 
@@ -17,7 +17,7 @@ describe('BE-002 HTTP adapter', () => {
   it('encodes only dotted GET fields, preserves anonymous search and samples server time', async () => {
     let time = Date.parse('2026-11-20T10:00:00.000Z');
     const send = jest.fn(async () => { time += 200; return response(empty); });
-    const adapter = createHttpDataSource({ baseUrl, accessToken: () => null, fetch: send, now: () => time });
+    const adapter = createHttpDataSource({ realtime:false, baseUrl, accessToken: () => null, fetch: send, now: () => time });
     expect(adapter.serverNow()).toBeNull();
     await expect(adapter.dataSource.places.search({ area, limit: 2, query: 'East & West' })).resolves.toEqual([]);
     const [url, options] = send.mock.calls[0] as unknown as [string, RequestInit];
@@ -35,7 +35,7 @@ describe('BE-002 HTTP adapter', () => {
   it('reads the current bearer each time and never puts refresh credentials in URLs/headers', async () => {
     let token: string | null = null;
     const send = jest.fn(async () => response({ code: 'UNAUTHENTICATED', message: 'Authentication required.', requestId: 'test-request' }, 401));
-    const adapter = createHttpDataSource({ baseUrl, accessToken: () => token, fetch: send });
+    const adapter = createHttpDataSource({ realtime:false, baseUrl, accessToken: () => token, fetch: send });
     for (const value of ['synthetic-access-first', 'synthetic-access-second']) {
       token = value;
       await expect(adapter.dataSource.auth.getCurrentUser()).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
@@ -55,7 +55,6 @@ describe('BE-002 HTTP adapter', () => {
 
   it('rejects unsupported operations locally, without a request or mock fallback', async () => {
     const { adapter, source, send } = setup();
-    await expect(source.devices.remove('00000000-0000-4000-8000-000000000001')).rejects.toMatchObject({ kind: 'unavailable' });
     await expect(source.events.subscribe({ kind: 'user' }, () => {})).rejects.toMatchObject({ kind: 'unavailable' });
     expect(send).not.toHaveBeenCalled();
     expect(adapter.devControls).toBeNull(); expect(adapter.demoSignIn).toBeNull();

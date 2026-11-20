@@ -151,3 +151,18 @@ describe('push-device registration', () => {
     expect(devices.register).not.toHaveBeenCalled();
   });
 });
+
+it('retries a failed permission withdrawal after token/foreground invalidation',async()=>{
+  const fake=fakeSession(signedIn('synthetic-user'));
+  let state={status:'known' as const,permission:'granted' as 'granted'|'denied',canAskAgain:true};
+  let changed:()=>void=()=>undefined;let tokenChanged:()=>void=()=>undefined;
+  const permission={getState:()=>state,subscribe:(listener:()=>void)=>{changed=listener;return()=>undefined;}} as unknown as NotificationPermissionController;
+  const register=jest.fn().mockResolvedValueOnce({installationId:INSTALLATION,registeredAt:'2026-11-20T10:00:00Z'})
+    .mockRejectedValueOnce(new Error('Synthetic failure')).mockResolvedValue({installationId:INSTALLATION,registeredAt:'2026-11-20T10:00:01Z'});
+  const registration=syncPushRegistration({session:fake.session,permission,devices:{register,remove:jest.fn()} as DeviceOperations,
+    installationId:async()=>INSTALLATION,pushToken:async()=> 'ExpoPushToken[synthetic-real-token]',platform:'ios',
+    watchTokenChanges:(listener)=>{tokenChanged=listener;return()=>undefined;}});
+  await flush();state={...state,permission:'denied'};changed();await flush();tokenChanged();await flush();
+  expect(register).toHaveBeenCalledTimes(3);expect(register).toHaveBeenLastCalledWith(INSTALLATION,{pushToken:'ExpoPushToken[synthetic-real-token]',platform:'ios',permission:'denied'});
+  registration.dispose();
+});

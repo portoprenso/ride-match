@@ -1,3 +1,4 @@
+import { resetDomain } from './reset-domain.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import process from 'node:process';
@@ -10,7 +11,8 @@ import { createPool } from '../dist/database/pool.js';
 import { runMigrations } from '../dist/database/migrations.js';
 import { loadMobileAdapter } from './mobile-adapter.mjs';
 
-const { fetch } = globalThis;
+// Fixture-only idle-connection isolation across explicit server restarts; no mutation retries.
+const fetch = (url,options) => globalThis.fetch(url,{...options,headers:{...options?.headers,Connection:'close'}});
 const viewport = { southWest: { latitude: 42.80, longitude: 74.50 }, northEast: { latitude: 42.95, longitude: 74.70 } };
 const destination = 'dev_central_square';
 const rejected = (promise, code) => assert.rejects(promise, (error) => error.code === code);
@@ -33,7 +35,7 @@ test('BE-003 two-instance PostgreSQL + real mobile adapter journeys', async (t) 
   let isolated;
   async function reset() {
     time += 60000;
-    await database.query(`TRUNCATE ride_match.current_requests,ride_match.ride_origins,ride_match.operation_receipts,
+    await resetDomain(database,`TRUNCATE ride_match.current_requests,ride_match.ride_origins,ride_match.operation_receipts,
       ride_match.domain_outbox,ride_match.match_sets,ride_match.group_meeting_points,ride_match.group_memberships,
       ride_match.ride_requests,ride_match.ride_groups CASCADE`);
   }
@@ -70,7 +72,7 @@ test('BE-003 two-instance PostgreSQL + real mobile adapter journeys', async (t) 
     url.pathname = `/${name}`;
     isolated = { ...config, DATABASE_URL: url.href, API_LOG_LEVEL: 'error' };
     database = createPool(url.href, 'migration');
-    assert.equal(await runMigrations(database), 4);
+    assert.equal(await runMigrations(database), 5);
     assert.equal(await runMigrations(database), 0);
     first = await createApplication(isolated, { clock }); await first.listen(0, '127.0.0.1'); base = await first.getUrl();
     second = await createApplication(isolated, { clock }); await second.listen(0, '127.0.0.1');

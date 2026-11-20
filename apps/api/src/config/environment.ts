@@ -18,7 +18,9 @@ const environmentSchema = z.object({
   API_LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']),
   API_AUTH_SECRET: z.string().min(32).max(256),
   API_SMS_PROVIDER: z.enum(['development', 'disabled']),
-}).refine((config) => config.API_APP_ENV !== 'production' || config.API_SMS_PROVIDER !== 'development', { path: ['API_SMS_PROVIDER'] });
+  API_PUSH_PROVIDER: z.enum(['disabled','expo']).default('disabled'),
+  EXPO_PUSH_ACCESS_TOKEN: z.string().min(1).max(4096).regex(/^[!-~]+$/).optional(),
+}).refine((config) => config.API_APP_ENV !== 'production' || config.API_SMS_PROVIDER !== 'development', { path: ['API_SMS_PROVIDER'] }).refine((config) => config.API_PUSH_PROVIDER !== 'expo' || !!config.EXPO_PUSH_ACCESS_TOKEN, { path:['EXPO_PUSH_ACCESS_TOKEN'] });
 
 export type ApiConfig = z.infer<typeof environmentSchema>;
 export const API_CONFIG = Symbol('API_CONFIG');

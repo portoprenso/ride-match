@@ -1,3 +1,4 @@
+import { resetDomain } from './reset-domain.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import process from 'node:process';
@@ -28,7 +29,7 @@ test('BE-004 two-instance chat/safety persistence, privacy, races and purge', as
   const actors = [];
   async function reset() {
     time += 60000;
-    await database.query(`TRUNCATE ride_match.current_requests,ride_match.ride_origins,ride_match.operation_receipts,
+    await resetDomain(database,`TRUNCATE ride_match.current_requests,ride_match.ride_origins,ride_match.operation_receipts,
       ride_match.domain_outbox,ride_match.match_sets,ride_match.group_meeting_points,ride_match.group_memberships,
       ride_match.ride_requests,ride_match.ride_groups,ride_match.user_blocks,ride_match.rate_limits CASCADE`);
   }
@@ -55,7 +56,7 @@ test('BE-004 two-instance chat/safety persistence, privacy, races and purge', as
     await admin.query(`CREATE DATABASE ${name}`); created = true; url.pathname = `/${name}`;
     isolated = { ...config, DATABASE_URL: url.href, API_LOG_LEVEL: 'error' };
     database = createPool(url.href, 'migration');
-    assert.equal(await runMigrations(database), 4); assert.equal(await runMigrations(database), 0);
+    assert.equal(await runMigrations(database), 5); assert.equal(await runMigrations(database), 0);
     first = await createApplication(isolated, { clock }); await first.listen(0, '127.0.0.1'); base = await first.getUrl();
     second = await createApplication(isolated, { clock }); await second.listen(0, '127.0.0.1');
     mobile = await loadMobileAdapter();

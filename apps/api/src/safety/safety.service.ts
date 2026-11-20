@@ -29,6 +29,7 @@ export class SafetyService {
         const shared = (await store.client.query<{ group_id: string }>(`SELECT a.group_id FROM ride_match.group_memberships a
           JOIN ride_match.group_memberships b ON b.group_id=a.group_id AND b.live AND b.user_id=$2 WHERE a.live AND a.user_id=$1`, [actor, target])).rows[0];
         const leftGroup = shared ? await leaveLiveGroup(store, actor, shared.group_id, now) : null;
+        await this.visibility(store, actor, target, now);
         await store.intent('blocks.changed', actor, 1, now);
         return { result: { blockedUser: { user: await store.user(target), blockedAt: now.toISOString() }, leftGroup } };
       } }));
@@ -37,7 +38,7 @@ export class SafetyService {
   async unblock(actor: string, target: string): Promise<void> {
     return this.domain.run(async (store, now) => {
       const removed = await store.client.query('DELETE FROM ride_match.user_blocks WHERE actor_id=$1 AND target_id::text=$2', [actor, target]);
-      if (removed.rowCount) await store.intent('blocks.changed', actor, 1, now);
+      if (removed.rowCount) { await this.visibility(store, actor, target, now); await store.intent('blocks.changed', actor, 1, now); }
     });
   }
   async list(actor: string, input: BlockListQueryInput) {
@@ -80,6 +81,15 @@ export class SafetyService {
         await store.intent('report.received', id, 1, now);
         return { result: { id, receivedAt: now.toISOString() } };
       } }));
+  }
+  /** Visibility transitions need newer public versions so an unblock supersedes cached tombstones. */
+  private async visibility(store: RideStore, actor: string, target: string, now: Date): Promise<void> {
+    const rides = (await store.client.query<{ id: string; version: number }>(`UPDATE ride_match.ride_requests SET version=version+1
+      WHERE user_id::text=ANY($1::text[]) AND status='active' RETURNING id,version`, [[actor,target]])).rows;
+    for (const row of rides) { await store.intent('nearby.upserted.ride',row.id,row.version,now); await store.intent('ride.changed',row.id,row.version,now); }
+    const groups = (await store.client.query<{ id: string; version: number }>(`UPDATE ride_match.ride_groups SET public_version=public_version+1
+      WHERE id IN (SELECT group_id FROM ride_match.group_memberships WHERE user_id::text=ANY($1::text[]) AND live) RETURNING id,public_version AS version`, [[actor,target]])).rows;
+    for (const row of groups) await store.intent('nearby.upserted.group',row.id,row.version,now);
   }
   private async target(store: RideStore, actor: string, target: string): Promise<void> {
     if (actor === target) throw domainError('VALIDATION_FAILED', 422, 'Choose another rider.');

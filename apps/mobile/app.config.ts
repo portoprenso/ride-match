@@ -5,6 +5,9 @@ import type { ExpoConfig } from 'expo/config';
 // CLI loads), never from a tracked file. iOS uses Apple Maps and needs no key.
 const googleMapsAndroidApiKey = process.env.GOOGLE_MAPS_ANDROID_API_KEY?.trim() || undefined;
 
+const easProjectId = process.env.EAS_PROJECT_ID?.trim();
+if (easProjectId && !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(easProjectId)) throw new Error('Invalid EAS_PROJECT_ID');
+
 // Provisional local development identity. These are not registered release identifiers.
 const config: ExpoConfig = {
   name: 'Ride Match',
@@ -21,11 +24,13 @@ const config: ExpoConfig = {
     config: googleMapsAndroidApiKey ? { googleMaps: { apiKey: googleMapsAndroidApiKey } } : undefined,
   },
   extra: {
+    ...(easProjectId ? { eas: { projectId: easProjectId } } : {}),
     // Without a key, Google Maps stops the Android app as soon as a map appears, so the app reads
     // this flag (never the key) and shows a notice instead (src/config/isMapProviderConfigured.ts).
     googleMapsAndroidConfigured: googleMapsAndroidApiKey !== undefined,
   },
   plugins: [
+    ...(easProjectId ? ['expo-notifications'] : []),
     // Screens have light backgrounds, so the status bar needs dark icons. Without a style,
     // Android's edge-to-edge status bar keeps white icons and they disappear.
     ['expo-status-bar', { style: 'dark' }],

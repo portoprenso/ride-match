@@ -169,3 +169,5 @@ Expired/removed targets must not become successful actions just because authenti
 ## Verification
 
 Verify anonymous browsing, auth cancellation, preserved drafts, invalid/expired codes, resend throttling, one concurrent refresh, failed-refresh cleanup, logout, and stale target revalidation. Test public schemas independently of mock internal state.
+
+BE-005 uses the same opaque access credentials in Socket.IO handshake auth, never query strings. Session validation/SHARE locks protect socket delivery and device registration against logout/refresh-family revocation. Device associations bind the registering session/revision; old logout/removal cannot delete a newer reassigned association. Access expiry triggers the existing shared mobile session renewal and a new socket generation, not an anonymous fallback. See [realtime/device policies](../BACKEND_HANDOFF.md#be-005-local-realtimedevicespush).

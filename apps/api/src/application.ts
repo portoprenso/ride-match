@@ -1,3 +1,4 @@
+import { RealtimeService } from './realtime/realtime.service.js';
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import type { INestApplication } from '@nestjs/common';
@@ -42,5 +43,6 @@ export async function createApplication(config: ApiConfig, dependencies: Backend
     abortOnError: false,
   });
   configureHttp(app, config, dependencies.clock ?? systemClock);
+  app.get(RealtimeService).attach(app.getHttpServer(), dependencies.realtimePollMs);
   return app;
 }

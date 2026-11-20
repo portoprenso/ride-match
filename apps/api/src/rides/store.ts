@@ -15,7 +15,7 @@ export type GroupRow = {
   id: string; status: GroupStatus; coordinator_id: string; destination: PlaceDto;
   public_latitude: number; public_longitude: number; departure_at: Date; created_at: Date;
   expires_at: Date; closed_at: Date | null; history_expires_at: Date | null;
-  closure_reason: GroupClosureReason | null; version: number;
+  closure_reason: GroupClosureReason | null; version: number; public_version: number;
 };
 export type MemberRow = { id: string; group_id: string; user_id: string; request_id: string; seat: number; join_order: number; joined_at: Date; left_at: Date | null; live: boolean };
 export const live = (group: GroupRow) => group.status === 'forming' || group.status === 'ready';
@@ -63,7 +63,7 @@ export class RideStore {
   }
   async preview(row: GroupRow) {
     return GroupPreviewSchema.parse({ id: row.id, status: row.status, memberCount: (await this.members(row.id)).length,
-      capacity: 4, publicOrigin: this.origin(row), destination: row.destination, departureAt: row.departure_at.toISOString(), expiresAt: row.expires_at.toISOString(), version: row.version });
+      capacity: 4, publicOrigin: this.origin(row), destination: row.destination, departureAt: row.departure_at.toISOString(), expiresAt: row.expires_at.toISOString(), version: row.public_version });
   }
   async privateGroup(row: GroupRow) {
     const members: GroupMemberDto[] = [];
@@ -84,8 +84,8 @@ export class RideStore {
     if (group.history_expires_at && group.history_expires_at <= now) throw domainError('HISTORY_EXPIRED', 410, 'Group history expired.');
     return { group, member };
   }
-  /** Only resource references enter the outbox. Delivery/authorized event projection belongs to BE-005. */
-  async intent(kind: string, id: string, version: number, now: Date): Promise<void> {
-    await this.client.query('INSERT INTO ride_match.domain_outbox VALUES ($1,$2,$3,$4,$5)', [randomUUID(), kind, id, version, now]);
+  /** Only resource references enter the outbox. Delivery/authorized projection lives in the realtime boundary. */
+  async intent(kind: string, id: string, version: number, now: Date, details: { reason?: string; actorId?: string; added?: boolean; target?: {kind: 'ride' | 'group'; id:string} | null } = {}): Promise<void> {
+    await this.client.query('INSERT INTO ride_match.domain_outbox (id,kind,resource_id,version,occurred_at,details) VALUES ($1,$2,$3,$4,$5,$6)', [randomUUID(), kind, id, version, now, JSON.stringify(details)]);
   }
 }

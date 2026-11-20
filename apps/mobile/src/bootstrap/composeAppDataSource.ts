@@ -25,6 +25,7 @@ import {
   createNotificationPermissionController,
   type NotificationPermissionController,
 } from '../platform/notifications/createNotificationPermissionController';
+import { createRemotePush } from '../platform/notifications/remotePush';
 import { createInstallationIdSource } from '../platform/notifications/installationId';
 import { createLocalNotifications, type LocalNotifications } from '../platform/notifications/localNotifications';
 import { createSecureCredentialStore, type CredentialStore } from '../platform/secureStorage/credentialStore';
@@ -169,10 +170,12 @@ export function composeAppDataSource({
     });
     session = built;
     const stopTransportCleanup = built.subscribe(() => {
+      composed.identityChanged?.();
       if (built.getState().status === 'signed-out') composed.clearPrivateState?.();
     });
     // Features get the data source whose signed-in calls renew an expired access token once.
     const dataSource = withSessionRenewal(composed.dataSource, () => session);
+    composed.setSessionRenewal?.(async () => { await dataSource.auth.getCurrentUser(); });
     const pendingIntents = createPendingIntentGate(built);
     const queryClient = createQueryClient({ httpOnly: config.dataSource.kind === 'api' });
     const sync = createSyncCoordinator({
@@ -184,15 +187,17 @@ export function composeAppDataSource({
     // Local notifications belong to the rider signed in when they were made (NOTIFICATION-001-A).
     const stopClearingNotifications = clearNotificationsOnSignOut(built, notifications);
     const notificationPermission = createNotificationPermissionController(notifications, appState);
-    // Synthetic push belongs only to mock mode. API push remains unavailable until BE-005.
-    const registration: PushRegistration | null = config.dataSource.kind === 'mock' ? syncPushRegistration({
+    const remotePush = config.dataSource.kind === 'api' ? createRemotePush(appState) : null;
+    // Mock delivery stays synthetic; API acquires a real token only when configured.
+    const registration: PushRegistration = syncPushRegistration({
       session: built,
       permission: notificationPermission,
       devices: dataSource.devices,
       installationId,
-      pushToken: (id) => `ExponentPushToken[demo-${id}]`,
+      pushToken: (id) => remotePush ? remotePush.getToken() : `ExponentPushToken[demo-${id}]`,
+      watchTokenChanges: remotePush?.watch,
       platform: Platform.OS === 'ios' ? 'ios' : 'android',
-    }) : null;
+    });
     const analytics = createAnalytics({
       sink: selectAnalyticsSink(config.appEnv),
       environment: config.appEnv,

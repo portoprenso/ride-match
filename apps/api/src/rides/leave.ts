@@ -17,15 +17,15 @@ export async function leaveLiveGroup(store: RideStore, actor: string, id: string
   await store.client.query('UPDATE ride_match.operation_receipts SET result=NULL WHERE access_membership_id=$1', [member.id]);
   const own = (await store.client.query<RideRow>("UPDATE ride_match.ride_requests SET status='cancelled',version=version+1 WHERE id=$1 RETURNING *", [member.request_id])).rows[0]!;
   await store.intent('ride.changed', own.id, own.version, now);
-  await store.intent('access.revoked', member.id, own.version, now);
   const remaining = await store.members(id);
   await store.client.query('UPDATE ride_match.ride_groups SET coordinator_id=$2 WHERE id=$1', [id,
     group.coordinator_id === actor ? remaining[0]!.user_id : group.coordinator_id]);
   if (remaining.length < 2) await closeGroup(store, (await store.group(id))!, 'cancelled', 'members_left', now);
   else {
     const updated = (await store.client.query<GroupRow>("UPDATE ride_match.ride_groups SET status='forming',version=version+1 WHERE id=$1 RETURNING *", [id])).rows[0]!;
-    await store.intent('group.changed', id, updated.version, now);
+    await store.intent('group.changed', id, updated.version, now, { reason: 'member_left' });
     await store.intent('nearby.upserted.group', id, updated.version, now);
   }
+  await store.intent('access.revoked', member.id, (await store.group(id))!.version, now, { reason: 'left' });
   return LeaveGroupResultSchema.parse({ groupId: id, rideRequest: await store.ownRide(own) });
 }

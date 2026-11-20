@@ -1,3 +1,4 @@
+import type { PushProvider } from '../push/provider.js';
 import type { ApiConfig } from '../config/environment.js';
 import { ApiException } from '../http/api-exception.js';
 
@@ -38,4 +39,4 @@ export function createOtpProvider(config: ApiConfig): OtpProvider {
 }
 
 /** Infrastructure injection for deterministic integration tests and future SMS delivery. */
-export type BackendDependencies = { clock?: Clock; otpProvider?: OtpProvider };
+export type BackendDependencies = { clock?: Clock; otpProvider?: OtpProvider; pushProvider?: PushProvider; realtimePollMs?: number };

@@ -1,17 +1,17 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import {
-  OwnRideRequestSchema, PlaceSchema, RideMatchSetSchema,
+  OwnRideRequestSchema, PlaceSchema,
 } from '@ride-match/contracts';
-import type { CreateRideRequestInput, CancelRideRequestInput, RideMatchDto } from '@ride-match/contracts';
+import type { CreateRideRequestInput, CancelRideRequestInput } from '@ride-match/contracts';
 import { API_CONFIG } from '../config/environment.js';
 import type { ApiConfig } from '../config/environment.js';
 import { RideDomain } from './domain.js';
 import { domainError } from './store.js';
 import type { RideStore, RideRow } from './store.js';
-import { approximateOrigin, compatible, distanceMeters } from './policy.js';
+import { approximateOrigin } from './policy.js';
 import { mutation } from './receipts.js';
-import { publicCandidates } from './candidates.js';
+import { refreshMatches } from './matches.js';
 
 /** Own request lifecycle and advisory match snapshots, isolated from HTTP/auth transport. */
 @Injectable()
@@ -86,28 +86,7 @@ export class RideRequestsService {
   async matches(actor: string, id: string) {
     return this.domain.run(async (store, now) => {
       const own = await this.owned(store, id, actor);
-      const matches: RideMatchDto[] = [];
-      if (own.status === 'active') {
-        const candidates = await publicCandidates(store, actor);
-        const ranked = candidates.filter((item) => item.kind !== 'group' || (item.status === 'forming' && item.memberCount < 4))
-          .map((item) => ({ item, level: compatible({ origin: store.origin(own).center, destinationId: own.destination.id, departure: own.departure_at.getTime() },
-            { origin: item.publicOrigin.center, destinationId: item.destination.id, departure: Date.parse(item.departureAt) }) }))
-          .filter((entry) => entry.level !== null)
-          .sort((a, b) => {
-            const rank = { excellent: 0, good: 1, possible: 2 };
-            return rank[a.level!] - rank[b.level!] || distanceMeters(store.origin(own).center, a.item.publicOrigin.center) - distanceMeters(store.origin(own).center, b.item.publicOrigin.center) || `${a.item.kind}:${a.item.id}`.localeCompare(`${b.item.kind}:${b.item.id}`);
-          }).slice(0, 20);
-        for (const { item, level } of ranked) matches.push({ target: { kind: item.kind, id: item.id }, level: level!, additionalMinutes: null,
-          expiresAt: new Date(Math.min(own.expires_at.getTime(), Date.parse(item.expiresAt))).toISOString() });
-      }
-      const fingerprint = createHash('sha256').update(JSON.stringify(matches)).digest('hex');
-      const previous = (await store.client.query<{ fingerprint: string; version: number }>('SELECT * FROM ride_match.match_sets WHERE request_id=$1', [id])).rows[0]!;
-      const version = previous.version + Number(previous.fingerprint !== fingerprint);
-      if (version !== previous.version) {
-        await store.client.query('UPDATE ride_match.match_sets SET fingerprint=$2,version=$3 WHERE request_id=$1', [id, fingerprint, version]);
-        await store.intent('matches.changed', id, version, now);
-      }
-      return RideMatchSetSchema.parse({ version, matches });
+      return refreshMatches(store, own, now);
     });
   }
   private async owned(store: RideStore, id: string, actor: string): Promise<RideRow> {

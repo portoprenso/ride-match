@@ -69,7 +69,7 @@ export class RideGroupsService {
         await this.groupRequest(store, own, group.id, now);
         await reconcilePoint(store, group, now);
         const current = (await store.group(group.id))!;
-        await store.intent('group.changed', group.id, current.version, now);
+        await store.intent('group.changed', group.id, current.version, now, { reason: 'member_joined', actorId: actor });
         await store.intent('nearby.upserted.group', group.id, current.version, now);
         return { result: JoinGroupResultSchema.parse({ group: await store.privateGroup(current), rideRequest: await store.ownRide((await store.ride(own.id))!) }), accessMembershipId: membershipId };
       } }));
@@ -99,7 +99,7 @@ export class RideGroupsService {
           input.status === 'completed' ? 'completed' : 'coordinator_cancelled', now);
         else {
           updated = (await store.client.query<GroupRow>('UPDATE ride_match.ride_groups SET status=$2,version=version+1 WHERE id=$1 RETURNING *', [id, input.status])).rows[0]!;
-          await store.intent('group.changed', id, updated.version, now);
+          await store.intent('group.changed', id, updated.version, now, { reason: input.status === 'ready' ? 'ready' : 'reopened', actorId: actor });
           await store.intent('nearby.upserted.group', id, updated.version, now);
         }
         return { result: await store.privateGroup(updated), accessMembershipId: member.id };

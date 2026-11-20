@@ -14,6 +14,9 @@ export type ComposedDataSource = {
   dispose: () => void;
   /** Clears sensitive transport intent snapshots when the app signs out. */
   clearPrivateState?: () => void;
+  /** Rebinds sockets after sign-in, refresh and sign-out; credentials never enter feature state. */
+  identityChanged?: () => void;
+  setSessionRenewal?: (renew: () => Promise<void>) => void;
   /** The mock source's demo controls in development and preview builds; otherwise `null`. */
   devControls: DevControls | null;
   /** How to sign in to a synthetic source, shown by the sign-in screens; `null` for a real one. */

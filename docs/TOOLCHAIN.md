@@ -711,3 +711,7 @@ These are expectations recorded here, not checked results. The named task confir
 - **Turborepo:** the configuration reference at the `v2.11.6` tag of `vercel/turborepo`, the [configuration docs](https://turborepo.dev/docs/reference/configuration), and the [developing-applications guide](https://turborepo.dev/docs/crafting-your-repository/developing-applications).
 - **React Native:** the [environment setup guide](https://reactnative.dev/docs/set-up-your-environment?os=macos&platform=android), plus `react-native@0.86.3`'s `gradle/libs.versions.toml` and `src/types/globals.d.ts`.
 - **Jest:** `jest-resolve@29.7.0` `build/shouldLoadAsEsm.js` and `jest-runtime@29.7.0` `build/index.js`.
+
+## BE-005 realtime dependencies (2026-11-20)
+
+Exact `socket.io` **4.8.4** in API, `socket.io-client` **4.8.4** in mobile and API integration dev dependencies. npm metadata reports Node >=10.2.0 / >=10.0.0 respectively; existing Node 24.17.0/pnpm 11.28.2 remain pinned. Server attaches directly to the existing Nest HTTP server. No Nest socket adapter, Redis or push SDK dependency: fixed Expo HTTPS calls use built-in fetch and existing expo-notifications supplies native tokens. Lockfile updated with scripts disabled. [Server API](https://socket.io/docs/v4/server-api/), [client options](https://socket.io/docs/v4/client-options/), [Expo setup](https://docs.expo.dev/push-notifications/push-notifications-setup/). No other dependency upgrades/native rebuilds.

@@ -9,8 +9,9 @@ type PushRegistrationOptions = {
   permission: NotificationPermissionController;
   devices: DeviceOperations;
   installationId: () => Promise<InstallationId>;
-  /** The installation's push token. The mock build passes a synthetic one; no real token is requested. */
-  pushToken: (installationId: InstallationId) => ExpoPushToken;
+  /** The configured token boundary: synthetic in mock mode, real Expo token or null in API mode. */
+  pushToken: (installationId: InstallationId) => ExpoPushToken | null | Promise<ExpoPushToken | null>;
+  watchTokenChanges?: (changed: () => void) => () => void;
   platform: PushPlatform;
 };
 
@@ -42,10 +43,12 @@ export function syncPushRegistration({
   installationId,
   pushToken,
   platform,
+  watchTokenChanges,
 }: PushRegistrationOptions): PushRegistration {
   let disposed = false;
   // What the source has: `${userId}:${permission}` of the last successful registration.
   let registered: { userId: string; key: string } | null = null;
+  let lastToken: ExpoPushToken | null = null;
   let running: Promise<void> = Promise.resolve();
 
   const desired = () => {
@@ -64,11 +67,14 @@ export function syncPushRegistration({
       if (target.permission !== 'granted' && registered?.userId !== target.userId) return;
       try {
         const id = await installationId();
-        await devices.register(id, { pushToken: pushToken(id), platform, permission: target.permission });
+        const token = target.permission === 'granted' ? await pushToken(id) : lastToken;
+        if (!token || disposed || desired()?.key !== target.key) return;
+        lastToken = token;
+        await devices.register(id, { pushToken: token, platform, permission: target.permission });
         registered = { userId: target.userId, key: target.key };
       } catch {
-        // Not registered; the next change tries again (see above).
-        registered = null;
+        // Keep the last confirmed association so a failed permission withdrawal retries.
+        // No sensitive provider/transport details are logged.
       }
     });
   };
@@ -78,6 +84,7 @@ export function syncPushRegistration({
     sync();
   });
   const stopPermission = permission.subscribe(sync);
+  const stopToken = watchTokenChanges?.(() => { if (registered) registered = { ...registered, key: '' }; sync(); });
   sync();
 
   return {
@@ -93,6 +100,7 @@ export function syncPushRegistration({
     },
     dispose() {
       disposed = true;
+      stopToken?.();
       stopSession();
       stopPermission();
     },

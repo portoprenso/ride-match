@@ -6,6 +6,8 @@ import { DatabaseService } from '../database/database.service.js';
 import { transaction } from '../database/transaction.js';
 import { ApiException } from '../http/api-exception.js';
 import { RideStore } from './store.js';
+import { prepareNotifications } from '../push/queue.js';
+import { refreshAllMatches } from './matches.js';
 import { sweep } from './lifecycle.js';
 
 /**
@@ -29,15 +31,29 @@ export class RideDomain implements OnModuleInit, OnModuleDestroy {
       const now = this.clock.now();
       await sweep(store, now);
       await client.query('SAVEPOINT domain_action');
-      try { return await work(store, now); }
+      try { const value = await work(store, now); await refreshAllMatches(store, now); await prepareNotifications(store, now); return value; }
       catch (error) {
         if (!(error instanceof ApiException)) throw error;
         await client.query('ROLLBACK TO SAVEPOINT domain_action');
+        await refreshAllMatches(store, now);
+        await prepareNotifications(store, now);
         return error;
       }
     });
     if (result instanceof ApiException) throw result;
     return result;
+  }
+
+  /**
+   * Delivery uses committed rows only: no sweep/writes before checking and enqueueing.
+   * Domain then session/device locks linearize enqueue with leave/block/logout. Never put
+   * uncommitted mutation results here or invoke this boundary recursively.
+   */
+  async deliver<T>(work: (store: RideStore, now: Date) => Promise<T>): Promise<T> {
+    return transaction(this.database.pool, async (client) => {
+      await client.query('SELECT pg_advisory_xact_lock(724003)');
+      return work(new RideStore(client), this.clock.now());
+    });
   }
 
   /** Lazy first tick preserves liveness when PostgreSQL is down at bootstrap. */
