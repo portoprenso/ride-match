@@ -120,7 +120,7 @@ export function NotificationPermissionSheet({ demo, onPendingChange, onClose }: 
         <AppText variant="section" accessibilityRole="header">
           Know when plans change.
         </AppText>
-        <AppText color="muted">Get a notification for a match, a group update, readiness, or a new message.</AppText>
+        <AppText color="muted">Allow notifications about matches, group updates, readiness, or new messages.</AppText>
       </View>
       <Notice
         message={`${demo ? 'Demo notifications are local to this device. ' : ''}Notification previews won’t include private message text or exact places.`}

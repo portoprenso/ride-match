@@ -1,5 +1,6 @@
 import { Image, StyleSheet, View } from 'react-native';
 
+import { useDemoSignIn } from '../../data/DemoSignInProvider';
 import { ActionFooter } from '../../ui/ActionFooter';
 import { AppText } from '../../ui/AppText';
 import { Badge } from '../../ui/Badge';
@@ -24,10 +25,11 @@ type LocationIntroScreenProps = {
  * OS prompt appears. The prompt is shown only when the user presses "Use my location"; "Choose an
  * area instead" keeps browsing open without it.
  *
- * Every runnable build of this milestone uses the mock data source (DATA-001-A refuses `api`),
- * so the riders are always labelled synthetic.
+ * Labels riders synthetic only when composition supplies the demo capability; API transport
+ * and authentication choices stay outside this screen.
  */
 export function LocationIntroScreen({ onUseLocation, onChooseArea, busy, error }: LocationIntroScreenProps) {
+  const demo = useDemoSignIn() !== null;
   return (
     <Screen
       scroll
@@ -66,7 +68,7 @@ export function LocationIntroScreen({ onUseLocation, onChooseArea, busy, error }
             Used only while the app is open. Others see only an approximate area, never your exact position.
           </AppText>
         </View>
-        <Badge label="Demo · synthetic riders" />
+        {demo ? <Badge label="Demo · synthetic riders" /> : null}
       </View>
     </Screen>
   );

@@ -13,7 +13,7 @@ The user explicitly reprioritized backend preparation before completion of front
 The [current roadmap](ROADMAP.md#current-delivery-plan) owns the combined remainder. BE-001–005 must not be selected again as new implementation; their slice summaries below preserve evidence and deliberate policies at each checkpoint. Later slices supersede earlier statements such as “devices/realtime unavailable.”
 
 - **Local acceptance:** only BE-006's bounded native iOS/Android API-mode smoke remains in the backend slice; no Metro/emulator/native run is authorized by this document. Complete remaining frontend criteria, QA-001 and final HANDOFF-001 separately, preserving valid prior evidence.
-- **API-facing UI follow-up:** API-UI-001 audits unconditional demo/mock copy, starting with persisted report acceptance. It adds no endpoint, real SMS or moderation promise.
+- **API-facing UI follow-up:** API-UI-001 completed (2026-11-21): source-aware receipt/intro/catalogue/estimate labels, uncertain report outcomes and neutral OTP/coverage/permission copy. Presentation tests/types/lint pass; no backend/contract/provider change or new HTTP/native delivery evidence. No real SMS or moderation promise.
 - **External use:** RELEASE-001–005 cover real SMS, approved catalogue/privacy/matching, external runtime/access, retention/recovery and measured capacity/operations. RELEASE-006 is optional remote-push provisioning and physical delivery, explicitly deferred while sending is disabled. RELEASE-007 is controlled rollout acceptance. None is completed or implicitly authorized.
 
 ## Source of truth reviewed

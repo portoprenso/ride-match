@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { useAnalytics } from '../../analytics/AnalyticsProvider';
 import { useDataSource } from '../../data/DataSourceProvider';
+import { useDemoSignIn } from '../../data/DemoSignInProvider';
 import { withDataErrors, type DataError } from '../../data/errors';
 import { createOperationId } from '../../data/operationId';
 import { ActionFooter } from '../../ui/ActionFooter';
@@ -41,9 +42,10 @@ type ReportSheetProps = {
  *
  * - **Form (41):** one of four reasons, optional details (up to
  *   `SAFETY_POLICY.maxReportDetailsLength` characters, with a reminder not to include phone
- *   numbers or private addresses), and "Submit demo report", enabled once a reason is chosen.
- * - **Accepted (42):** only after the source's receipt: its ID, and that it confirms mock
- *   acceptance only, never a moderation decision. `user_reported` is recorded with the reason
+ *   numbers or private addresses), and a submit action, enabled once a reason is chosen.
+ * - **Accepted (42):** only after the source's receipt: its ID, labelled demo only when the
+ *   composition supplies a demo identity. Acceptance never implies a moderation decision.
+ *   `user_reported` is recorded with the reason
  *   alone; the details never reach analytics or logs.
  * - **Not submitted (52):** no answer, or the service was busy. No receipt, the reason and draft
  *   stay, and "Retry report" resends the same operation ID, so a report accepted before its
@@ -55,6 +57,7 @@ type ReportSheetProps = {
  */
 export function ReportSheet({ target, context, onPendingChange, onClose, onBlock }: ReportSheetProps) {
   const dataSource = useDataSource();
+  const demo = useDemoSignIn() !== null;
   const analytics = useAnalytics();
   const [reason, setReason] = useState<ReportReason | null>(null);
   const [typed, setTyped] = useState('');
@@ -118,11 +121,13 @@ export function ReportSheet({ target, context, onPendingChange, onClose, onBlock
       >
         <View style={styles.heading} accessibilityLiveRegion="polite">
           <AppText variant="section" accessibilityRole="header">
-            Your demo report was received.
+            {demo ? 'Your demo report was received.' : 'Your report was received.'}
           </AppText>
-          <AppText color="muted">Demo receipt: {submit.data.id}</AppText>
+          <AppText color="muted">{demo ? 'Demo receipt' : 'Receipt'}: {submit.data.id}</AppText>
         </View>
-        <Notice message="This confirms mock acceptance only. It does not mean a moderation decision was made." />
+        <Notice message={demo
+          ? 'This confirms mock acceptance only. It does not mean a moderation decision was made.'
+          : 'This confirms receipt only. It does not mean a moderation decision was made.'} />
         {onBlock === undefined ? null : <Button label="Block this rider too" variant="secondary" onPress={onBlock} />}
       </SheetContent>
     );
@@ -140,9 +145,9 @@ export function ReportSheet({ target, context, onPendingChange, onClose, onBlock
       >
         <View style={styles.heading}>
           <AppText variant="section" accessibilityRole="header" accessibilityLiveRegion="assertive">
-            Your report didn’t go through.
+            Your report couldn’t be confirmed.
           </AppText>
-          <AppText color="muted">No receipt was issued. Your selected reason and draft details are still here.</AppText>
+          <AppText color="muted">We couldn’t confirm a receipt. Your selected reason and draft details are still here.</AppText>
         </View>
         <View style={styles.summary}>
           <AppText variant="label">{reasonLabel(reason)}</AppText>
@@ -150,7 +155,7 @@ export function ReportSheet({ target, context, onPendingChange, onClose, onBlock
             Selected reason
           </AppText>
         </View>
-        <Notice message="Retry when the connection is available. A failed submission does not mean a report was accepted." />
+        <Notice message="The report may already have been accepted. Retry to check its status." />
       </SheetContent>
     );
   }
@@ -159,7 +164,7 @@ export function ReportSheet({ target, context, onPendingChange, onClose, onBlock
     <SheetContent
       footer={
         <ActionFooter>
-          <Button label="Submit demo report" disabled={reason === null} busy={pending} onPress={send} />
+          <Button label={demo ? 'Submit demo report' : 'Submit report'} disabled={reason === null} busy={pending} onPress={send} />
           <Button label="Cancel" variant="ghost" disabled={pending} onPress={onClose} />
         </ActionFooter>
       }

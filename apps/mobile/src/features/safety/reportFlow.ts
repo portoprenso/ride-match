@@ -66,6 +66,6 @@ export function describeReportError(error: DataError): ReportFailure {
     case 'SESSION_EXPIRED':
       return { kind: 'rejected', message: 'Your session ended. Sign in again to send this report.' };
     default:
-      return { kind: 'unknown', message: 'Your report didn’t go through.' };
+      return { kind: 'unknown', message: 'Your report couldn’t be confirmed.' };
   }
 }

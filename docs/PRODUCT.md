@@ -1,6 +1,6 @@
 # Mobile product and UX plan
 
-Status: planned. Last updated: 2026-11-01.
+Status: core flows implemented; final QA remains open. Last updated: 2026-11-21 (API-UI-001 presentation audit).
 
 Design reference: [Along mobile MVP concept](design/along/README.md) (DESIGN-001). Along is provisional branding only. The saved Figma draft has the brand kit and 20 journey screens; the local package covers 55 illustrative screens. Offline importer 1.0.1 repairs the user's failed native import; the user will retest it, and native visual/prototype verification remains pending. This does not change implemented app capabilities or the lifecycle rules below.
 
@@ -9,6 +9,12 @@ Design reference: [Along mobile MVP concept](design/along/README.md) (DESIGN-001
 The central experience is: “Someone physically close to me wants to travel in my direction.” The map stays the primary interaction, with sheets supporting discovery and decisions. Do not turn the home screen into a conventional search-results list.
 
 Ride Match helps people coordinate sharing a taxi. Booking and payment happen outside the application. The first milestone demonstrates every important flow with clearly identified synthetic data; it does not claim real riders are nearby.
+
+## Source-aware presentation (API-UI-001)
+
+Composition's existing DemoSignIn capability controls synthetic labels, not a transport-mode branch in screens. Mock intro/report/catalogue/walking-estimate labels stay explicit; API intro and report receipts do not claim the riders or accepted report are mock data. Both current catalogues are curated test data, not live geocoding. Missing walking time says unavailable and shows no estimate label; supplied time remains approximate and never implies a walking route.
+
+A report receipt is shown only after the operation returns acceptance, and never promises moderation. After a lost response, say the report could not be confirmed and may already have been accepted; preserve the draft and retry the same operation ID. API OTP copy says a code is ready and asks for the verification code, without asserting that SMS was sent. Notification permission copy requests permission without promising remote delivery; external sending remains disabled. These are presentation rules, not new providers or transport behavior.
 
 ## Scope
 

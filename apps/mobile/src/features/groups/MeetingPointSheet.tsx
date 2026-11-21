@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 
 import { useAnalytics } from '../../analytics/AnalyticsProvider';
+import { useDemoSignIn } from '../../data/DemoSignInProvider';
 import { isMapProviderConfigured } from '../../config/isMapProviderConfigured';
 import { ActionFooter } from '../../ui/ActionFooter';
 import { AppText } from '../../ui/AppText';
@@ -44,9 +45,11 @@ type MeetingPointSheetProps = {
  * records `meeting_point_viewed` once per opening.
  *
  * In a build without a map provider, the place and estimate show without the map.
+ * Only a supplied walking time is labelled an estimate; demo wording follows composition.
  */
 export function MeetingPointSheet({ point, openedId, onOpenChat, onReturn }: MeetingPointSheetProps) {
   const analytics = useAnalytics();
+  const demo = useDemoSignIn() !== null;
   useEffect(() => {
     analytics.track('meeting_point_viewed');
   }, [analytics]);
@@ -114,9 +117,11 @@ export function MeetingPointSheet({ point, openedId, onOpenChat, onReturn }: Mee
       </View>
       <View style={styles.walk}>
         <AppText variant="label">{walk ?? 'Walking time not available'}</AppText>
-        <AppText variant="small" color="muted">
-          Approximate demo estimate
-        </AppText>
+        {walk === null ? null : (
+          <AppText variant="small" color="muted">
+            {demo ? 'Approximate demo estimate' : 'Approximate estimate'}
+          </AppText>
+        )}
       </View>
       <Notice message="This is a meeting-point marker, not a walking route. Confirm the spot with your group in chat." />
     </SheetContent>

@@ -91,7 +91,7 @@ describe('reporting a rider', () => {
     await press('Submit demo report');
     await wait(ANSWER_MS);
 
-    expect(screen.getByRole('header', { name: 'Your report didn’t go through.' })).toBeOnTheScreen();
+    expect(screen.getByRole('header', { name: 'Your report couldn’t be confirmed.' })).toBeOnTheScreen();
     expect(screen.getByText('Unsafe behaviour')).toBeOnTheScreen();
     expect(screen.queryByText(/^Demo receipt/)).not.toBeOnTheScreen();
     expect(simulator.state.reports).toHaveLength(1);

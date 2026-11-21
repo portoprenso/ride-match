@@ -2,6 +2,7 @@ import { PLACE_SEARCH_POLICY, type PlaceDto } from '@ride-match/contracts';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { useDemoSignIn } from '../../data/DemoSignInProvider';
 import { ActionFooter } from '../../ui/ActionFooter';
 import { AppText } from '../../ui/AppText';
 import { Button } from '../../ui/Button';
@@ -24,6 +25,8 @@ type DestinationSheetProps = {
  * search's results can never replace a newer one's (`usePlaceSearch`). Choosing a row sets the
  * destination at once; it creates nothing and reserves nothing. The text resets each time the
  * sheet opens, and the map stays as it was underneath.
+ * Demo labelling follows the composed demo capability; both current sources use a curated
+ * test catalogue, so neither is presented as a live geocoder.
  */
 export function DestinationSheet({ open, onClose, onChoose }: DestinationSheetProps) {
   return (
@@ -34,6 +37,7 @@ export function DestinationSheet({ open, onClose, onChoose }: DestinationSheetPr
 }
 
 function DestinationSearch({ onClose, onChoose }: Omit<DestinationSheetProps, 'open'>) {
+  const demo = useDemoSignIn() !== null;
   const [text, setText] = useState('');
   const search = usePlaceSearch(text, true);
   return (
@@ -66,7 +70,9 @@ function DestinationSearch({ onClose, onChoose }: Omit<DestinationSheetProps, 'o
         }}
       />
       <AppText variant="small" color="muted">
-        Curated demo destinations. Search does not use a live places service.
+        {demo
+          ? 'Curated demo destinations. Search does not use a live places service.'
+          : 'Curated test destinations. Search does not use a live places service.'}
       </AppText>
     </SheetContent>
   );

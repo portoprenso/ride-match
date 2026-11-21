@@ -92,9 +92,9 @@ function DiscoveryStateView({ state, onRetry, onOpenList }: Omit<DiscoveryPanelP
     case 'failed':
       return state.unsupported ? (
         <Section
-          badge={{ label: 'Outside the demo area', tone: 'warning' }}
+          badge={{ label: 'Outside the supported area', tone: 'warning' }}
           title="No ride plans out here."
-          message="This view is outside the area the demo covers. Move the map back to the city."
+          message="This view is outside the supported area. Move the map back to the city."
           live
         />
       ) : (

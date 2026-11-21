@@ -4,7 +4,7 @@ Originally saved: 2026-10-10 (DOC-003). Current-plan reconciliation: 2026-11-21 
 
 [ROADMAP.md — Current delivery plan](ROADMAP.md#current-delivery-plan) owns the remaining backend/frontend work and separate external-rollout cards. This file continues to own the original later mobile child statuses; FIRST_STEPS owns MOBILE-001-H. Most feature code is implemented, but required native acceptance keeps several cards Paused. QA-001-A–D and HANDOFF-001-A remain Planned. Do not read the original review-time snapshot as today's implementation state.
 
-The design covers 55 visual states across the existing routes, not 55 separate routes. MOBILE-001-H and TOOLCHAIN-001-A are completed. Under the retained no-Metro/emulator/native-QA restriction, UI-001-A source correction is now implemented/tested with native acceptance still open; the roadmap's API-UI-001 copy audit is the next source-work candidate only when assigned. BE-006 remains Blocked on native acceptance, VERIFY-005 stays Paused, and external push stays disabled.
+The design covers 55 visual states across the existing routes, not 55 separate routes. MOBILE-001-H and TOOLCHAIN-001-A are completed. Under the retained no-Metro/emulator/native-QA restriction, UI-001-A source correction is implemented/tested with native acceptance still open; the roadmap's API-UI-001 copy audit is completed. Next local acceptance is BE-006/VERIFY-005 plus pending UI native checks under the retained restriction. BE-006 remains Blocked on native acceptance, VERIFY-005 stays Paused, and external push stays disabled.
 
 ## Latest verification evidence
 
@@ -383,7 +383,7 @@ Documentation: DEVELOPMENT.md, MOCK_SCENARIOS.md, API specs, roadmap and final h
 | QA-001-D | QA-001-C | Equivalent iOS 01–55 audit and cross-platform checkpoint. | All required evidence applies to final files; no unfinished mandatory criterion marked complete. | M / iOS behavior | Planned |
 | HANDOFF-001-A | QA-001; BE-006 acceptance | Reconcile C, data operations, implemented REST/socket behavior, privacy/scenarios and limitations, including deliberate mock/API differences. | Every operation maps to its actual endpoint/event; contract/static checks; local versus production assumptions explicit. Audit only; no new backend slice/provider. | M / spec drift | Planned |
 
-API-UI-001 and RELEASE-001–007 are owned by the [current roadmap](ROADMAP.md#current-delivery-plan), not additional children in this historical 65-card matrix. API-UI-001 starts with unconditional demo/mock report receipt copy; remote-push provisioning is deferred, not a missing local-MVP implementation.
+API-UI-001 and RELEASE-001–007 are owned by the [current roadmap](ROADMAP.md#current-delivery-plan), not additional children in this historical 65-card matrix. API-UI-001 is Completed (2026-11-21): source-aware labels/receipts, honest unknown outcomes and neutral API OTP/coverage/permission copy; 13 new presentation cases and 97 distinct targeted tests accepted, workspace types/lint pass. No native criterion is closed by this copy audit. Remote-push provisioning remains deferred, not a missing local-MVP implementation.
 
 ## F. Verification and completion criteria
 

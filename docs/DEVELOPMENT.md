@@ -1,6 +1,6 @@
 # Development, testing, and analytics plan
 
-Status: partly implemented. Last updated: 2026-11-20. **Only commands marked implemented exist. The others are specifications for the named tasks, not checks already run.**
+Status: partly implemented. Last updated: 2026-11-21. **Only commands marked implemented exist. The others are specifications for the named tasks, not checks already run.**
 
 ## Backend transition (2026-11-20)
 
@@ -202,6 +202,8 @@ Use Node 24.17.0 and the native commands in [TOOLCHAIN.md](TOOLCHAIN.md#native-p
 - **Android (Pixel 9 Pro XL emulator, Android 16):** the MOBILE-001-G procedure below was rerun on the final files, and every check passed.
 
 Fonts are embedded at build time (UI-001-A), so rebuild both development clients after changing `assets/fonts` or the `expo-font` plugin list. An older build silently shows the system font.
+
+**Source-copy audit (API-UI-001, 2026-11-21):** demo labelling follows the existing DemoSignIn capability, including report receipts and the location intro; API catalogue wording still says test data, not live geocoding. Unknown report outcomes preserve uncertainty and the original retry ID; API OTP acknowledgement claims code readiness, not SMS delivery. No estimate label is shown when walking time is null. `tests/sourceCopy.test.tsx` supplies stub operations with the real composition contexts/query/session/analytics boundaries and checks both presentation capabilities (13 cases); it does not prove HTTP/native/provider delivery. Nine focused suites accepted 97 distinct tests; after the final OTP wording adjustment, sourceCopy/signIn passed 24 tests again. Workspace typecheck/lint pass. Exact commands and addressed harness failures are in WORK_LOG; no new native evidence or broader QA completion.
 
 **Typography source checkpoint (UI-001-A, 2026-11-21):** `AppText` observes `useWindowDimensions().fontScale`. Above normal scale on Android, it omits the reference `lineHeight` so the native font metrics determine bounds; Android's nonlinear SP scaling previously made explicit leading too short for glyphs. Default Android and iOS keep the design leading. Explicit `allowFontScaling=false` or `maxFontSizeMultiplier=1` keeps reference leading; caller styles still win. Font assets, design tokens and TextField sizing are unchanged. `tests/appText.test.tsx` covers enlarged-scale policy, live setting changes/restoration, iOS, scaling opt-outs and caller accessibility/layout props; Jest does not render native glyphs. Native acceptance remains open: Android headings/section/subheading with descenders and wrapping at 150%/200%, return to normal size, plus iOS XXXL and representative sheets/keyboard growth. Do not launch native tools under the current restriction. Focused checks can use `pnpm --filter @ride-match/mobile test --watchman=false --runInBand --runTestsByPath tests/appText.test.tsx tests/ui.test.tsx tests/layout.test.tsx tests/fields.test.tsx`; `--watchman=false` avoids this sandbox's Watchman state-directory permission failure.
 

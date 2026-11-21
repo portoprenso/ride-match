@@ -64,7 +64,7 @@ The [current delivery roadmap](ROADMAP.md#current-delivery-plan) separates this 
 - **QA-001-B:** repository Maestro flows and real `test:e2e` wrapper; temporary native drivers are not that suite.
 - **QA-001-C/D:** planned full Android/iOS visual and native audit, reusing accepted evidence where final code permits.
 - **HANDOFF-001-A:** contracts/operations/implemented API/socket/event/privacy reconciliation after QA and BE-006 acceptance. No new backend implementation is part of this audit.
-- **API-UI-001:** separate planned source-level audit of demo/mock copy in API-backed flows; it does not replace pending native evidence.
+- **API-UI-001:** source-level copy audit completed 2026-11-21; focused presentation/journey tests and workspace types/lint accepted. It provides no new native evidence and closes none of the gaps above.
 
 ## Automated results already obtained
 

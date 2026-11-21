@@ -53,6 +53,8 @@ function useCooldown(): [number, (seconds: number) => void] {
  * - Opened without a challenge (a direct link), it only offers the phone step.
  *
  * On a synthetic source it shows the demo code and says that no text message is sent.
+ * Other sources acknowledge the challenge without asserting SMS delivery; a successful
+ * challenge can also come from the backend's synthetic development provider.
  *
  * @param onChangeNumber - Returns to the phone step.
  */
@@ -128,7 +130,7 @@ export function OtpScreen({ onChangeNumber }: { onChangeNumber: () => void }) {
       flow.setChallenge(phoneNumber, next);
       setFreshCode(false);
       setCode('');
-      setRequested(demo ? 'A new demo challenge is ready.' : 'A new code was sent.');
+      setRequested(demo ? 'A new demo challenge is ready.' : 'A new code is ready.');
     } catch (error) {
       if (!mounted.current) return;
       const next = requestCodeProblem(toDataError(error), demo);
@@ -139,7 +141,7 @@ export function OtpScreen({ onChangeNumber }: { onChangeNumber: () => void }) {
     }
   }
 
-  const resendLabel = `${demo ? 'Get a new demo challenge' : 'Send a new code'}${cooldown > 0 ? ` (${cooldown} s)` : ''}`;
+  const resendLabel = `${demo ? 'Get a new demo challenge' : 'Request a new code'}${cooldown > 0 ? ` (${cooldown} s)` : ''}`;
   const resend = (
     <Button
       label={resendLabel}
@@ -184,7 +186,7 @@ export function OtpScreen({ onChangeNumber }: { onChangeNumber: () => void }) {
         </AppText>
       ) : (
         <AppText color="muted">
-          {demo ? `Use the demo code ${demo.code}.` : 'Enter the code we sent to your phone.'}
+          {demo ? `Use the demo code ${demo.code}.` : 'Enter your verification code.'}
         </AppText>
       )}
       <OtpField

@@ -214,6 +214,8 @@ A blocked pair never shares a live group, because a block in either direction pr
 
 ### Reporting
 
+**UI receipt wording (API-UI-001):** the mock capability labels the submit action and receipt as demo; API-backed acceptance says only that the report was received, never that moderation occurred. Unknown outcomes say acceptance could not be confirmed and may already have happened, without asserting no receipt exists. The existing same-operation-ID retry reconciles the result; receipt schema, authorization and retention are unchanged.
+
 The report form offers four reasons (unsafe behavior, harassment, spam or misleading information, something else) and optional details of up to 500 characters, which may span lines. The context is the group where the reporter met the rider, and the reported message or `null`. It is omitted for a report made outside a group, or once the reporter can no longer read the group. The input carries references only, never copied message text.
 
 The source checks in this order and answers the first failure:
