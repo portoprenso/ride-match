@@ -56,6 +56,15 @@ test('real PostgreSQL migration lifecycle and readiness', async () => {
     app = await createApplication({ ...config, DATABASE_URL: url.href, API_LOG_LEVEL: 'error' });
     await app.listen(0, '127.0.0.1');
     const base = await app.getUrl();
+    // The injected extra migration cannot pass readiness for this packaged API manifest.
+    assert.equal((await fetch(`${base}/v1/health/live`)).status, 200);
+    assert.equal((await fetch(`${base}/v1/health/ready`)).status, 503);
+    await pool.query("DELETE FROM schema_migrations WHERE name='0006_probe.sql'");
+    await pool.query('DROP TABLE ride_match.rollback_probe');
+    const journal = (await pool.query('SELECT * FROM schema_migrations ORDER BY name DESC LIMIT 1')).rows[0];
+    await pool.query('UPDATE schema_migrations SET checksum=$2 WHERE name=$1',[journal.name,'synthetic-wrong-checksum']);
+    assert.equal((await fetch(`${base}/v1/health/ready`)).status,503);
+    await pool.query('UPDATE schema_migrations SET checksum=$2 WHERE name=$1',[journal.name,journal.checksum]);
     for (const path of ['live', 'ready']) {
       const response = await fetch(`${base}/v1/health/${path}`);
       assert.equal(response.status, 200);

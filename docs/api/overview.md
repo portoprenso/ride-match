@@ -181,3 +181,5 @@ The reviewed start package is [BACKEND_HANDOFF.md](../BACKEND_HANDOFF.md). It is
 HANDOFF-001 remains the final reconciliation of all artifacts against actual mobile/backend usage. BACKEND-PREP-001 performs the early review needed to start now; it does not mark QA-001 or HANDOFF-001 complete. Backend internals may differ from mocks; observable contracts/invariants must agree or an intentional revision must be documented. The HTTP/Socket.IO adapter is integrated by backend slice behind `AppDataSource` rather than waiting for another full frontend-polish milestone.
 
 No automatic transition to backend work is authorized by completing documentation or the mobile MVP.
+
+BE-006 keeps business contracts unchanged and strengthens operational `/health/ready` to require exact packaged/committed migration-journal compatibility as well as DB availability. Liveness stays DB-independent; no automatic migration. See [operations](../BACKEND_OPERATIONS.md).

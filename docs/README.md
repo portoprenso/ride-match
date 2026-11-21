@@ -6,7 +6,7 @@ Ride Match helps nearby people travelling in compatible directions form a small 
 
 ## Current priority — backend start
 
-The user reprioritized backend preparation before frontend QA completion (2026-11-20). [BACKEND_HANDOFF.md](BACKEND_HANDOFF.md) is the reviewed start package; **BE-001–005 are completed locally** (foundation/auth/places plus requests/discovery/groups/meeting points, chat/safety/devices/realtime and HTTP/socket adapter); BE-006 remains planned. The existing shared contracts/data-source operations are sufficient for that start. Remaining frontend QA stays in [VERIFY_005_REPORT.md](VERIFY_005_REPORT.md); it is not a gate for backend scaffolding. NestJS/PostgreSQL health and 25 reviewed REST operations plus Socket.IO now exist with their HTTP adapter; external push remains disabled/unconfigured in API mode. See [local backend setup](DEVELOPMENT.md#local-backend-be-001). The historical milestone summaries below do not override this priority.
+The user reprioritized backend preparation before frontend QA completion (2026-11-20). [BACKEND_HANDOFF.md](BACKEND_HANDOFF.md) is the reviewed start package; **BE-001–005 are completed locally** (foundation/auth/places plus requests/discovery/groups/meeting points, chat/safety/devices/realtime and HTTP/socket adapter); BE-006 backend/container work is verified; native acceptance remains open. The existing shared contracts/data-source operations are sufficient for that start. Remaining frontend QA stays in [VERIFY_005_REPORT.md](VERIFY_005_REPORT.md); it is not a gate for backend scaffolding. NestJS/PostgreSQL health and 25 reviewed REST operations plus Socket.IO now exist with their HTTP adapter; external push remains disabled/unconfigured in API mode. See [local backend setup](DEVELOPMENT.md#local-backend-be-001). The historical milestone summaries below do not override this priority.
 
 ## Current state
 
@@ -88,3 +88,5 @@ The work log is a history of actual work, not a replacement for current specific
 The original planning request is preserved across these documents: architecture/monorepo/features/contracts in `ARCHITECTURE.md`; REST and realtime in `api/`; simulation in `MOCK_SCENARIOS.md`; navigation/map/location/flows/errors in `PRODUCT.md`; analytics/testing/workflow/completion in `DEVELOPMENT.md`; all 25 implementation tasks and the DAG in `ROADMAP.md`; backend readiness in `api/overview.md`. `FIRST_STEPS.md` provides a more detailed execution breakdown for the first two parent tasks without changing the DAG.
 
 The Along design analysis and full frontend execution breakdown are in [MOBILE_IMPLEMENTATION_PLAN.md](MOBILE_IMPLEMENTATION_PLAN.md). TOOLCHAIN-001 and UI-001 are explicit proposed extensions; original parent statuses and completed work are preserved.
+
+[Backend operations](BACKEND_OPERATIONS.md) records container/migration/readiness/backup/stop commands and verified local BE-006 evidence; native cross-platform smoke remains blocked by user scope.

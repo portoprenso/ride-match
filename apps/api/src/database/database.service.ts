@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { OnApplicationShutdown } from '@nestjs/common';
 import { API_CONFIG } from '../config/environment.js';
 import type { ApiConfig } from '../config/environment.js';
+import { loadMigrations } from './migrations.js';
 import { createPool } from './pool.js';
 
 /**
@@ -20,6 +21,19 @@ export class DatabaseService implements OnApplicationShutdown {
   /** Executes a real round trip; rejects on connection or statement timeout. */
   async checkConnection(): Promise<void> {
     await this.pool.query('SELECT 1');
+  }
+
+  /**
+   * A usable connection alone cannot serve traffic before migrations. Compare the exact
+   * packaged manifest with the committed journal, rejecting pending/extra/edited history.
+   * Missing tables/files fail closed; readiness never applies migrations or logs SQL.
+   */
+  async checkReadiness(): Promise<void> {
+    const expected = await loadMigrations();
+    const applied = (await this.pool.query<{name:string;checksum:string}>('SELECT name,checksum FROM schema_migrations ORDER BY name')).rows;
+    if (applied.length !== expected.length || applied.some((row,index) => row.name !== expected[index]!.name || row.checksum !== expected[index]!.checksum)) {
+      throw new Error('Database schema is not ready');
+    }
   }
 
   async onApplicationShutdown(): Promise<void> {

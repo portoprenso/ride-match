@@ -2,7 +2,7 @@ import { Controller, Get, Inject } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service.js';
 import { ApiException } from '../http/api-exception.js';
 
-/** Operational probes only; readiness checks PostgreSQL on every request. */
+/** Operational probes only; readiness checks PostgreSQL and the packaged migration journal on every request. */
 @Controller('health')
 export class HealthController {
   constructor(@Inject(DatabaseService) private readonly database: DatabaseService) {}
@@ -15,7 +15,7 @@ export class HealthController {
   @Get('ready')
   async ready(): Promise<{ status: 'ok' }> {
     try {
-      await this.database.checkConnection();
+      await this.database.checkReadiness();
     } catch {
       throw new ApiException({ code: 'SERVICE_UNAVAILABLE', message: 'Database unavailable.' }, 503);
     }

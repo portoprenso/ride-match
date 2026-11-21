@@ -4,7 +4,7 @@ Status: partly implemented. Last updated: 2026-11-20. **Only commands marked imp
 
 ## Backend transition (2026-11-20)
 
-**BE-001–005 are completed locally.** [BACKEND_HANDOFF.md](BACKEND_HANDOFF.md) maps implemented auth/places/rides/groups/chat/safety/devices/realtime and future BE-006. Frontend QA remains deferred and unchanged; no broad/native QA is authorized by the backend sequence.
+**BE-001–005 are completed locally.** BE-006 backend/container work is verified; required native smoke remains open under the user’s restriction. [BACKEND_HANDOFF.md](BACKEND_HANDOFF.md) maps implemented auth/places/rides/groups/chat/safety/devices/realtime and future BE-006. Frontend QA remains deferred and unchanged; no broad/native QA is authorized by the backend sequence.
 
 ## Local backend (BE-001)
 
@@ -31,6 +31,7 @@ This removes the Compose project's container/network and preserves its named `po
 
 | Required server variable | Accepted value / role |
 | --- | --- |
+| `API_HOST` (optional) | `127.0.0.1` default, `0.0.0.0`, `::1` or `::`; image explicitly binds all IPv4 interfaces internally, runtime publishes only loopback |
 | `API_APP_ENV` | `development`, `test`, `production` |
 | `API_PORT` | Integer string, 1–65535 |
 | `DATABASE_URL` | PostgreSQL URL with host/database; server-only, never a public Expo variable or log field |
@@ -41,7 +42,7 @@ This removes the Compose project's container/network and preserves its named `po
 
 `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` are Compose-only values in the same example. Keep them aligned with `DATABASE_URL`. Changing these values does not rewrite credentials in an existing initialized data volume. Startup validates all seven server variables before creating Nest/pools; configuration errors never print values.
 
-Probes use `GET /v1/health/live` and `GET /v1/health/ready`. Both return `{ data: { status: "ok" }, meta: { serverTime } }` on success. Liveness never queries DB; readiness runs `SELECT 1` each time and returns raw `ApiErrorDto` / `SERVICE_UNAVAILABLE` with 503 on an outage. The lazy pool allows startup without DB. Readiness currently checks connectivity, not schema version or future downstream providers. Connection timeout is 1 s; HTTP statement/client query timeouts are 2/3 s, pool maximum five connections.
+Probes use `GET /v1/health/live` and `GET /v1/health/ready`. Both return `{ data: { status: "ok" }, meta: { serverTime } }` on success. Liveness never queries DB; readiness checks the packaged migration manifest against the committed journal each time and returns raw `ApiErrorDto` / `SERVICE_UNAVAILABLE` with 503 on an outage. The lazy pool allows startup without DB. Since BE-006 readiness checks DB connectivity and exact migration-journal compatibility, not full schema drift or downstream providers. Connection timeout is 1 s; HTTP statement/client query timeouts are 2/3 s, pool maximum five connections.
 
 Each request gets a new server UUID in `X-Request-Id`; incoming IDs are ignored to avoid propagating private caller text. Parser errors have IDs too. Domain/Zod errors use raw contract bodies, never an error wrapper; malformed JSON/schema errors are 422, unknown exceptions are safe 503. Unsupported routes remain transport 404, oversized JSON is transport 413 (16 KiB limit). Zod messages, dynamic paths/keys, body/header/query content, driver errors and connection URLs are not logged/echoed. The reusable Zod pipe requires an explicit schema per boundary; it does not invent business routes, coercion, auth or idempotency. Future dotted-query decoding remains assigned to consuming endpoints. Successful JSON uses the common server-time envelope, while 204 stays bodyless.
 
@@ -134,6 +135,14 @@ Optional build variable **EAS_PROJECT_ID** is a nonsecret UUID belonging to an e
 Server push uses fixed [Expo send/receipt APIs](https://docs.expo.dev/push-notifications/sending-notifications/) with generic copy and ID-only data, and an explicit disabled provider by default. A durable claim happens before POST; unknown outcomes/stuck sending are not automatically resent, so duplicates are avoided at the cost of possible loss. Tickets indicate Expo acceptance, not OS delivery. Receipts poll every 60 s; invalid tokens are removed only for their matching registration revision. Queue payloads are references only and are removed 24 h after expiry. Domain/session/device authorization is held through a bounded provider call; this serializes local throughput and requires redesign/load review before production. Readiness remains DB-connectivity-only, not provider/device readiness.
 
 The [wire protocol and lock/recovery policies](BACKEND_HANDOFF.md#be-005-local-realtimedevicespush) fix the same Socket.IO 4.8.4 version on both ends. [Socket.IO delivery guarantees](https://socket.io/docs/v4/delivery-guarantees/) do not replace the existing subscribe-before-snapshot/version/dedup/catch-up logic. Run `pnpm test:api:integration` or address only BE-005 from apps/api with `node --env-file=.env.local --test tests/realtime.integration.mjs`. Test push uses an injected provider with no external send and real local PostgreSQL/two loopback servers. Test resets serialize with the continuous worker rather than racing TRUNCATE. Stop API/watchers, `pnpm db:down`, and Docker Desktop when started solely for the task; preserve unrelated services and the development volume.
+
+## Container operations and BE-006 acceptance
+
+[BACKEND_OPERATIONS.md](BACKEND_OPERATIONS.md) documents `pnpm build:api:image`, the separate runtime Compose/example, explicit migrate, host-port selection, stop without data loss and backup/restore/rollback limits. The image includes compiled API/contracts/migrations and only production dependencies; no app source/env/mobile/native payload. `API_HOST` keeps local host runs at loopback, while the image binds internally to 0.0.0.0. No external deployment/account or native rebuild was performed; external push remains disabled.
+
+Readiness now rejects missing/pending/extra/mismatched journal history against the packaged SQL manifest, including before first migration. It does not apply DDL or certify providers/full schema drift. This deliberately prevents arbitrary old-image rollback/rolling compatibility against newer schemas; coordinate release/migration policy before external use.
+
+Focused BE-006 checks passed: API build/typecheck/lint, 19 unit/HTTP checks, actual five-user HTTP/socket journey + migration/readiness regression, and explicit `pnpm test:api:container` for image/health/DB outage/restore/shutdown. Test-created resources are isolated and removed; the user's development data volume remains. Full mobile/native suites were not run. BE-006 stays open for the handoff's bounded iOS/Android smoke because the user's no-Metro/emulator/native-QA instruction remains active.
 
 ## Latest verification result
 

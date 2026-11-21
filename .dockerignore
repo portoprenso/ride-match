@@ -1,0 +1,19 @@
+# Deny-by-default context: no env, mobile/native builds, credentials, tests or local caches.
+**
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!apps/
+!apps/api/
+!apps/api/package.json
+!apps/api/tsconfig.json
+!apps/api/src/
+!apps/api/src/**
+!apps/api/migrations/
+!apps/api/migrations/**
+!packages/
+!packages/contracts/
+!packages/contracts/package.json
+!packages/contracts/tsconfig.json
+!packages/contracts/src/
+!packages/contracts/src/**

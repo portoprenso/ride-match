@@ -26,7 +26,9 @@
     "db:down": "pnpm --filter @ride-match/api db:down",
     "db:migrate": "pnpm build:api && pnpm --filter @ride-match/api migrate",
     "test:api": "pnpm build:api && pnpm --filter @ride-match/api test",
-    "test:api:integration": "pnpm build:api && pnpm --filter @ride-match/api test:integration"
+    "test:api:integration": "pnpm build:api && pnpm --filter @ride-match/api test:integration",
+    "build:api:image": "docker build -f apps/api/Dockerfile -t ride-match-api:local .",
+    "test:api:container": "pnpm --filter @ride-match/api test:container"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",

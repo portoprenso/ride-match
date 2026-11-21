@@ -2,6 +2,18 @@ import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import type pg from 'pg';
 
+/** Loads the immutable SQL manifest used by migrations and readiness; never touches the database. */
+export async function loadMigrations(directory = new URL('../../migrations/', import.meta.url)) {
+  const files = (await readdir(directory)).filter((name) => name.endsWith('.sql')).sort();
+  if (!files.length || files.some((name) => !/^\d{4}_[a-z0-9_]+\.sql$/.test(name))) {
+    throw new Error('Invalid migration filename');
+  }
+  return Promise.all(files.map(async (name) => {
+    const sql = await readFile(new URL(name, directory), 'utf8');
+    return { name, sql, checksum: createHash('sha256').update(sql).digest('hex') };
+  }));
+}
+
 /**
  * Applies ordered SQL files and their checksums in one locked transaction.
  * Concurrent runners serialize before creating/reading the journal. Any failure
@@ -13,14 +25,7 @@ export async function runMigrations(
   pool: pg.Pool,
   directory = new URL('../../migrations/', import.meta.url),
 ): Promise<number> {
-  const files = (await readdir(directory)).filter((name) => name.endsWith('.sql')).sort();
-  if (files.some((name) => !/^\d{4}_[a-z0-9_]+\.sql$/.test(name))) {
-    throw new Error('Invalid migration filename');
-  }
-  const migrations = await Promise.all(files.map(async (name) => {
-    const sql = await readFile(new URL(name, directory), 'utf8');
-    return { name, sql, checksum: createHash('sha256').update(sql).digest('hex') };
-  }));
+  const migrations = await loadMigrations(directory);
   const client = await pool.connect();
   let failed = false;
   try {

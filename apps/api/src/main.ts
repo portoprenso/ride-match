@@ -7,8 +7,8 @@ try {
   const app = await createApplication(config);
   app.enableShutdownHooks(['SIGINT', 'SIGTERM']);
   try {
-    // Local foundation only. External binding/deployment belongs to BE-006.
-    await app.listen(config.API_PORT, '127.0.0.1');
+    // Local runs stay loopback by default; container/network binding requires explicit API_HOST.
+    await app.listen(config.API_PORT, config.API_HOST);
   } catch {
     await app.close();
     throw new Error('API listen failed');

@@ -6,6 +6,7 @@ const originSchema = z.url().refine((value) => {
   return url !== null && ['http:', 'https:'].includes(url.protocol) && url.origin === value;
 });
 const environmentSchema = z.object({
+  API_HOST: z.enum(['127.0.0.1','0.0.0.0','::1','::']).default('127.0.0.1'),
   API_APP_ENV: z.enum(['development', 'test', 'production']),
   API_PORT: z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().min(1).max(65535)),
   DATABASE_URL: z.url().refine((value) => {

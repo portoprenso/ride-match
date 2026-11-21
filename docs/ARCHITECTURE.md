@@ -135,6 +135,12 @@ Mobile combines the HTTP namespaces with an actual socket port. Disconnect/ident
 
 Device rows bind installation, token verifier/ciphertext, registering session and revision. Current ownership moves atomically; revoked sessions and provider errors remove only the association/revision they own. Push queue captures references and original membership epoch, never content or token, and revalidates current access before a bounded generic Expo request. Durable claims precede external IO; ambiguous sends are not auto-retried and may be lost. The user leaves external sending disabled; real EAS/APNs/FCM/native delivery is unverified. Coarse locks, eager scans, IO under the delivery lock and operational retry/retention limits remain explicit local constraints. Full protocol/config: BACKEND_HANDOFF and DEVELOPMENT.
 
+## Container and readiness boundary (BE-006)
+
+A pinned Node image builds the existing workspace with frozen dependencies and no lifecycle scripts. A second offline frozen install retains only production dependencies, preserving pnpm links; runtime copies compiled API/contracts/migrations/manifests and runs non-root with read-only Compose settings. Build context is an explicit allowlist. Host API_HOST defaults to loopback; container binding is explicit and host publication stays loopback.
+
+Readiness and the migration runner share one immutable manifest loader. Readiness performs no DDL and compares exact packaged names/checksums/count to the committed journal; it is not full schema-drift or provider readiness. Separate migration/maintenance and rollback compatibility are operational concerns; no public deployment was executed. Local five-user transport journey/image outage/dump-restore/shutdown evidence is in WORK_LOG and [operations](BACKEND_OPERATIONS.md). Bounded native cross-platform smoke remains an open acceptance item under the user's restriction.
+
 ## One data-source boundary
 
 ```text
