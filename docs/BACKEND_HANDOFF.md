@@ -1,12 +1,20 @@
 # Backend start package
 
-Updated: 2026-11-20. BE-005 completed locally, Codex / be-005-realtime-push; BACKEND-PREP-001 retained as the reviewed baseline.
+Updated: 2026-11-21 (DOC-005 plan reconciliation). BE-001–005 completed locally; BE-006 backend/container evidence verified, native acceptance Blocked. BACKEND-PREP-001 remains the reviewed baseline.
 
 ## Decision and readiness
 
 The user explicitly reprioritized backend preparation before completion of frontend QA. **The existing mobile contracts and data-source boundary are sufficient to start the backend foundation.** Frontend completeness, the remaining VERIFY-005 cases, the typography backlog and the full QA-001 audit are not prerequisites for that first slice. They remain unfinished; they are not waived or reported as passing.
 
 **BE-001–005 are implemented and verified locally:** foundation/health, all 25 reviewed REST operations, authorized Socket.IO, device persistence and mobile HTTP/socket composition. A real Expo push boundary/token acquisition is implemented; external sending is explicitly disabled by the user, without EAS/APNs/FCM credentials or physical-device verification. There is no fallback to mocks. Default mobile configuration remains mock. This is not production-ready: development OTP accepts only synthetic numbers and is forbidden in production; real SMS/provider deployment is unconfigured. Original HANDOFF-001 remains the final reconciliation/audit; frontend QA no longer gates assigned backend slices. No external deployment/accounts were provisioned.
+
+## Remaining delivery work
+
+The [current roadmap](ROADMAP.md#current-delivery-plan) owns the combined remainder. BE-001–005 must not be selected again as new implementation; their slice summaries below preserve evidence and deliberate policies at each checkpoint. Later slices supersede earlier statements such as “devices/realtime unavailable.”
+
+- **Local acceptance:** only BE-006's bounded native iOS/Android API-mode smoke remains in the backend slice; no Metro/emulator/native run is authorized by this document. Complete remaining frontend criteria, QA-001 and final HANDOFF-001 separately, preserving valid prior evidence.
+- **API-facing UI follow-up:** API-UI-001 audits unconditional demo/mock copy, starting with persisted report acceptance. It adds no endpoint, real SMS or moderation promise.
+- **External use:** RELEASE-001–005 cover real SMS, approved catalogue/privacy/matching, external runtime/access, retention/recovery and measured capacity/operations. RELEASE-006 is optional remote-push provisioning and physical delivery, explicitly deferred while sending is disabled. RELEASE-007 is controlled rollout acceptance. None is completed or implicitly authorized.
 
 ## Source of truth reviewed
 
@@ -103,7 +111,8 @@ Carry current observable defaults into local backend development: request lifeti
 | Replay of stored group/private results after leave/retention | BE-003/004 — resolved locally | Fingerprint checked, then original membership epoch/current history authorization, then snapshot. Leave returns owner-only replay; private snapshots clear on leave/history expiry. Retired 24 h keys never re-execute. |
 | Physical deletion and private outbox/receipt retention | BE-004 — local content policy resolved | Delete message bodies/sender snapshots and message event references at history expiry; report bodies/references expire after 7 d. Keep only content-free intent/key tombstones; generic snapshots retire at 24 h. Offline cleanup catches up on the next sweep. Production auth/location/metadata/WAL/backups retention remains unapproved. |
 | Real push project/credentials and token lifecycle | BE-005 — local boundary completed, external sending disabled | Real token acquisition/config/provider/devices implemented and tested through boundaries; user explicitly has no EAS/APNs/FCM setup and leaves external sending disabled. Native delivery remains unverified; no timer substitute. |
-| Health checks, deployment/secrets, backup/restore, production policy | BE-006 | Before external rollout; no deployment/account spending authorized by preparation |
+| Health checks, packaging and synthetic backup/restore | BE-006 — backend evidence verified | Native API-mode acceptance remains open; no external deployment authorized |
+| External secrets/access, representative recovery, retention and capacity policy | RELEASE-003–005 / RELEASE-007 — Planned in ROADMAP | Separate external-use criteria; BE-006 local checks do not certify production readiness |
 
 These are implementation decisions for their slices, not a demand to finish every future policy before writing the backend foundation. Frontend spacing, marker cosmetics, native test variants and the full A–N demo suite remain a separate backlog.
 

@@ -1,6 +1,6 @@
 # Consolidated native verification report
 
-Updated: 2026-11-20 (Asia/Bishkek). Actor: Codex / verify-005-final-native-pass.
+Evidence consolidated: 2026-11-20 (Asia/Bishkek), Codex / verify-005-final-native-pass. Plan references reconciled: 2026-11-21, Codex / plan-refresh. UI-001-A source follow-up: 2026-11-21, Codex / ui-001-a-line-height; focused automated evidence only, no new native evidence.
 
 **VERIFY-005 is Paused; ownership released at the user's request. VERIFY-006 and VERIFY-007 are Completed.** This report consolidates the November 9, 19 and 20 evidence; it does not mark all twenty implementation cards complete. No further native run is authorized by this report. Historical evidence is identified below; a passing test is not evidence for every variant on that screen.
 
@@ -34,7 +34,7 @@ Latest environments: iPhone 17 Pro / iOS 26.5; Pixel 10 Pro XL / Android 17 API 
 
 ### Known defects and observations
 
-1. **UI-001-A:** Android heading/line-height clipping at enlarged text is an existing deferred defect. Compact density badges passed, but that does not close typography across other screens.
+1. **UI-001-A:** the known Android enlarged-text clipping has a source correction (2026-11-21): AppText uses native line metrics above normal Android font scale and reacts to setting changes, preserving font scaling. Seven regression cases plus related UI/layout/field tests pass (35), workspace types/lint pass. Final-source Android 150%/200% and iOS XXXL rendering are still unverified; compact density badge evidence does not close typography across other screens. The card remains Paused until native acceptance.
 2. Earlier minor observations remain untriaged on final files: Aida can fade in the join confirmation, destination copy can say no nearby matches while the own-request match is highlighted, and some list/inspect camera moves show a wider area than intended. These are historical observations, not newly reproduced failures.
 3. No additional confirmed product failure remains from this continuation beyond the fixed Demo-clock defect. Incomplete checks below are verification gaps, not asserted bugs.
 
@@ -58,12 +58,13 @@ The temporary iOS tests for resume, unknown creation and TSUM join were written 
 
 ### Planned product work after this verification
 
-Priority changed on 2026-11-20: [BACKEND_HANDOFF.md](BACKEND_HANDOFF.md) permits backend foundation work before this frontend backlog is complete. The items below remain unfinished final-audit work, not backend-start prerequisites.
+The [current delivery roadmap](ROADMAP.md#current-delivery-plan) separates this unfinished local frontend acceptance from external rollout. BE-001–005 are already completed locally; BE-006 backend/container work is verified with native API-mode smoke still open. This report remains the missing-variant evidence matrix, not a list of absent product implementations.
 
-- **QA-001-A:** remaining mock scenarios A–N and integrated reset/timer/listener/cache checks.
+- **QA-001-A:** add missing selectable scenarios D/E/F/G/I/K/N (A/B/C/H/J/L/M exist) and integrated reset/timer/listener/credential/cache checks.
 - **QA-001-B:** repository Maestro flows and real `test:e2e` wrapper; temporary native drivers are not that suite.
 - **QA-001-C/D:** planned full Android/iOS visual and native audit, reusing accepted evidence where final code permits.
-- **HANDOFF-001-A:** contracts/operations/API/event/privacy reconciliation after QA. Backend and HTTP/Socket.IO implementation remain outside the current milestone.
+- **HANDOFF-001-A:** contracts/operations/implemented API/socket/event/privacy reconciliation after QA and BE-006 acceptance. No new backend implementation is part of this audit.
+- **API-UI-001:** separate planned source-level audit of demo/mock copy in API-backed flows; it does not replace pending native evidence.
 
 ## Automated results already obtained
 

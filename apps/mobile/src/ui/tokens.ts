@@ -42,6 +42,8 @@ export const MANROPE = {
  * Weight comes from the face in `fontFamily`, never from `fontWeight`, so both platforms
  * draw the real Manrope weight instead of a synthesized one. The design's 10-point micro
  * style is left out until something non-essential needs it.
+ * AppText uses native line metrics for enlarged Android text to avoid nonlinear scaling
+ * clipping glyphs; these reference line heights remain unchanged for other consumers.
  */
 export const typography = {
   display: { fontFamily: MANROPE.extraBold, fontSize: 48, lineHeight: 54 },

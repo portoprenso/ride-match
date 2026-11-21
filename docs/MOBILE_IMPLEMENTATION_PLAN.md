@@ -1,14 +1,14 @@
 # Along mobile MVP implementation plan
 
-Saved: 2026-10-10. Planning record: **DOC-003 — Completed**. Implementation cards below are **Planned**, except MOBILE-001-H whose status remains owned by [FIRST_STEPS.md](FIRST_STEPS.md).
+Originally saved: 2026-10-10 (DOC-003). Current-plan reconciliation: 2026-11-21 (DOC-005).
 
-This saves the complete design review and proposed execution plan from the preceding conversation. Saving it authorizes documentation work only: no implementation, dependency installation, commit, or Figma modification has started. Before execution, assign one child explicitly or invoke the one-task NEXT prompt below to select exactly one. This document and the shared handoff let Codex, Codex (Terra), and Claude Code continue without the original chat.
+[ROADMAP.md — Current delivery plan](ROADMAP.md#current-delivery-plan) owns the remaining backend/frontend work and separate external-rollout cards. This file continues to own the original later mobile child statuses; FIRST_STEPS owns MOBILE-001-H. Most feature code is implemented, but required native acceptance keeps several cards Paused. QA-001-A–D and HANDOFF-001-A remain Planned. Do not read the original review-time snapshot as today's implementation state.
 
-The local design is detailed enough to implement the MVP, including failure and recovery states. It describes **55 visual states across the existing navigation structure**, not 55 separate routes. MOBILE-001-H, the existing iOS shell checkpoint, was completed on 2026-10-30. By section E's order, the next card is **TOOLCHAIN-001-A**, only when requested.
+The design covers 55 visual states across the existing routes, not 55 separate routes. MOBILE-001-H and TOOLCHAIN-001-A are completed. Under the retained no-Metro/emulator/native-QA restriction, UI-001-A source correction is now implemented/tested with native acceptance still open; the roadmap's API-UI-001 copy audit is the next source-work candidate only when assigned. BE-006 remains Blocked on native acceptance, VERIFY-005 stays Paused, and external push stays disabled.
 
 ## Latest verification evidence
 
-**User priority, 2026-11-20:** backend preparation precedes completion of this frontend QA plan. [BACKEND_HANDOFF.md](BACKEND_HANDOFF.md) defines the next backend foundation slice, BE-001, and an operation-by-operation handoff. QA-001-A–D/HANDOFF-001-A below remain the original final-audit backlog; they do not block starting backend work or authorize more frontend polishing. Do not select an old frontend NEXT card when the user asks to continue backend development.
+**Current integration baseline (2026-11-21):** BE-001–005 are completed locally with all 25 REST operations and the mobile HTTP/socket adapter; BE-006 backend/container work is verified with its native smoke still open. [BACKEND_HANDOFF.md](BACKEND_HANDOFF.md) records implementation and evidence. Complete the remaining mobile QA against the applicable mock/API modes; preserve accepted results and do not restart a completed backend slice or historical NEXT card.
 
 The [2026-11-20 consolidated report](VERIFY_005_REPORT.md) supersedes older per-card continuation lists for VERIFY-005. It separates passed native paths, missing variants, known defects and simulator limits. VERIFY-005 is Paused at the user's request; ownership released and processes stopped. No additional implementation card is marked Completed. The Demo presentation-clock fix, new regression test and native iOS result are recorded there; final-source mobile count is 656. Future QA-001-A–D and HANDOFF-001-A remain Planned.
 
@@ -35,7 +35,7 @@ Primary references:
 
 The importer adjusts drawing geometry and checks some body/footer bounds. Its generated code is a design artifact, not application architecture. Its local test-double success is not native Figma verification. Manrope is intended; SVGs use fallback typography. The 390 × 844 canvas is a reference viewport, not a fixed device requirement.
 
-### Actual application baseline
+### Historical application baseline at the October 10 review
 
 | Area | Actual state at review | Implementation consequence |
 | --- | --- | --- |
@@ -147,7 +147,7 @@ Additional variants stay inside these screens: empty search, throttled resend, p
 | --- | --- |
 | Branding | Along remains provisional. Reuse the merging-path mark; keep development identifiers/scheme unless separately requested. |
 | Typography | UI-001-A bundles static Manrope weights 400/500/600/700/800 with the OFL license, embedded through `expo-font`. `AppText` variants: display 48/54 ExtraBold, heading 30/36 ExtraBold, section 24/30 Bold, subheading 18/24 Bold, body 15/22 Regular, label 15/20 Bold, and small 12/18 Medium, from the design source's style table. Micro is deferred. |
-| Type scale | Reference size/line height: display 48/54, heading 30/36, section 24/30, subheading 18/24, body 15/22, label 15/20, small 12/18. Micro 10/14 is not for essential information. |
+| Type scale | AppText uses native line metrics for enlarged Android text (UI-001-A source checkpoint); default Android/iOS retain the reference leading. Reference size/line height: display 48/54, heading 30/36, section 24/30, subheading 18/24, body 15/22, label 15/20, small 12/18. Micro 10/14 is not for essential information. |
 | Spacing | 4, 8, 12, 16, 24, 32; reference side padding 24, adapted to insets and width. |
 | Shape | Radii 12/16/24/32; reference buttons 52 high with radius 16; allow growth with text. |
 | Colors | Ink #123C38; teal #146B59; lime #DDF5A0; paper #F7F8F2; muted #586D68; line #DCE4DC; soft #EAF2E9; danger #AD3E36; warning #8A5B14. |
@@ -253,7 +253,7 @@ No backend/apps/api content, real transport, production matching, mobile routing
 
 ### Common card contract
 
-These 65 assignments include the already-defined MOBILE-001-H and 64 later cards. The later rows start Planned. Update the Status column only when work actually starts or criteria are verified. Do not copy H's status here; FIRST_STEPS.md remains its single owner.
+The original 65 assignments include MOBILE-001-H and 64 later cards. They started Planned; the maintained Status column below records subsequent implementation and pending acceptance. Update the Status column only when work actually starts or criteria are verified. Do not copy H's status here; FIRST_STEPS.md remains its single owner.
 
 - Execute one child only; inspect prerequisites/current files and record owner/session/scope first.
 - Each row lists exact dependency IDs. A parent ID requires all its required children and parent criteria; a child ID requires that child's criteria only. Completed MONO-001 is external to this plan. Additional child dependencies refine the original parent graph without requiring unrelated future siblings.
@@ -275,7 +275,7 @@ Documentation: shared handoff/progress plus TOOLCHAIN.md and DEVELOPMENT.md as a
 | --- | --- | --- | --- | --- | --- |
 | MOBILE-001-H | MOBILE-001-G | Existing iOS shell checkpoint; reuse current app; normally docs and narrow config fixes. No design implementation. | Native launch/navigation/dismissal/safe areas and existing final checkpoint pass; recheck Android for shared changes. | S / iOS environment | See FIRST_STEPS.md |
 | TOOLCHAIN-001-A | MOBILE-001-H | Resolve gesture-handler alignment in M/package.json and root lockfile; record decision. New bounded compatibility work. | Intended version resolves/autolinks; doctor, tests, exports and both native builds pass. Doctor alone is insufficient. | S / native compatibility | Completed (2026-10-31, VERIFY-001): tests, exports, doctor and clean Android and iOS rebuilds pass; 2.32.0 autolinks |
-| UI-001-A | MOBILE-001-H | New UI tokens/AppText and M/assets static Manrope/license/Along mark; reuse existing art. All screens. | Correct native weights; no clipped sample headings/startup font failure; static checks and both-platform inspection. | S / font naming/assets | Paused: weights and startup verified on both platforms (2026-10-31, VERIFY-001); Android clips `section` descenders from 150% font scale, so a line-height fix is open |
+| UI-001-A | MOBILE-001-H | New UI tokens/AppText and M/assets static Manrope/license/Along mark; reuse existing art. All screens. | Correct native weights; no clipped sample headings/startup font failure; static checks and both-platform inspection. | S / font naming/assets | Paused (2026-11-21, Codex / ui-001-a-line-height): AppText uses native line metrics for enlarged Android text and observes system font changes; explicit scaling opt-outs keep reference leading. Design tokens unchanged. Seven new regression cases and 35 focused UI tests plus workspace types/lint pass; native Android 150%/200% and iOS XXXL acceptance remains open. Previous weights/startup evidence retained |
 | UI-001-B | UI-001-A | Extend Button; add UI IconButton/Badge/Notice. All screens. | Variants, busy/disabled states, names, touch targets; blocked controls cannot submit again. Focused behavior tests. | S / low | Completed (2026-10-30) |
 | UI-001-C | UI-001-B | New UI fields, accessible OTP and departure selector. 03, 06–09, 41, 47. | Error/focus/paste/selection behavior; native keyboard and enlarged text. | M / native input behavior | Completed (2026-10-31, VERIFY-001): keyboards, focus, paste and enlarged text checked on both platforms; Android hidden-text fix in OtpField; OTP autofill needs a real SMS |
 | UI-001-D | UI-001-B, TOOLCHAIN-001-A | Extend Screen; new form/footer, ConfirmAction and sheet host. Verify candidate library before adoption. | One sheet at a time; Android back/iOS dismissal; keyboard-safe actions and restored focus; native checks. | M / gestures/keyboard | Completed (2026-11-01, user waiver): one sheet, Android back, background dismissal, busy refusal and keyboard-safe actions verified on both platforms (2026-10-31, VERIFY-001), with Screen and Button fixes; screen-reader focus return, the VoiceOver escape gesture and the announced error were not run natively; the user accepted them untested on 2026-11-01 and will test TalkBack and VoiceOver in the final device testing, once everything including the backend works (Jest covers the calls) |
@@ -377,11 +377,13 @@ Documentation: DEVELOPMENT.md, MOCK_SCENARIOS.md, API specs, roadmap and final h
 
 | ID | Prerequisites | Goal, screens, expected modules and reuse | Observable acceptance and checks | Size / uncertainty | Status |
 | --- | --- | --- | --- | --- | --- |
-| QA-001-A | TAXI-001, SAFETY-001, NOTIFICATION-001 | Complete Mock A–N scenarios/dev controls and integration tests. Screen 50 plus all flows. | Every scenario produces documented result; reset clears timers/listeners/credentials/cache; picker selects actual scenarios. | M / interactions | Planned |
+| QA-001-A | TAXI-001, SAFETY-001, NOTIFICATION-001 | Complete Mock A–N scenarios/dev controls and integration tests. Add missing D/E/F/G/I/K/N; A/B/C/H/J/L/M already exist. Screen 50 plus all flows. | Every scenario is selectable and produces its documented result; reset clears timers/listeners/credentials/cache; reuse covered domain operations. | M / interactions | Planned |
 | QA-001-B | QA-001-A | Add planned M/.maestro suite and real test:e2e wrapper; reuse installed dev build. | Happy journey plus denial/conflict/expiry/failed-message/revocation run; exact prerequisites/commands documented. | M / automation | Planned |
 | QA-001-C | QA-001-B | Android audit of 01–55, native integrations, typography/accessibility. | Compare local SVGs with Manrope, larger text, keyboard, map density, permissions/notification/taxi; record evidence and bounded defects. | M / device differences | Planned |
 | QA-001-D | QA-001-C | Equivalent iOS 01–55 audit and cross-platform checkpoint. | All required evidence applies to final files; no unfinished mandatory criterion marked complete. | M / iOS behavior | Planned |
-| HANDOFF-001-A | QA-001 | Reconcile C, data operations, API/event specs, privacy/scenarios and limitations. | Every operation maps to endpoint/event; contract/static checks; production assumptions explicit; no backend implementation. | M / spec drift | Planned |
+| HANDOFF-001-A | QA-001; BE-006 acceptance | Reconcile C, data operations, implemented REST/socket behavior, privacy/scenarios and limitations, including deliberate mock/API differences. | Every operation maps to its actual endpoint/event; contract/static checks; local versus production assumptions explicit. Audit only; no new backend slice/provider. | M / spec drift | Planned |
+
+API-UI-001 and RELEASE-001–007 are owned by the [current roadmap](ROADMAP.md#current-delivery-plan), not additional children in this historical 65-card matrix. API-UI-001 starts with unconditional demo/mock report receipt copy; remote-push provisioning is deferred, not a missing local-MVP implementation.
 
 ## F. Verification and completion criteria
 
@@ -396,7 +398,7 @@ Re-read actual manifests before running commands. The following were available a
 | pnpm lint | Existing lint; mock-import restrictions introduced by DATA-001. |
 | pnpm test:mobile | Existing Jest harness; forwards arguments, paths relative to apps/mobile. |
 | pnpm test:contracts | Vitest contract suites against the source, no build needed; extra arguments filter files (added by CONTRACT-001-A). |
-| pnpm test | Workspace test tasks: contracts and mobile since CONTRACT-001-A. |
+| pnpm test | Workspace tests: contracts, mobile and API unit/HTTP; real PostgreSQL/container suites remain explicit. |
 | pnpm doctor:mobile | Expo/config checks; plain pnpm doctor is a different command. |
 | pnpm export:android / pnpm export:ios | JavaScript export; not native verification. |
 | pnpm mobile:android / pnpm mobile:ios | Local development builds; follow TOOLCHAIN native setup. |
@@ -561,7 +563,7 @@ The stored prompt does nothing until the user invokes it. When invoked, NEXT aut
     Reuse existing modules, routes and components. Follow the card's scope.
     No sibling tasks, future-feature scaffolding, speculative abstractions,
     unrelated refactors, or dependency upgrades outside this child's needs.
-    Preserve the mock-only MVP, AppDataSource boundary, location privacy,
+    Preserve both mock and API modes, the AppDataSource boundary, location privacy,
     authentication/membership rules and existing working behavior.
     Treat design links as examples, not domain transitions.
     Add useful TSDoc to reusable logic and integration boundaries.

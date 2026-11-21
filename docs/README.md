@@ -1,14 +1,16 @@
 # Ride Match documentation
 
-Last updated: 2026-11-20
+Last updated: 2026-11-21
 
 Ride Match helps nearby people travelling in compatible directions form a small group and share a taxi. The first milestone is a complete React Native mobile MVP using realistic mocks. Taxi booking and payment happen outside the application.
 
-## Current priority — backend start
+## Current delivery plan
 
-The user reprioritized backend preparation before frontend QA completion (2026-11-20). [BACKEND_HANDOFF.md](BACKEND_HANDOFF.md) is the reviewed start package; **BE-001–005 are completed locally** (foundation/auth/places plus requests/discovery/groups/meeting points, chat/safety/devices/realtime and HTTP/socket adapter); BE-006 backend/container work is verified; native acceptance remains open. The existing shared contracts/data-source operations are sufficient for that start. Remaining frontend QA stays in [VERIFY_005_REPORT.md](VERIFY_005_REPORT.md); it is not a gate for backend scaffolding. NestJS/PostgreSQL health and 25 reviewed REST operations plus Socket.IO now exist with their HTTP adapter; external push remains disabled/unconfigured in API mode. See [local backend setup](DEVELOPMENT.md#local-backend-be-001). The historical milestone summaries below do not override this priority.
+[ROADMAP.md — Current delivery plan](ROADMAP.md#current-delivery-plan) owns the remaining backend/frontend work and local versus external completion gates. BE-001–005 are completed locally (25 REST operations, PostgreSQL, authorized Socket.IO and mobile HTTP/socket adapter). BE-006 backend/container work is verified; bounded native iOS/Android acceptance remains Blocked under the user's restriction. VERIFY-005 remains Paused; [its consolidated report](VERIFY_005_REPORT.md) owns missing native variants.
 
-## Current state
+The local remainder includes UI-001-A, API-UI-001 copy reconciliation, the seven missing QA-001-A scenarios, Maestro/test:e2e, final platform audits and HANDOFF-001. RELEASE-001–007 separately plan real SMS/catalogue, external runtime/access, retention/recovery, capacity/operations, optional remote push and rollout acceptance. External push stays disabled; no deployment/provider setup or native run is authorized by updating the plan. [BACKEND_HANDOFF.md](BACKEND_HANDOFF.md) preserves implementation decisions and evidence; [BACKEND_OPERATIONS.md](BACKEND_OPERATIONS.md) records current runtime limits.
+
+## Milestone history (superseded as a current-state summary)
 
 - Documentation baseline and workspace foundation (MONO-001) are complete. [TOOLCHAIN.md](TOOLCHAIN.md) records the selected versions, commands, and local prerequisites. The root pnpm workspace runs `pnpm build:contracts`, `pnpm typecheck`, and `pnpm lint` through Turbo (root `turbo.json`, local cache only) for the `@ride-match/contracts` package (empty until CONTRACT-001-A), and type-checks and lints `@ride-match/mobile` too. MOBILE-001 is completed: `apps/mobile` is a minimal Expo SDK 57 / Expo Router shell with one anonymous home route showing “Ride Match” and “Map coming soon” (MOBILE-001-A). MOBILE-001-B connected the shared package and added `pnpm dev`, `dev:mobile`, `doctor:mobile`, and the export and native wrappers. MOBILE-001-C added two UI primitives, `Screen` (safe-area container) and `Button`. MOBILE-001-D added a temporary “Sign in” entry that opens inert phone and code placeholders in a modal; nothing is collected. MOBILE-001-E added inert “not available yet” pages for the group, group chat, settings, and `/dev/scenarios` routes; the scenario page is offered only in development builds. MOBILE-001-F added the Jest behavior-test harness (`pnpm test:mobile`, `pnpm test`), with 16 navigation and `Button` tests. MOBILE-001-G verified the Android development build on an emulator and made the status bar use dark icons. MOBILE-001-H verified iOS (including native swipe dismissal), aligned the Expo SDK 57 patches with online doctor, fixed `Screen`'s bottom inset in the iOS sign-in sheet, and passed the final shell checkpoint.
 - `apps/api/` is the separately authorized BE-001 NestJS/TypeScript workspace with PostgreSQL/migrations/health; it contains no business endpoint stubs.
@@ -45,9 +47,9 @@ Read applicable root instructions first, then use this map (the workflow and rel
 6. [Product](PRODUCT.md): map UX, routes, flows, privacy presentation, and edge states.
 7. [Development](DEVELOPMENT.md): proposed commands, configuration, testing, and completion criteria. [Toolchain](TOOLCHAIN.md) pins versions, install commands, and local prerequisites for the first batch.
 8. [Mock scenarios](MOCK_SCENARIOS.md): simulator behavior and reproducible demonstrations.
-9. [API overview](api/overview.md): future transport conventions, errors, privacy, and authority.
+9. [API overview](api/overview.md): transport conventions, errors, privacy, and authority for the implemented API.
 
-## Future API specification
+## API specification
 
 | Document | Coverage |
 | --- | --- |
@@ -62,13 +64,14 @@ These specifications cover the implemented operations and future operational req
 ## Development sequence
 
 ```text
-Implemented mock mobile baseline + reviewed contracts
-  -> Backend foundation (BE-001), without waiting for frontend QA
-  -> Backend domain slices + HTTP/Socket.IO integration
-  -> Integrated QA and final contract handoff
+Implemented mock mobile baseline + contracts + BE-001–005 HTTP/Socket.IO
+  -> UI/source follow-ups and pending BE-006/VERIFY-005 native acceptance
+  -> Remaining A–N scenarios + Maestro suite + final Android/iOS QA
+  -> Final contract/implementation handoff: local MVP acceptance
+  -> Separately assigned external-readiness cards and controlled rollout
 ```
 
-The roadmap contains only mobile MVP tasks and its contract-review handoff. Do not begin a subsequent milestone automatically.
+Use the roadmap's current delivery section for dependencies and restrictions. Original mobile cards/DAG remain below it as implementation history and acceptance definitions. No subsequent task starts automatically.
 
 ## Keeping work documented
 
