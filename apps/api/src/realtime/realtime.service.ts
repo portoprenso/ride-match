@@ -6,6 +6,8 @@ import { Server } from 'socket.io';
 import type { Socket } from 'socket.io';
 import { SubscriptionRequestSchema, UnsubscribeInputSchema } from '@ride-match/contracts';
 import { AuthService } from '../auth/auth.service.js';
+import { CLOCK } from '../auth/runtime.js';
+import type { Clock } from '../auth/runtime.js';
 import { RideDomain } from '../rides/domain.js';
 import { ApiException } from '../http/api-exception.js';
 import { domainError } from '../rides/store.js';
@@ -35,7 +37,8 @@ export class RealtimeService implements OnModuleDestroy {
   private running?:Promise<void>;
   private clients=new Set<Client>();
   constructor(@Inject(AuthService) private readonly auth:AuthService,@Inject(RideDomain) private readonly domain:RideDomain,
-    @Inject(API_CONFIG) private readonly config:ApiConfig,@Inject(PushService) private readonly push:PushService) {}
+    @Inject(API_CONFIG) private readonly config:ApiConfig,@Inject(PushService) private readonly push:PushService,
+    @Inject(CLOCK) private readonly clock:Clock) {}
 
   attach(server:HttpServer,pollMs=250):void {
     this.io=new Server<Events,Events,Events,SocketData>(server,{path:'/v1/socket.io',serveClient:false,transports:['websocket'],maxHttpBufferSize:16384,
@@ -92,21 +95,37 @@ export class RealtimeService implements OnModuleDestroy {
       });
     }catch(error){reply({ok:false,error:failure(error)});}
   }
-  /** Exposed for deterministic integration checks; timer calls never overlap. */
+  /**
+   * Rechecks source-clock deadlines after awaited projection, immediately before enqueue.
+   * Locks preserve session/epoch state, but cannot freeze time during database reads.
+   * Exposed for deterministic integration checks; timer calls never overlap.
+   */
   async tick():Promise<void> {
     await this.domain.run(()=>Promise.resolve());
     for(const client of this.clients) {
       try {
-        await this.domain.deliver(async(store,now)=> {
-          await this.auth.authenticateSession(client.authorization,true,store.client);
+        await this.domain.deliver(async(store)=> {
+          const identity=await this.auth.authenticateSession(client.authorization,true,store.client);
           for(const sub of [...client.subs.values()]) {
+            let historyDeadline:number|undefined;
             if(sub.request.kind==='group') {
-              try{await store.readable(sub.request.groupId,sub.actor!,now,sub.membership);}
+              try{
+                const {group}=await store.readable(sub.request.groupId,sub.actor!,this.clock.now(),sub.membership);
+                historyDeadline=group.history_expires_at?.getTime() ?? group.expires_at.getTime()+3600000;
+              }
               catch(error){if(!(error instanceof ApiException))throw error;client.subs.delete(sub.id);client.socket.emit('rm:ended',{subscriptionId:sub.id});continue;}
             }
+            const canQueue=(at:Date):boolean=> {
+              if(identity && identity.expiresAt<=at)throw domainError('SESSION_EXPIRED',401,'Session expired.');
+              if(historyDeadline!==undefined && historyDeadline<=at.getTime()){client.subs.delete(sub.id);client.socket.emit('rm:ended',{subscriptionId:sub.id});return false;}
+              return true;
+            };
             const rows=(await store.client.query<Intent>('SELECT * FROM ride_match.domain_outbox WHERE ordinal>$1 ORDER BY ordinal LIMIT 100',[sub.cursor.toString()])).rows;
             for(const row of rows) {
+              const now=this.clock.now();
+              if(!canQueue(now))break;
               const event=await project(store,now,sub,row);
+              if(!canQueue(this.clock.now()))break;
               if(event && client.socket.connected && client.subs.has(sub.id))client.socket.emit('rm:event',{subscriptionId:sub.id,event});
               sub.cursor=BigInt(row.ordinal);
             }

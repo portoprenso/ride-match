@@ -60,6 +60,8 @@ docker compose --env-file apps/api/.env.runtime.local -f apps/api/compose.runtim
 
 Restore only into a new, explicitly selected empty database; never point a rehearsal at the live database. `createdb` must succeed before running `pg_restore`, and restore must stop at the first error. The smoke test is the reproducible automated version. Dumps can contain private messages/locations/identities even though application logs do not; backup encryption/access/retention and recovery of the matching secret must be planned separately. See [PostgreSQL dump/restore](https://www.postgresql.org/docs/18/backup-dump.html).
 
+The 2026-11-21 realtime deadline follow-up passed source build/typecheck/lint and 26 unit/HTTP checks, followed by 9 real PostgreSQL/two-instance WebSocket checks. `pnpm build:api:image` rebuilt `ride-match-api:local` with the fix; `pnpm test:api:container` passed on that image (local ID `sha256:dec553a0aadc4d1eb1acbc8f98929b526f2002502178a88b1bf4ffcc42f721c9`). Owned resources and Docker Desktop were stopped; the image and existing development data/env remain. Native acceptance is still open.
+
 ## What is verified and what remains open
 
 | Area | Local evidence | Remaining before external use |
