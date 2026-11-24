@@ -12,6 +12,7 @@ import { storeMessage } from './chat';
 import type { IdGenerator } from './ids';
 import { admitRide, scheduleDeadlines, type Schedule } from './lifecycle';
 import { scheduleSeededMeetingPoints } from './meetingPoints';
+import { activateScenarioActions } from './scenarioActions';
 import type { SeedContext, Simulator, SimulatorOptions } from './simulator';
 import { createEmptyWorld, type GroupMemberRecord, type MockWorld, type RideRecord } from './world';
 
@@ -394,6 +395,80 @@ function createTaxiUnavailable({ now, ids }: SeedContext): MockWorld {
   return world;
 }
 
+/** Adds a regular active fixture request; all later transitions use the normal domain operations. */
+function addScenarioRide(world: MockWorld, ids: IdGenerator, now: number, seed: RideSeed): RideRecord {
+  const ride = buildRide(world, ids, seed, now - seed.createdSecondsAgo * SECOND, { status: 'active', groupId: null });
+  world.rides.set(ride.id, ride);
+  supplyMatches(world, { kind: 'ride', id: ride.id }, seed.matches);
+  return ride;
+}
+
+/** Binds the displayed synthetic identity to an owner request, including F's short remaining lifetime. */
+function addDemoRequest(world: MockWorld, ids: IdGenerator, now: number, destination: string, remainingSeconds: number = RIDE_POLICY.activeLifetimeSeconds): RideRecord {
+  const ride = addScenarioRide(world, ids, now, {
+    rider: 'Demo rider 123', area: 'asanbay', offset: [-0.0011, 0.0014], destination,
+    createdSecondsAgo: RIDE_POLICY.activeLifetimeSeconds - remainingSeconds, departureOffsetMinutes: 5,
+  });
+  world.auth.accounts.set(MOCK_DEMO_SIGN_IN.phoneNumber, ride.userId);
+  return ride;
+}
+
+/** D: a joinable solo rider and two independent future joiners; the own join starts their timers. */
+function createGroupFormation({ now, ids }: SeedContext): MockWorld {
+  const world = createEmptyWorld(now);
+  const target = addScenarioRide(world, ids, now, { ...MATCH_SCENARIO_RIDES[0]!, matches: [{ destination: 'place_asia_mall', level: 'excellent', additionalMinutes: 0 }] });
+  const own = addDemoRequest(world, ids, now, target.destinationPlaceId);
+  const first = addScenarioRide(world, ids, now, { ...MATCH_SCENARIO_RIDES[0]!, rider: 'Chinara' });
+  const second = addScenarioRide(world, ids, now, { ...MATCH_SCENARIO_RIDES[0]!, rider: 'Daniyar' });
+  world.scenarioPlan = { kind: 'formation', ownRideId: own.id, joiningRideIds: [first.id, second.id], started: false };
+  return world;
+}
+
+/** E: the confirmed three-person target fills while the first matching own join is in flight. */
+function createLastSeatConflict({ now, ids }: SeedContext): MockWorld {
+  const world = createEmptyWorld(now);
+  addGroup(world, ids, ACTIVE_GROUPS[0]!, now);
+  const group = [...world.groups.values()][0]!;
+  const own = addDemoRequest(world, ids, now, group.destinationPlaceId);
+  const competitor = addScenarioRide(world, ids, now, {
+    ...MATCH_SCENARIO_RIDES[0]!, rider: 'Chinara', destination: group.destinationPlaceId,
+  });
+  world.scenarioPlan = { kind: 'last-seat', ownRideId: own.id, groupId: group.id, competitorRideId: competitor.id, queued: false };
+  return world;
+}
+
+/** F: an existing own request expires twenty source-clock seconds after scenario activation. */
+function createRequestExpiration({ now, ids }: SeedContext): MockWorld {
+  const world = createEmptyWorld(now);
+  addDemoRequest(world, ids, now, 'place_asia_mall', 20);
+  return world;
+}
+
+/** G: retained group history changes during a scripted interruption; no chat fault is armed. */
+function createOfflineResync(context: SeedContext): MockWorld {
+  const world = createFailedMessage(context);
+  world.chatFaults.lostAnswers = 0;
+  world.scenarioPlan = { kind: 'offline', groupId: [...world.groups.keys()][0]! };
+  return world;
+}
+
+/** K: ready and chat events exercise the existing local notification service after registration. */
+function createNotificationEntry({ now, ids }: SeedContext): MockWorld {
+  const world = createEmptyWorld(now);
+  addGroup(world, ids, { ...FAILED_MESSAGE_GROUP, meetingPoint: TAXI_GROUP.meetingPoint }, now);
+  const demo = [...world.users.values()].find((user) => user.displayName === 'Demo rider 123')!;
+  world.auth.accounts.set(MOCK_DEMO_SIGN_IN.phoneNumber, demo.id);
+  world.scenarioPlan = { kind: 'notification', groupId: [...world.groups.keys()][0]! };
+  return world;
+}
+
+/** N: access expiry permits refresh at +20 s; access/refresh expiry requires sign-in at +40 s. */
+function createSessionExpiration({ now }: SeedContext): MockWorld {
+  const world = createEmptyWorld(now);
+  world.scenarioPlan = { kind: 'session' };
+  return world;
+}
+
 /** Invented first names for the busy map; they repeat, as names do. */
 const DENSITY_NAMES = ['Aidai', 'Bolot', 'Chinara', 'Dastan', 'Eldiyar', 'Gulzat', 'Kairat', 'Medina', 'Nurbek', 'Saltanat'];
 const DENSITY_DESTINATIONS = [
@@ -505,20 +580,28 @@ const SCENARIOS = {
   'empty-neighborhood': { createWorld: ({ now }) => createEmptyWorld(now) },
   // Scenario C: unrelated activity, then a supplied match five seconds after the rider's request.
   'match-appears': { createWorld: createMatchAppears },
+  'group-formation': { createWorld: createGroupFormation },
+  'last-seat-conflict': { createWorld: createLastSeatConflict },
+  'request-expiration': { createWorld: createRequestExpiration },
+  'offline-resync': { createWorld: createOfflineResync },
   // Scenario H: the demo rider's group chat, with a lost answer and a duplicate event.
   'failed-message': { createWorld: createFailedMessage },
+  // I requires an actual denied/missing device fix; the source never fabricates OS permission.
+  'location-unavailable': { createWorld: createActiveNeighborhood },
   // Scenario J: the demo rider's group with a rider to report and block.
   safety: { createWorld: createSafety },
+  'notification-entry': { createWorld: createNotificationEntry },
   // Scenario L: the demo rider's ready group, for the taxi review and handoff.
   'taxi-unavailable': { createWorld: createTaxiUnavailable },
   // Scenario M: a hundred items for clusters, the list and the snapshot limit.
   'map-density': { createWorld: createMapDensity },
+  'session-expiration': { createWorld: createSessionExpiration },
 } satisfies Record<string, ScenarioDefinition>;
 
 /** Key of an implemented scenario, as `EXPO_PUBLIC_MOCK_SCENARIO` names it. */
 export type MockScenarioKey = keyof typeof SCENARIOS;
 
-/** The implemented scenarios. Later cards add the other keys in docs/MOCK_SCENARIOS.md with their operations. */
+/** Every A–N scenario key, in the documentation and demo picker's order. */
 export const MOCK_SCENARIO_KEYS = Object.keys(SCENARIOS) as MockScenarioKey[];
 
 export function isMockScenarioKey(key: string): key is MockScenarioKey {
@@ -539,6 +622,7 @@ export function scenarioOptions(key: MockScenarioKey): Pick<SimulatorOptions<Moc
       scheduleDeadlines(simulator.state, schedule);
       scheduleSeededMeetingPoints(simulator.state, schedule);
       scenario.scheduleEvents?.(simulator.state, schedule);
+      activateScenarioActions(simulator);
     },
   };
 }

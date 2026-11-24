@@ -81,7 +81,7 @@ describe('createMockDevControls', () => {
   it('refuses a scenario that is not built', () => {
     const { controls } = setup();
 
-    expect(() => controls.selectScenario('group-formation')).toThrow(RangeError);
+    expect(() => controls.selectScenario('not-a-scenario')).toThrow(RangeError);
     expect(controls.getSnapshot().scenario).toBe('active-neighborhood');
   });
 
@@ -169,7 +169,7 @@ describe('demo scenarios route', () => {
     expect(screen.getByRole('radio', { name: /^Active neighbourhood/ })).toBeChecked();
     expect(screen.getByRole('radio', { name: /^Quiet neighbourhood/ })).not.toBeChecked();
     expect(screen.getByRole('radio', { name: /^Quiet neighbourhood/ })).toBeEnabled();
-    expect(screen.getByRole('radio', { name: 'Last seat taken, Capacity conflict, not built yet' })).toBeDisabled();
+    expect(screen.getByRole('radio', { name: /^Last seat taken,/ })).toBeEnabled();
     expect(screen.getByText('Not available in production builds. Mock state resets on cold reload.')).toBeOnTheScreen();
 
     await press('Back');

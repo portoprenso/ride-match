@@ -127,7 +127,8 @@ export type RefreshTokenRecord = {
 
 /**
  * Everything authentication holds. It is private: phone numbers, codes and tokens never reach a
- * public DTO, an event or a log, and only `auth.ts` reads them.
+ * public DTO, an event or a log. Auth operations and private scenario actors use these records;
+ * feature code cannot import them.
  */
 export type AuthRecords = {
   /** The synthetic rider each demo phone number signs in as, kept across sign-outs until a reset. */
@@ -216,6 +217,13 @@ export type PushDeviceRecord = {
   registeredAt: number;
 };
 
+/** Action scripts for the remaining demo scenarios; never serialized or exposed to features. */
+export type ScenarioPlan =
+  | { kind: 'formation'; ownRideId: string; joiningRideIds: readonly [string, string]; started: boolean }
+  | { kind: 'last-seat'; ownRideId: string; groupId: string; competitorRideId: string; queued: boolean }
+  | { kind: 'offline' | 'notification'; groupId: string }
+  | { kind: 'session' };
+
 /**
  * The mock source's world. Curated places are not part of it: they are a fixed catalog shared by
  * every scenario (`places.ts`).
@@ -223,6 +231,8 @@ export type PushDeviceRecord = {
 export type MockWorld = {
   /** Simulated time the scenario was activated; its timed events count from here. */
   activatedAt: number;
+  /** Reset with the world; scripts use existing domain operations, not a second rule engine. */
+  scenarioPlan: ScenarioPlan | null;
   users: Map<string, UserRecord>;
   rides: Map<string, RideRecord>;
   groups: Map<string, GroupRecord>;
@@ -255,6 +265,7 @@ export type MockWorld = {
 export function createEmptyWorld(now: number): MockWorld {
   return {
     activatedAt: now,
+    scenarioPlan: null,
     users: new Map(),
     rides: new Map(),
     groups: new Map(),

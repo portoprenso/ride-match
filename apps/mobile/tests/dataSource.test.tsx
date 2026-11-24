@@ -162,11 +162,11 @@ describe('composeAppDataSource', () => {
   });
 
   it('fails the composition for a scenario the simulator does not know', () => {
-    const composition = composeAppDataSource({ readConfig: config({ kind: 'mock', scenario: 'group-formation' }) });
+    const composition = composeAppDataSource({ readConfig: config({ kind: 'mock', scenario: 'not-a-scenario' }) });
 
     expect(composition.status === 'failed' && composition.error).toBeInstanceOf(AppConfigError);
     expect(composition.status === 'failed' && composition.error instanceof AppConfigError && composition.error.problems).toEqual([
-      'EXPO_PUBLIC_MOCK_SCENARIO is "group-formation"; use one of active-neighborhood, empty-neighborhood, match-appears, failed-message, safety, taxi-unavailable, map-density.',
+      'EXPO_PUBLIC_MOCK_SCENARIO is "not-a-scenario"; use one of active-neighborhood, empty-neighborhood, match-appears, group-formation, last-seat-conflict, request-expiration, offline-resync, failed-message, location-unavailable, safety, notification-entry, taxi-unavailable, map-density, session-expiration.',
     ]);
   });
 
@@ -243,12 +243,12 @@ describe('root layout', () => {
   });
 
   it('shows an unknown scenario as a configuration problem', async () => {
-    process.env.EXPO_PUBLIC_MOCK_SCENARIO = 'group-formation';
+    process.env.EXPO_PUBLIC_MOCK_SCENARIO = 'not-a-scenario';
     await renderApp('/');
 
     expect(screen.getByRole('header', { name: 'This build can’t start' })).toBeOnTheScreen();
     expect(
-      screen.getByText('EXPO_PUBLIC_MOCK_SCENARIO is "group-formation"; use one of active-neighborhood, empty-neighborhood, match-appears, failed-message, safety, taxi-unavailable, map-density.'),
+      screen.getByText('EXPO_PUBLIC_MOCK_SCENARIO is "not-a-scenario"; use one of active-neighborhood, empty-neighborhood, match-appears, group-formation, last-seat-conflict, request-expiration, offline-resync, failed-message, location-unavailable, safety, notification-entry, taxi-unavailable, map-density, session-expiration.'),
     ).toBeOnTheScreen();
   });
 

@@ -22,6 +22,7 @@ import { acceptGroupSubscription, isMember, joinGroup, leaveGroup, readGroup, up
 import { cancelRide, createRide, readMatches, readOwnRequest } from './rides';
 import { blockUser, listBlocks, reportUser, unblockUser } from './safety';
 import { scenarioOptions, type MockScenarioKey } from './scenarios';
+import { prepareScenarioJoin, scheduleScenarioMembers } from './scenarioActions';
 import { createSimulator, type LatencyRange, type Simulator } from './simulator';
 import type { MockWorld } from './world';
 
@@ -123,7 +124,12 @@ export function createMockDataSource(
       ...unavailable.groups,
       join: (input) => {
         const token = accessToken();
-        return simulator.run('groups.join', (context) => joinGroup(context, token, input));
+        prepareScenarioJoin(simulator, input);
+        return simulator.run('groups.join', (context) => {
+          const result = joinGroup(context, token, input);
+          scheduleScenarioMembers(context, input.rideRequestId, result.group.id);
+          return result;
+        });
       },
       getGroup: (groupId, options) => {
         const token = accessToken();

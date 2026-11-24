@@ -2,7 +2,7 @@
 
 Originally saved: 2026-10-10 (DOC-003). Current-plan reconciliation: 2026-11-21 (DOC-005).
 
-[ROADMAP.md — Current delivery plan](ROADMAP.md#current-delivery-plan) owns the remaining backend/frontend work and separate external-rollout cards. This file continues to own the original later mobile child statuses; FIRST_STEPS owns MOBILE-001-H. Most feature code is implemented, but required native acceptance keeps several cards Paused. QA-001-A–D and HANDOFF-001-A remain Planned. Do not read the original review-time snapshot as today's implementation state.
+[ROADMAP.md — Current delivery plan](ROADMAP.md#current-delivery-plan) owns the remaining backend/frontend work and separate external-rollout cards. This file continues to own the original later mobile child statuses; FIRST_STEPS owns MOBILE-001-H. Most feature code is implemented, but required native acceptance keeps several cards Paused. QA-001-A is Paused after source preparation; QA-001-B–D and HANDOFF-001-A remain Planned. Do not read the original review-time snapshot as today's implementation state.
 
 The design covers 55 visual states across the existing routes, not 55 separate routes. MOBILE-001-H and TOOLCHAIN-001-A are completed. Under the retained no-Metro/emulator/native-QA restriction, UI-001-A source correction is implemented/tested with native acceptance still open; the roadmap's API-UI-001 copy audit is completed. Next local acceptance is BE-006/VERIFY-005 plus pending UI native checks under the retained restriction. BE-006 remains Blocked on native acceptance, VERIFY-005 stays Paused, and external push stays disabled.
 
@@ -10,7 +10,7 @@ The design covers 55 visual states across the existing routes, not 55 separate r
 
 **Current integration baseline (2026-11-21):** BE-001–005 are completed locally with all 25 REST operations and the mobile HTTP/socket adapter; BE-006 backend/container work is verified with its native smoke still open. [BACKEND_HANDOFF.md](BACKEND_HANDOFF.md) records implementation and evidence. Complete the remaining mobile QA against the applicable mock/API modes; preserve accepted results and do not restart a completed backend slice or historical NEXT card.
 
-The [2026-11-20 consolidated report](VERIFY_005_REPORT.md) supersedes older per-card continuation lists for VERIFY-005. It separates passed native paths, missing variants, known defects and simulator limits. VERIFY-005 is Paused at the user's request; ownership released and processes stopped. No additional implementation card is marked Completed. The Demo presentation-clock fix, new regression test and native iOS result are recorded there; final-source mobile count is 656. Future QA-001-A–D and HANDOFF-001-A remain Planned.
+The [2026-11-20 consolidated report](VERIFY_005_REPORT.md) supersedes older per-card continuation lists for VERIFY-005. It separates passed native paths, missing variants, known defects and simulator limits. VERIFY-005 is Paused at the user's request; ownership released and processes stopped. No additional implementation card is marked Completed. The Demo presentation-clock fix, new regression test and native iOS result are recorded there; final-source mobile count is 656. QA-001-A source preparation is verified below; B–D and HANDOFF-001-A remain Planned.
 
 ## Authority and status ownership
 
@@ -377,7 +377,7 @@ Documentation: DEVELOPMENT.md, MOCK_SCENARIOS.md, API specs, roadmap and final h
 
 | ID | Prerequisites | Goal, screens, expected modules and reuse | Observable acceptance and checks | Size / uncertainty | Status |
 | --- | --- | --- | --- | --- | --- |
-| QA-001-A | TAXI-001, SAFETY-001, NOTIFICATION-001 | Complete Mock A–N scenarios/dev controls and integration tests. Add missing D/E/F/G/I/K/N; A/B/C/H/J/L/M already exist. Screen 50 plus all flows. | Every scenario is selectable and produces its documented result; reset clears timers/listeners/credentials/cache; reuse covered domain operations. | M / interactions | Planned |
+| QA-001-A | TAXI-001, SAFETY-001, NOTIFICATION-001 | All A–N definitions/dev controls and source journey/reset integration tests now implemented, including D/E/F/G/I/K/N. Screen 50 plus all flows. | All keys selectable; source results/public DTOs/reset timers/listeners/credentials/cache verified. Actual permission, OS notifications and original native prerequisites still need acceptance. | M / device evidence | Paused (2026-11-21): source preparation verified; 101 targeted tests, full mobile 57 suites / 722 tests, workspace types/lint pass. No native acceptance or QA-001-B started |
 | QA-001-B | QA-001-A | Add planned M/.maestro suite and real test:e2e wrapper; reuse installed dev build. | Happy journey plus denial/conflict/expiry/failed-message/revocation run; exact prerequisites/commands documented. | M / automation | Planned |
 | QA-001-C | QA-001-B | Android audit of 01–55, native integrations, typography/accessibility. | Compare local SVGs with Manrope, larger text, keyboard, map density, permissions/notification/taxi; record evidence and bounded defects. | M / device differences | Planned |
 | QA-001-D | QA-001-C | Equivalent iOS 01–55 audit and cross-platform checkpoint. | All required evidence applies to final files; no unfinished mandatory criterion marked complete. | M / iOS behavior | Planned |

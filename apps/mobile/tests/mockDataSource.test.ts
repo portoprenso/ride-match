@@ -95,9 +95,10 @@ afterEach(() => {
 
 describe('scenarios', () => {
   it('knows only the implemented scenario keys', () => {
-    expect(MOCK_SCENARIO_KEYS).toEqual(['active-neighborhood', 'empty-neighborhood', 'match-appears', 'failed-message', 'safety', 'taxi-unavailable', 'map-density']);
+    expect(MOCK_SCENARIO_KEYS).toEqual(['active-neighborhood', 'empty-neighborhood', 'match-appears', 'group-formation', 'last-seat-conflict', 'request-expiration', 'offline-resync', 'failed-message', 'location-unavailable', 'safety', 'notification-entry', 'taxi-unavailable', 'map-density', 'session-expiration']);
     expect(isMockScenarioKey('empty-neighborhood')).toBe(true);
-    expect(isMockScenarioKey('group-formation')).toBe(false);
+    expect(isMockScenarioKey('group-formation')).toBe(true);
+    expect(isMockScenarioKey('not-a-scenario')).toBe(false);
     expect(isMockScenarioKey('toString')).toBe(false);
   });
 

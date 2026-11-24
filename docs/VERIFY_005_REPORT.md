@@ -60,7 +60,7 @@ The temporary iOS tests for resume, unknown creation and TSUM join were written 
 
 The [current delivery roadmap](ROADMAP.md#current-delivery-plan) separates this unfinished local frontend acceptance from external rollout. BE-001–005 are already completed locally; BE-006 backend/container work is verified with native API-mode smoke still open. This report remains the missing-variant evidence matrix, not a list of absent product implementations.
 
-- **QA-001-A:** add missing selectable scenarios D/E/F/G/I/K/N (A/B/C/H/J/L/M exist) and integrated reset/timer/listener/credential/cache checks.
+- **QA-001-A:** source preparation verified 2026-11-21: all A–N selectable, scripted source journeys and reset/timer/listener/credential/cache checks implemented; full mobile Jest 57 suites / 722 tests. Original native acceptance prerequisites and device-only variants remain open; no native result above changed.
 - **QA-001-B:** repository Maestro flows and real `test:e2e` wrapper; temporary native drivers are not that suite.
 - **QA-001-C/D:** planned full Android/iOS visual and native audit, reusing accepted evidence where final code permits.
 - **HANDOFF-001-A:** contracts/operations/implemented API/socket/event/privacy reconciliation after QA and BE-006 acceptance. No new backend implementation is part of this audit.

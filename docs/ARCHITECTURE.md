@@ -1,6 +1,6 @@
 # Architecture plan
 
-Status: proposed; partly implemented (see [AI context](AI_CONTEXT.md)). Last updated: 2026-11-20.
+Status: proposed; partly implemented (see [AI context](AI_CONTEXT.md)). Last updated: 2026-11-21 (QA-001-A source scripts).
 
 ## Objective and scope
 
@@ -11,6 +11,12 @@ The mobile data milestone does not require offline basemap tiles. Application da
 ## Demo presentation time (VERIFY-005, 2026-11-20)
 
 `DevControlsProvider.useDemoTimeAhead` exposes only the public controls port's read-only time offset; `features/discovery/useClock` adds it to its device-time ticks. Presentation deadlines and departure wording therefore follow deliberate Demo clock advances, including removal of cached chat history after retention. Without controls (production/API builds or standalone UI), the offset is zero. Features do not import simulator internals, the device clock is not changed, and canonical source operations still authorize access. The native/automated verification limits are in [VERIFY_005_REPORT.md](VERIFY_005_REPORT.md).
+
+## Bounded mock scenario scripts (QA-001-A)
+
+All A–N scenario keys now exist. `mock/world.ts` holds a private ScenarioPlan for D/E/G/K/N; `mock/scenarios.ts` seeds synthetic participants and activates finite scheduler tasks. `mock/scenarioActions.ts` reuses auth, join, chat and status operations. The mock adapter queues E's competitor as a separate commit before own join work; D schedules its later joins only after the own join is accepted, including a lost reply. Scripted actors recheck source timestamps before acting, including delayed catch-up where expiry tasks have not yet updated stored statuses. All other scenarios retain normal operation behavior. No second business-rule engine, new persistent observer or contract field is introduced.
+
+Reset/disposal cancels queued scenario work with the existing scheduler; composition discards old credentials/session and protected query state. I requires real device settings (or the existing test location port), never source-fabricated permission/GPS. K emits ordinary eligible local notification work; no OS/remote delivery is implied. Source verification is complete, original native acceptance is not; see MOCK_SCENARIOS and ROADMAP.
 
 ## Technology decisions
 

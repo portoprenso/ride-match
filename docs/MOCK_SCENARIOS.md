@@ -1,6 +1,6 @@
 # Mock simulator and scenarios
 
-Status: partly implemented: the simulator foundation (MOCK-001-A), the discovery world, seeds and public reads that the app runs on (MOCK-001-B), the demo controls (MOCK-001-C), sign-in and sessions (AUTH-001-A), supplied destination matches (DESTINATION-001-A), the rider's own request (RIDE-001-A), scenario C with own-request matches (RIDE-001-D), joining a ride or group (GROUP-001-A), leaving it with the member-only group read (GROUP-001-B), the coordinator's status changes (GROUP-001-C), meeting points (MEETING-001-A), chat history and sending with simulated replies (CHAT-001-A), and scenario H's chat faults (CHAT-001-C); the other operations and scenarios are planned. Last updated: 2026-11-08.
+Status: all mock operations and A–N scenario definitions are implemented. Last updated: 2026-11-21 (QA-001-A source preparation). Source/journey/reset tests pass; original native acceptance prerequisites and device-only variants remain open. No OS permission or remote delivery is simulated by declaring a scenario.
 
 ## Purpose
 
@@ -194,9 +194,9 @@ Tests check that every output and every event of a full 31-minute run validates 
 **Implemented controls (MOCK-001-C):** `/dev/scenarios` (screen 50), reached from home's Demo badge or a deep link.
 
 - **Port and gate:** features see the `DevControls` port (`src/data/DevControls.ts`) through `useDevControls()`. The composition root creates it (`createMockDevControls`) only for the mock data source in `development` and `preview` builds (`EXPO_PUBLIC_APP_ENV`); a `production` build never creates it, so home's Demo badge is plain text and the route shows "Demo scenarios are only available in development and preview builds that use mock data", without redirecting. It replaced the `__DEV__` check (`isDevelopmentMode`, removed).
-- **Scenarios:** all 14 scenarios above (A to N) are listed as radio buttons; only implemented keys are enabled, the rest say "not built yet". Choosing one resets the app's one simulator into that scenario from its own seed (`reset(next)`), so the same data source and connection watchers serve the new world.
+- **Scenarios:** all 14 A–N keys are implemented, enabled and listed in documented order. Choosing one resets the same simulator into its own seed (`reset(next)`), preserving the data-source identity and connection watchers. Unknown keys still fail explicitly.
 - **Controls:** restart the running scenario; Online and Offline (`setConnection`); move the source's clock ahead by 30 seconds, 5 or 15 minutes (`advanceTime`; the screen shows how far ahead it runs, back to real time on every reset); and queue a failure for the next request of any kind: no answer (`network`, nothing changed) or refused (`SERVICE_UNAVAILABLE`).
-- **App caches:** starting a scenario, or the same one over, cancels and resets the app's cached reads (TanStack Query), so nothing from the old world stays on screen. The location choices (introduction set aside, confirmed pickup) stay, since places are the same in every scenario. There are no demo credentials yet (AUTH-001).
+- **App caches:** starting a scenario, or the same one over, cancels and resets the app's cached reads (TanStack Query), so nothing from the old world stays on screen. The location choices (introduction set aside, confirmed pickup) stay, since places are the same in every scenario. Composition discards the session and pending intents, removes stored refresh credentials and protected query state, and resets subscriptions; queued source actions/failures/receipts are cancelled or cleared.
 - **Feedback:** every action shows a notice and is announced to screen readers.
 
 A clear demo indicator identifies synthetic data. Empty scenarios remain empty. Mock data-source outage and basemap tile outage are distinct states.
@@ -210,17 +210,25 @@ Times below are relative to scenario activation unless an action is named. Initi
 | A / `active-neighborhood` | Six solo rides, two groups | +8 s: ride appears; +20 s: another expires | Live map updates without camera jumps; counts/selection remain coherent |
 | B / `empty-neighborhood` | No nearby activity | None | Honest empty state with create CTA; no decorative fake riders |
 | C / `match-appears` | Unrelated nearby activity | Five seconds after successful own request creation: excellent match | Marker and request sheet emphasize supplied compatibility |
-| D / `group-formation` | Joinable solo rider | After own join: third member at +5 s, fourth at +10 s | One group marker, live occupancy, full state; readiness still explicit |
-| E / `last-seat-conflict` | Three-person forming group | Another user takes the final seat during own join latency | `GROUP_FULL`, refreshed capacity, no phantom membership |
+| D / `group-formation` | Demo own active request, joinable Aida and two future joiners | Sign in and join Aida: third member at +5 s, fourth at +10 s after acceptance | One group marker, live occupancy, full state; readiness still explicit |
+| E / `last-seat-conflict` | Demo own active request and three-person TSUM group | First matching own join queues a separate source-actor commit during the caller's latency | `GROUP_FULL`, refreshed capacity, no phantom membership |
 | F / `request-expiration` | Own active request with 20 s left | Expiry at deadline | Matches/actions cleared, expired message, explicit create-again |
-| G / `offline-resync` | Active request and group data | Disconnect +5 s, state changes while offline, reconnect +15 s | Stale banner, no queued mutations, authoritative recovered state |
+| G / `offline-resync` | Demo already belongs to a forming group with history | Disconnect +5 s, source-owned chat update +10 s, reconnect +15 s | Stale banner, no queued mutations, authoritative recovered state |
 | H / `failed-message` | Existing authorized group | First send fails; retry succeeds; duplicate event follows | Preserved draft/retry, exactly one canonical message |
-| I / `location-unavailable` | Permission denial or missing fix | Optional permission recovery in settings | Manual browsing/pickup; no fabricated current position |
+| I / `location-unavailable` | Active neighbourhood; set denial/missing fix through device settings | Manual browsing/pickup; optional permission recovery in settings. Source never changes OS permission | Manual browsing/pickup; no fabricated current position |
 | J / `safety` | Shared group with reportable member | Block action | Blocking user leaves, chat/cache cleared, future pairing filtered |
-| K / `notification-entry` | Existing match/group | Local notification; optionally expire/remove target before tap | Correct resource or clear unavailable state on warm/cold entry (tap routing since NOTIFICATION-001-C; the scenario seed itself is QA-001-A's) |
+| K / `notification-entry` | Demo belongs to Aida's forming group with a meeting point | Sign in and allow notifications before source +30 s: ready event at +30 s, message at +40 s; optionally expire/leave before tap | Existing local service emits generic ready/message payloads to eligible devices. OS warm/cold taps remain native acceptance; no remote push |
 | L / `taxi-unavailable` | Ready group and meeting point | Link-open failure or provider absent | Supported browser/store fallback or retry/copy information |
 | M / `map-density` | 100 safe public discovery items | Updates while user pans | Responsive clusters/taps/sheets; no repeated recenter |
-| N / `session-expiration` | Authenticated user with preserved draft | Access expiry; refresh succeeds or fails deterministically | Single refresh; restored action context or sign-in continuation |
+| N / `session-expiration` | Sign in before +20 s; create the draft in UI, not in source records | Access expires +20 s (refresh remains valid); access and refresh expire +40 s; next protected read applies the outcome | Concurrent reads share one refresh; later refresh refusal clears credentials and requires sign-in. UI draft/intent behavior remains in its feature tests |
+
+## Implemented action scripts (QA-001-A source preparation)
+
+- `world.ts` holds a private ScenarioPlan (D/E/G/K/N); it is never part of DTOs/contracts. Seeds in `scenarios.ts` bind only synthetic accounts and requests.
+- `scenarioActions.ts` uses existing auth/join/chat/status operations for source-owned actors. D's accepted own join schedules two later joins once; retry/lost response cannot schedule another pair. E commits the competitor separately so its state/events survive the caller's GROUP_FULL failure. Ended/full/blocked targets stop scripted joins; no forced membership or readiness. Each scripted join/reply/readiness change also rechecks source deadlines, so a large time jump cannot run late actor effects against a record whose expiry task is still waiting.
+- G/K/N use only the existing scheduler. All timers belong to the scenario world and reset/disposal cancels them; there are no new persistent observers. Source-time advances and foreground catch-up enforce deadlines. K uses the existing eligible-registration/local-push service, not invented OS delivery.
+- I is selectable but requires an actual device condition (or the existing location test stand-in); its source supplies ordinary public data and manual pickup operations, never a fake GPS fix or permission result.
+- All A–N keys have strict public-snapshot and repeated-reset checks. Composition switching verifies credential, session and protected-query cleanup. Full mobile Jest: 57 suites / 722 tests; source types/lint pass. Native prerequisites, suspended execution, device permission/tap variants and final QA remain open; QA-001-A is Paused after source preparation.
 
 ## Additional transition checks
 
